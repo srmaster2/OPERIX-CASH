@@ -1,4 +1,3 @@
-const MASTER_EMAIL = "srmaster2@gmail.com"; 
 const COL = { 
   NAME:0, BAL:1, LO:2, LI:3, UDO:4, UDI:5, LM:6, PROF:7, UMO:8, LD:9, LM_D:10, PIN:11, 
   UMI:12, // الاستخدام الشهري الوارد (M)
@@ -2270,4 +2269,5 @@ function addNewAccount(name, lo, li, lm, color) {
     return { success: false, msg: "❌ فشل في الإضافة: " + err.toString() };
   }
 }
+
 // الدالة اللي بتنفذ الكتابة الفعلية في الشيت (دي اللي ناقصة وموقفة التحميل)
