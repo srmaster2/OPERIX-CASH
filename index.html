@@ -5429,6 +5429,14 @@ window.applyVisibility = function(show) {
         else icon.classList.replace('fa-eye', 'fa-eye-slash');
     }
 };
+				window.onload = function() {
+    // 1. فتح تبويب الداشبورد افتراضياً
+    showTab('dashboard'); 
+    
+    // 2. استدعاء دالة جلب البيانات من Supabase التي أنشأناها
+    loadDash(); 
+};
  	</script>
 		  </body>
+
 		</html>
