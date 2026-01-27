@@ -9,97 +9,164 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <style>
+:root {
+      --primary-color: #3b82f6; /* أزرق نيون */
+      --secondary-color: #1e293b; /* كحلي غامق */
+      --accent-color: #06b6d4; /* سماوي */
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+
     body {
       font-family: 'Cairo', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      background: var(--bg-gradient);
+      color: #f8fafc;
       margin: 0;
       padding: 0;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
+      overflow: hidden;
     }
+
+    /* إضافة دوائر جمالية في الخلفية */
+    body::before, body::after {
+      content: "";
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      z-index: -1;
+      filter: blur(80px);
+      opacity: 0.4;
+    }
+    body::before { background: var(--primary-color); top: 10%; left: 15%; }
+    body::after { background: var(--accent-color); bottom: 10%; right: 15%; }
+
     .login-container {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
       padding: 40px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      width: 90%;
+      max-width: 420px;
+      transition: transform 0.3s ease;
     }
+
+    .login-container:hover {
+      transform: translateY(-5px);
+    }
+
     .login-container h2 {
-      margin-bottom: 30px;
+      margin-bottom: 10px;
       font-weight: 700;
+      font-size: 1.8rem;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
+
+    .login-container p {
+      color: #94a3b8;
+      margin-bottom: 30px;
+      font-size: 0.9rem;
+    }
+
     .form-group {
       margin-bottom: 20px;
       text-align: right;
     }
+
     .form-group label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
       font-weight: 600;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      padding-right: 5px;
     }
+
     .form-group input {
       width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.2);
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.2);
       color: white;
-      font-size: 16px;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
     }
-    .form-group input::placeholder {
-      color: rgba(255, 255, 255, 0.7);
-    }
+
     .form-group input:focus {
       outline: none;
-      background: rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.4);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     }
+
     .btn-login {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       border: none;
-      border-radius: 10px;
-      background: #10b981;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
       color: white;
       font-weight: 700;
+      font-size: 1rem;
       cursor: pointer;
-      margin-bottom: 10px;
+      margin-top: 10px;
+      margin-bottom: 15px;
       transition: 0.3s;
+      box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
     }
+
     .btn-login:hover {
-      background: #059669;
+      transform: scale(1.02);
+      filter: brightness(1.1);
+      box-shadow: 0 10px 20px -3px rgba(59, 130, 246, 0.5);
     }
+
     .btn-signup {
       width: 100%;
       padding: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
       background: transparent;
-      color: white;
-      font-weight: 700;
+      color: #e2e8f0;
+      font-weight: 600;
       cursor: pointer;
       transition: 0.3s;
     }
+
     .btn-signup:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.4);
     }
+
     .toast {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      color: white;
+      top: 20px; /* نقل التنبيه للأعلى ليكون أوضح */
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 25px;
+      border-radius: 12px;
+      font-weight: 600;
+      z-index: 1000;
       display: none;
+      animation: slideDown 0.4s ease;
     }
-    .toast.success { background-color: #10b981; }
-    .toast.error { background-color: #ef4444; }
-  </style>
+
+    @keyframes slideDown {
+      from { transform: translate(-50%, -100%); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    .toast.success { background: #10b981; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); }
+    .toast.error { background: #ef4444; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); }  </style>
 </head>
 <body>
   <div class="login-container">
