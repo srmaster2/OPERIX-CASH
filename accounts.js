@@ -357,15 +357,24 @@ async function addUser() {
 
 async function loadUsersTable() {
     const listDiv = document.getElementById('usersList');
+    if (!listDiv) return; // تأكد من وجود العنصر في الصفحة
+
     listDiv.innerHTML = '<div class="text-center p-2"><i class="fa fa-spinner fa-spin"></i> جاري التحميل...</div>';
 
     try {
+        // جلب كل الصفوف من جدول users
         const { data: users, error } = await supabase
             .from('users')
-            .select('*')
+            .select('*') 
             .order('created_at', { ascending: false });
 
         if (error) throw error;
+
+        // التحقق من وجود بيانات
+        if (!users || users.length === 0) {
+            listDiv.innerHTML = '<div class="text-center p-3">لا يوجد موظفين مسجلين حالياً</div>';
+            return;
+        }
 
         let h = `
         <table class="table table-sm table-bordered mt-3 text-center small">
@@ -378,6 +387,7 @@ async function loadUsersTable() {
             </thead>
             <tbody>`;
 
+        // تكرار (Loop) على كل المستخدمين
         users.forEach(u => {
             const roleBadge = u.role === 'ADMIN' ? 'bg-danger' : 'bg-primary';
             h += `
@@ -395,9 +405,11 @@ async function loadUsersTable() {
         listDiv.innerHTML = h + '</tbody></table>';
 
     } catch (err) {
+        console.error("Load Users Error:", err);
         listDiv.innerHTML = '<div class="text-danger small">فشل تحميل قائمة الموظفين</div>';
     }
-}async function deleteUser(email) {
+}
+async function deleteUser(email) {
     if (!confirm("هل أنت متأكد من حذف هذا الموظف؟ لن يتمكن من دخول النظام.")) return;
 
     try {
