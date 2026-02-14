@@ -296,7 +296,7 @@
         window.location.replace('index.html');
       }
     });
-    async function forgotPassword() {
+async function forgotPassword() {
   const email = document.getElementById('email').value;
   if (!email) {
     showToast('يرجى كتابة البريد الإلكتروني أولاً في خانة تسجيل الدخول', false);
@@ -304,7 +304,8 @@
   }
 
   const { error } = await window.supa.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + 'https://srmaster2.github.io/Sadek-Cash/reset-password.html',
+    // قم بإلغاء window.location.origin وضع الرابط مباشرة كالتالي:
+    redirectTo: 'https://srmaster2.github.io/Sadek-Cash/reset-password.html',
   });
 
   if (error) {
