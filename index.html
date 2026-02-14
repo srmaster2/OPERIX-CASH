@@ -1988,7 +1988,7 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link modern-nav-item" onclick="showView('settings')">
+            <a class="nav-link modern-nav-item" onclick="showSection('view-settings')">
                 <i class="fa fa-cog"></i>
                 <span>إعدادات</span>
             </a>
@@ -2495,13 +2495,44 @@
 			</div>
 		</div>
 	</div>
-	<div id="view-settings" class="view-section" style="display:none;"> 
-				   <h6 class="text-muted small fw-bold mb-3"><i class="fa fa-wrench"></i> إعدادات الواجهة</h6>
-				  <div class="card-box mb-3 d-flex justify-content-between align-items-center">
-					<label class="fw-bold">الوضع الداكن (Dark Mode)</label>
-					<button class="btn btn-sm btn-light border text-muted" onclick="toggleTheme()"><i class="fa fa-toggle-off" id="darkModeToggleIcon"></i></button>
-				  </div>
-				  
+<div id="view-settings" class="view-section" style="display:none;"> 
+    <h6 class="text-muted small fw-bold mb-3"><i class="fa fa-wrench"></i> إعدادات الواجهة</h6>
+    <div class="card-box mb-3 d-flex justify-content-between align-items-center">
+        <label class="fw-bold">الوضع الداكن (Dark Mode)</label>
+        <button class="btn btn-sm btn-light border text-muted" onclick="toggleTheme()"><i class="fa fa-toggle-off" id="darkModeToggleIcon"></i></button>
+    </div>
+
+<h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-user-gear"></i> معلومات الحساب الشخصي</h6>
+<div class="card-box mb-3">
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="small text-muted mb-1">الاسم الحالي</label>
+            <div id="displayProfileName" class="form-control form-control-sm bg-light border-0 fw-bold">-</div>
+        </div>
+        <div class="col-6">
+            <label class="small text-muted mb-1">الرتبة/الصلاحية</label>
+            <div id="displayProfileRole" class="form-control form-control-sm bg-light border-0 fw-bold text-primary">-</div>
+        </div>
+        <div class="col-12 mt-2">
+            <label class="small text-muted mb-1">البريد الإلكتروني</label>
+            <div id="displayProfileEmail" class="form-control form-control-sm bg-light border-0">-</div>
+        </div>
+    </div>
+
+    <div class="pt-3 border-top">
+        <label class="small fw-bold mb-2 text-warning"><i class="fa fa-shield-halved me-1"></i> تغيير كلمة المرور</label>
+        
+        <div id="passwordFieldsSection">
+            <div class="mb-2">
+                <input type="password" id="newPass" class="form-control form-control-sm mb-2" placeholder="كلمة المرور الجديدة">
+                <input type="password" id="confirmPass" class="form-control form-control-sm" placeholder="تأكيد كلمة المرور">
+            </div>
+            <button class="btn btn-sm btn-success w-100 fw-bold" onclick="handleUpdatePassword()">
+                <i class="fa fa-save me-1"></i> حفظ كلمة المرور الجديدة
+            </button>
+        </div>
+    </div>
+</div>
 		<div id="adminSettingsSection" style="display: none;">
 			<h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-chart-bar"></i> إعدادات النظام</h6>
 			<div class="card-box">
@@ -2662,6 +2693,8 @@
         </div>
     </div>
 </div>		<script>
+
+	
 		let selectedProvider = ""; // متغير عام لتخزين الشركة
 
 		/**
