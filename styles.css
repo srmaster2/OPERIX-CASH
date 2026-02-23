@@ -1377,10 +1377,14 @@ body.light-mode .dashboard-title {
 }
 
 @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.4; }
-    100% { opacity: 1; }
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
+
 @media (max-width: 768px) {
   .sidebar-wrapper {
     position: fixed;
@@ -3155,13 +3159,14 @@ body:not(.light-mode) .wlt-track {
     background-color: #6b6666;
     transition: 0.2s;
 }
+
 /* تصميم كروت الشركات الاحترافية */
 .provider-card {
     position: relative;
     overflow: hidden;
     border: none !important;
     color: white !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     margin-bottom: 12px;
     height: 75px;
@@ -3176,19 +3181,21 @@ body:not(.light-mode) .wlt-track {
 
 .provider-card:hover {
     transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
     filter: brightness(1.1);
 }
 
+/* تأثير الدائرة المضيئة في الخلفية */
 .provider-card::after {
     content: '';
     position: absolute;
-    right: -20px;
-    top: -20px;
-    width: 80px;
-    height: 80px;
-    background: rgba(255, 255, 255, 0.1);
+    right: -15px;
+    top: -15px;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 50%;
+    z-index: 1;
 }
 
 .provider-info {
@@ -3199,7 +3206,7 @@ body:not(.light-mode) .wlt-track {
 }
 
 .provider-name {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 800;
     margin-bottom: 2px;
     text-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -3207,7 +3214,7 @@ body:not(.light-mode) .wlt-track {
 
 /* كبسولة الرصيد الاحترافية */
 .balance-badge {
-    background: rgba(14, 13, 13, 0.15); /* خلفية بيضاء شفافة */
+    background: rgba(66, 59, 59, 0.15); /* خلفية بيضاء شفافة */
     backdrop-filter: blur(5px); /* تأثير زجاجي */
     padding: 4px 10px;
     border-radius: 8px;
@@ -3241,15 +3248,8 @@ body:not(.light-mode) .wlt-track {
 .provider-icon-bg {
     position: absolute;
     left: 15px;
-    font-size: 32px;
+    font-size: 35px;
     opacity: 0.2;
     z-index: 1;
-}
-@keyframes highlightNewRow {
-    0% { background-color: #d1fae5; } /* لون أخضر فاتح */
-    100% { background-color: transparent; }
-}
-
-.new-row-flash {
-    animation: highlightNewRow 2s ease-out;
+    transform: rotate(-10deg);
 }
