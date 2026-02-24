@@ -1,3 +1,8 @@
+// ============================================================
+// transactions.js — Sadek Cash (Supabase)
+// ملاحظة: searchTimeout, loadClientsToSelect, getTransactionLogs
+//         كلهم معرّفين في utils.js بس — مش هنا
+// ============================================================
 let dynamicLockList = []; // سيتم ملؤها تلقائياً بأسماء الشركات من قاعدة البيانات
 var globalPendingData = null;
 var selectedProvider  = "";
@@ -174,13 +179,16 @@ async function openProviderSelect(serviceKey, element) {
     modal.style.display = 'flex';
 
     try {
-        const { data: companies, error } = await _supa()
+        const user = window.currentUserData;
+        let compQuery = _supa()
             .from('accounts')
             .select('id, name, balance')
             .gt('daily_out_limit', 9000000)
             .not('name', 'ilike', '%خزنة%')
-            .not('name', 'ilike', '%كاش%')
-            .order('name');
+            .not('name', 'ilike', '%كاش%');
+        if (typeof applyBranchFilter === 'function') compQuery = applyBranchFilter(compQuery, user);
+        compQuery = compQuery.order('name');
+        const { data: companies, error } = await compQuery;
 
         if (error) throw error;
 
@@ -242,11 +250,14 @@ async function renderPinnedWallets() {
     isRenderingPins = true;
 
     try {
-        const { data: accounts, error } = await _supa()
+        const user = window.currentUserData;
+        let pinQuery = _supa()
             .from('accounts')
             .select('id, name, balance, is_pinned, tag, color, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out')
             .eq('is_pinned', true)
             .order('name');
+        if (typeof applyBranchFilter === 'function') pinQuery = applyBranchFilter(pinQuery, user);
+        const { data: accounts, error } = await pinQuery;
 
         container.innerHTML = '';
         if (error || !accounts || !accounts.length) {
@@ -393,8 +404,10 @@ async function loadWalletsToSelect(category) {
     if (!select) return;
     select.innerHTML = '<option value="">جاري التحميل...</option>';
 
-    const { data: accounts, error } = await _supa()
-        .from('accounts').select('id, name, balance, daily_out_limit').order('name');
+    const user = window.currentUserData;
+    let query = _supa().from('accounts').select('id, name, balance, daily_out_limit').order('name');
+    if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
+    const { data: accounts, error } = await query;
 
     if (error || !accounts) {
         select.innerHTML = '<option value="">خطأ في التحميل</option>';
@@ -960,11 +973,10 @@ async function calculateStats() {
 window.addEventListener('DOMContentLoaded', function() {
     if (typeof applyTheme    === "function") applyTheme();
     if (typeof checkUserRole === "function") checkUserRole();
+    // ننتظر currentUserData يتحمل قبل ما نشغّل الدوال اللي بتفلتر بالفرع
     loadWallets();
-    renderPinnedWallets();
     loadClientsToSelect();
     if (typeof toggleClientField  === "function") toggleClientField();
     if (typeof renderWalletsCards === "function") renderWalletsCards();
     if (typeof loadDash           === "function") loadDash();
 });
-
