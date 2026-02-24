@@ -21,53 +21,59 @@ async function checkSessionOrRedirect() {
 
 async function initUserAccess() {
   try {
-    const userInfo = await getCurrentUser();
+    // تحميل بيانات المستخدم مع الفرع — لازم يكون أول حاجة
+    const userInfo = await loadCurrentUserWithBranch();
+    if (!userInfo) throw new Error('لم يتم جلب بيانات المستخدم');
 
-    // 1. تحديث اسم المستخدم فقط (بدون مسح الأيقونات أو البراند)
-    // لاحظ أننا نستخدم "textContent" لضمان عدم الكتابة فوق هيكل الـ HTML
-const userNameEl = document.getElementById('user-display-name');
-if (userNameEl && userInfo && userInfo.name) {
-    userNameEl.textContent = userInfo.name;
-}
-    // 2. إظهار/إخفاء الأقسام بناءً على الدور
-    const navDash = document.getElementById('nav-dash');
+    const isMaster = userInfo.isMaster || false;
+    const isAdmin  = !isMaster && (userInfo.role || '').toUpperCase() === 'ADMIN' && !!userInfo.branch_id;
+
+    // 1. اسم المستخدم وشارة الفرع
+    const userNameEl = document.getElementById('user-display-name');
+    if (userNameEl && userInfo.name) userNameEl.textContent = userInfo.name;
+    if (typeof renderCurrentBranchBadge === 'function') renderCurrentBranchBadge();
+
+    // 2. الـ Sidebar
+    const navDash   = document.getElementById('nav-dash');
     const navManage = document.getElementById('nav-manage');
-    if (navDash) navDash.style.display = '';
+    if (navDash)   navDash.style.display   = '';
+    if (navManage) navManage.style.display = (isMaster || isAdmin) ? '' : 'none';
 
-    const isAdmin = Boolean(userInfo?.isMaster) || (String(userInfo?.role || '').toUpperCase() === 'ADMIN');
-    
-    if (navManage) navManage.style.display = isAdmin ? '' : 'none';
-
-    // 3. إخفاء/إظهار العناصر ذات الصلاحية الإدارية
+    // 3. العناصر حسب الرول
     document.querySelectorAll('.admin-only-section').forEach(el => {
-      el.style.display = isAdmin ? '' : 'none';
+      el.style.display = (isMaster || isAdmin) ? '' : 'none';
+    });
+    document.querySelectorAll('.master-only').forEach(el => {
+      el.style.display = isMaster ? '' : 'none';
     });
 
   } catch (e) {
-    console.error("Access init error:", e);
-    // إخفاء الإدارة احترازياً عند حدوث خطأ
+    console.error('Access init error:', e);
     const navManage = document.getElementById('nav-manage');
     if (navManage) navManage.style.display = 'none';
-    document.querySelectorAll('.admin-only-section').forEach(el => {
+    document.querySelectorAll('.admin-only-section, .master-only').forEach(el => {
       el.style.display = 'none';
     });
   }
 }
 async function initApp() {
   if (!(await checkSessionOrRedirect())) return;
-  
-  // Initialize views to ensure proper display
+
   initializeViews();
-  
-  await initUserAccess(); // ننتظر الصلاحيات أولاً
-  
-  // تشغيل الباقي بالتوازي لتسريع الصفحة
+
+  // لازم ينتهي أول عشان currentUserData يتملي قبل أي دالة تانية
+  await initUserAccess();
+
+  // دلوقتي currentUserData جاهز — نشغّل المحافظ المثبتة بعد ما عرفنا الفرع
+  if (typeof renderPinnedWallets === 'function') renderPinnedWallets();
+
+  // تشغيل الباقي بالتوازي
   Promise.all([
      loadDashboard(),
      loadAccountsList(),
      getTransactionLogs()
   ]);
-  
+
   setupEventListeners();
 }
 // --- دالة تحميل لوحة التحكم المدمجة بالكامل (التصميم الجديد) ---
@@ -89,8 +95,13 @@ async function loadDashboard() {
 
   const f = (n) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(n) || 0);
 
+  const user = window.currentUserData;
   window.globalWalletsData = allAccounts.filter(acc => {
-    const dLimit = Number(acc.daily_out_limit) || 0;
+    const dLimit  = Number(acc.daily_out_limit) || 0;
+    const name    = acc.name || '';
+    const isVault = name.includes('الخزنة') || name.includes('كاش');
+    // الخزنة تظهر في المراقبة للمدير العام فقط
+    if (isVault && !user?.isMaster) return false;
     return acc.name !== "الخزنة (الكاش)" && dLimit > 0 && dLimit < 10000000;
   }).map(acc => ({
     name: acc.name,
