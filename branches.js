@@ -452,31 +452,55 @@ window.renderBranchesSummary = async function () {
 
 // فلتر اختيار الفرع في الداشبورد (للمدير العام)
 async function renderDashBranchFilter() {
+    console.log("1. Starting renderDashBranchFilter...");
     const filterDiv = document.getElementById('dashBranchFilter');
-    if (!filterDiv) return;
+    
+    if (!filterDiv) {
+        console.error("2. Error: Element #dashBranchFilter NOT found in HTML");
+        return;
+    }
 
     const u = window.currentUserData;
-    if (!u?.isMaster) { filterDiv.style.display = 'none'; return; }
+    console.log("3. Current User Data:", u);
 
-    filterDiv.style.display = '';
-    const branches = await getAllBranches();
+    // تأكد من أن الشرط يطابق طريقة تخزينك للبيانات (boolean أو number)
+    if (!u || (u.isMaster !== true && u.isMaster !== 1)) { 
+        console.warn("4. Access Denied: User is not Master or data not loaded");
+        filterDiv.style.display = 'none'; 
+        return; 
+    }
 
-    filterDiv.innerHTML = `
-        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap" style="direction:rtl;">
-            <span class="small fw-bold text-muted"><i class="fa fa-building me-1"></i>عرض:</span>
-            <button class="btn btn-sm btn-primary rounded-pill px-3 dash-branch-btn active"
-                    data-branch="" onclick="filterDashboardByBranch(this)">
-                كل الفروع
-            </button>
-            ${branches.map(b => `
-                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 dash-branch-btn"
-                        data-branch="${b.id}" onclick="filterDashboardByBranch(this)">
-                    ${b.name}
-                </button>`).join('')}
-        </div>`;
+    filterDiv.style.display = 'block'; // اجعله ظاهراً أثناء التحميل
+    filterDiv.innerHTML = '<span class="text-muted small">جاري تحميل الفروع...</span>';
+
+    try {
+        const branches = await getAllBranches();
+        console.log("5. Branches loaded:", branches);
+
+        if (!branches || branches.length === 0) {
+            filterDiv.innerHTML = '<span class="text-danger small">لا توجد فروع متاحة</span>';
+            return;
+        }
+
+        filterDiv.innerHTML = `
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap" style="direction:rtl;">
+                <span class="small fw-bold text-muted"><i class="fa fa-building me-1"></i>عرض:</span>
+                <button class="btn btn-sm btn-primary rounded-pill px-3 dash-branch-btn active"
+                        data-branch="" onclick="filterDashboardByBranch(this)">
+                    كل الفروع
+                </button>
+                ${branches.map(b => `
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 dash-branch-btn"
+                            data-branch="${b.id}" onclick="filterDashboardByBranch(this)">
+                        ${b.name}
+                    </button>`).join('')}
+            </div>`;
+        console.log("6. Filter Rendered Successfully!");
+    } catch (err) {
+        console.error("7. Execution Error:", err);
+        filterDiv.innerHTML = '<span class="text-danger small">فشل تحميل فلتر الفروع</span>';
+    }
 }
-
-window._currentDashBranch = null; // null = كل الفروع
 
 async function filterDashboardByBranch(btn) {
     // تحديث الأزرار
@@ -596,5 +620,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // تحميل فلتر الفروع في الداشبورد بعد init
-    setTimeout(renderDashBranchFilter, 500);
+});
+function initBranchFilterWithRetry() {
+    if (window.currentUserData) {
+        renderDashBranchFilter();
+    } else {
+        // إذا لم تتوفر البيانات، حاول مرة أخرى بعد 100 ملي ثانية
+        setTimeout(initBranchFilterWithRetry, 100);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ... الكود الخاص بـ Override getDashboardStats ...
+    
+    // ابدأ محاولات الرندر
+    initBranchFilterWithRetry();
 });
