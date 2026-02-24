@@ -2,7 +2,15 @@
 
 // جلب جميع الحسابات
 async function loadAccounts() {
-  const { data, error } = await supabase.from('accounts').select('*');
+  const user = window.currentUserData;
+  let query = supabase.from('accounts').select('*');
+  
+  // فلتر الفرع التلقائي ← جديد
+  if (user && typeof applyBranchFilter === 'function') {
+      query = applyBranchFilter(query, user);
+  }
+  
+  const { data, error } = await query;
   if (error) return [];
   return data.filter(acc => !acc.deleted);
 }
@@ -43,16 +51,21 @@ async function loadAccountsTable() {
     if (!listDiv) return;
 
     try {
-        const { data: accounts, error } = await supabase
+        const user = window.currentUserData;
+        let accQuery = supabase
             .from('accounts')
             .select('*')
-            // الفلترة لاستبعاد الخزنة والكاش
             .not('name', 'ilike', '%خزنة%') 
-            .not('name', 'ilike', '%كاش%')
-            // الترتيب: المثبت أولاً ثم الأبجدي
-            .order('is_pinned', { ascending: false })
-            .order('name', { ascending: true }); 
+            .not('name', 'ilike', '%كاش%');
 
+        // فلتر الفرع التلقائي ← جديد
+        if (user && typeof applyBranchFilter === 'function') {
+            accQuery = applyBranchFilter(accQuery, user);
+        }
+
+        const { data: accounts, error } = await accQuery
+            .order('is_pinned', { ascending: false })
+            .order('name', { ascending: true });
         if (error) throw error;
         let html = '';
         accounts.forEach(a => {
@@ -432,6 +445,8 @@ async function addWallet() {
     let monthlyLim = (t === 'محفظة') ? "200000" : "900000000";
 
     try {
+const user = window.currentUserData;
+
         const { error } = await supabase.from('accounts').insert([{
             name: n,
             tag: (t === 'محفظة' ? 'محفظة' : 'شركة'),
@@ -440,9 +455,9 @@ async function addWallet() {
             daily_out_limit: dailyLim,
             daily_in_limit: dailyLim,
             monthly_limit: monthlyLim,
-            is_pinned: false
+            is_pinned: false,
+            branch_id: user?.branch_id || null   // ← جديد
         }]);
-
         if (error) throw error;
 
         showToast("✅ تمت الإضافة بنجاح", true);
@@ -625,24 +640,65 @@ function closeEditRole() {
 }
 
 async function saveUserRole() {
-    const email = document.getElementById('editRoleEmail').value;
-    const newRole = document.getElementById('newRoleSelect').value;
+    // 1. جلب بيانات المستخدم الحالي (أنت)
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+        showToast('❌ يجب تسجيل الدخول أولاً', false);
+        return;
+    }
 
-    setLoading('btnSaveRole', true);
     try {
-        const { error } = await supabase.from('users').update({ role: newRole }).eq('email', email);
-        if (error) throw error;
+        setLoading('btnSaveRole', true);
+
+        // 2. التحقق من صلاحيتك كـ ADMIN
+        const { data: currentUserData, error: fetchError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (fetchError || currentUserData.role !== 'ADMIN') {
+            showToast('🚫 ليس لديك صلاحية تعديل الأدوار', false);
+            return; 
+        }
+
+        // 3. الحصول على البيانات الجديدة
+        const emailToUpdate = document.getElementById('editRoleEmail').value;
+        const newRole = document.getElementById('newRoleSelect').value;
+
+        // 4. تنفيذ التحديث في قاعدة البيانات
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ role: newRole })
+            .eq('email', emailToUpdate);
+
+        if (updateError) throw updateError;
+
+        showToast('✅ تم تحديث الصلاحية بنجاح', true);
         closeEditRole();
-        showToast('✅ تم تحديث الصلاحية', true);
-        if (typeof loadUsersList === 'function') loadUsersList();
+
+        // --- الجزء الخاص بالتحكم في الريفريش والحجب الفوري ---
+
+        // أ: إذا كان المستخدم الذي تم تعديله هو "أنت" (صاحب الجلسة الحالية)
+        if (user.email === emailToUpdate) {
+            showToast('🔄 جاري تحديث صلاحياتك...', true);
+            setTimeout(() => {
+                window.location.reload(); // إعادة تحميل الصفحة لتطبيق الحجب الشامل
+            }, 1000);
+        } else {
+            // ب: إذا كان شخصاً آخر، نحدث القائمة فقط بدون ريفريش
+            if (typeof loadUsersList === 'function') {
+                await loadUsersList();
+            }
+        }
+
     } catch (err) {
         showToast('❌ خطأ: ' + err.message, false);
     } finally {
         setLoading('btnSaveRole', false);
     }
-}
-
-// نافذة التنبيهات
+}// نافذة التنبيهات
 function showNotifications() {
     document.getElementById('notificationModal').style.display = 'flex';
 }
