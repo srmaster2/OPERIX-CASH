@@ -214,9 +214,9 @@ async function loadClientsTable() {
         const bal = Number(c.balance || 0);
         return `
         <div class="d-flex align-items-center p-2 border-bottom" style="font-size:13px;">
-            <div style="width:35%;" class="fw-bold text-truncate">${c.name}</div>
+            <div style="width:25%;" class="fw-bold text-start text-truncate">${c.name}</div>
             <div style="width:30%;" class="text-center english-num text-muted">${c.number || '-'}</div>
-            <div style="width:25%;" class="text-center english-num fw-bold ${bal > 0 ? 'text-danger' : 'text-success'}">${Math.abs(bal).toLocaleString()}</div>
+            <div style="width:30%;" class="text-center english-num fw-bold ${bal > 0 ? 'text-danger' : 'text-success'}">${Math.abs(bal).toLocaleString()}</div>
             <div style="width:10%;" class="text-center">
                 <button class="btn btn-sm p-1" onclick="openEditCl('${c.id}','${c.name}','${c.number||''}',${bal})">
                     <i class="fa fa-edit text-primary"></i>
@@ -339,6 +339,70 @@ function showManageTab(el) {
 // ✅ searchTimeout معرّف هنا بس — اتشال من transactions.js
 var searchTimeout;
 
+// ============================================================
+// LIVE — اشتراك لحظي على جدول accounts
+// بيحدث loadWallets + updateLimitDisplay + renderPinnedWallets
+// تلقائياً عند أي تغيير في الأرصدة بدون ريفريش
+// ============================================================
+var _accountsLiveSub = null;
+
+function setupAccountsLive() {
+    // منع تكرار الاشتراك
+    if (_accountsLiveSub) return;
+
+    _accountsLiveSub = window.supa
+        .channel('live:accounts')
+        .on('postgres_changes', {
+            event:  'UPDATE',
+            schema: 'public',
+            table:  'accounts'
+        }, function(payload) {
+            const updated = payload.new;
+            if (!updated) return;
+
+            // 1. تحديث data-* على الـ option المطابق في select#wallet
+            _patchWalletOption(updated);
+
+            // 2. لو الحساب ده هو المختار حالياً → حدّث limitDisplay فوراً
+            const select = document.getElementById('wallet');
+            const opt    = select?.options[select.selectedIndex];
+            if (opt && String(opt.value) === String(updated.id)) {
+                _patchOptionDataset(opt, updated);
+                if (typeof updateLimitDisplay === 'function') updateLimitDisplay();
+            }
+
+            // 3. حدّث كروت المحافظ المثبتة
+            if (typeof renderPinnedWallets === 'function') renderPinnedWallets();
+        })
+        .subscribe();
+}
+
+// تحديث data-* attributes على option معين
+function _patchOptionDataset(opt, acc) {
+    opt.dataset.bal = acc.balance           != null ? acc.balance           : opt.dataset.bal;
+    opt.dataset.lo  = acc.daily_out_limit   != null ? acc.daily_out_limit   : opt.dataset.lo;
+    opt.dataset.li  = acc.daily_in_limit    != null ? acc.daily_in_limit    : opt.dataset.li;
+    opt.dataset.lm  = acc.monthly_limit     != null ? acc.monthly_limit     : opt.dataset.lm;
+    opt.dataset.uo  = acc.daily_out_usage   != null ? acc.daily_out_usage   : opt.dataset.uo;
+    opt.dataset.ui  = acc.daily_in_usage    != null ? acc.daily_in_usage    : opt.dataset.ui;
+    opt.dataset.um  = acc.monthly_usage_out != null ? acc.monthly_usage_out : opt.dataset.um;
+    // تحديث نص الرصيد في الـ option
+    var name = opt.text.replace(/\s*\(.*\)/, '').trim();
+    opt.text = name + ' (' + Number(acc.balance || 0).toLocaleString() + ' ج.م)';
+}
+
+// البحث عن الـ option المطابق وتحديثه
+function _patchWalletOption(acc) {
+    var select = document.getElementById('wallet');
+    if (!select) return;
+    for (var i = 0; i < select.options.length; i++) {
+        if (String(select.options[i].value) === String(acc.id)) {
+            _patchOptionDataset(select.options[i], acc);
+            break;
+        }
+    }
+}
+
 // ---- Theme Toggle ----
 function toggleTheme() {
     document.body.classList.toggle('light-mode');
@@ -419,10 +483,12 @@ async function refreshVaultWithToast() {
 async function getTransactionLogs(filters) {
     filters = filters || {};
     try {
+        const user = window.currentUserData;
         let query = window.supa
             .from('transactions')
             .select('id, date, time, type, amount, commission, wallet_name, provider, balance_after, notes, added_by')
             .order('id', { ascending: false });
+        if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
 
         if (filters.type && !filters.type.includes("كل العمليات"))
             query = query.ilike('type', `%${filters.type}%`);
@@ -450,4 +516,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const t = document.getElementById('darkModeToggleIcon');
         if (t) t.className = 'fa fa-toggle-on text-primary';
     }
+
+    // ✅ تفعيل Live updates للأرصدة — بعد ما supa يكون جاهز
+    // setupAccountsLive بيتأخر شوية عشان window.supa ياخد وقت للتهيئة
+    var _liveInitAttempts = 0;
+    var _liveInitTimer = setInterval(function() {
+        _liveInitAttempts++;
+        if (window.supa) {
+            clearInterval(_liveInitTimer);
+            setupAccountsLive();
+        } else if (_liveInitAttempts > 20) {
+            clearInterval(_liveInitTimer); // وقف بعد 10 ثواني
+        }
+    }, 500);
 });

@@ -228,6 +228,18 @@ async function loadUsersForAssign() {
 // ══════════════════════════════════════════════════════════
 // 8. واجهة إدارة الفروع (بتنسيق متطابق مع باقي الأقسام)
 // ══════════════════════════════════════════════════════════
+
+// فتح/إغلاق قائمة أعضاء الفرع
+window.toggleBranchMembers = function(divId, headerEl) {
+    const div = document.getElementById(divId);
+    if (!div) return;
+    const isOpen = div.style.display !== 'none';
+    div.style.display = isOpen ? 'none' : 'block';
+    // تدوير السهم
+    const arrow = headerEl.querySelector('.fa-chevron-down');
+    if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+};
+
 window.loadBranchesTable = async function () {
     const container = document.getElementById('branchesList');
     if (!container) return;
@@ -238,19 +250,23 @@ window.loadBranchesTable = async function () {
         </div>`;
 
     const u        = window.currentUserData;
-    const isMaster = u?.isMaster || false;
-    const isAdmin  = u?.isAdmin  || false;
+    const isMaster = u?.isMaster === true;
+    const isAdmin  = u?.isAdmin  === true;
 
     // إظهار/إخفاء الأقسام حسب الصلاحية
-    const addBtn        = document.getElementById('addBranchBtn');
-    const assignSection = document.getElementById('assignSection');
-    const summarySection= document.getElementById('branchesSummarySection');
+    const addBtn         = document.getElementById('addBranchBtn');
+    const assignSection  = document.getElementById('assignSection');
+    const summarySection = document.getElementById('branchesSummarySection');
 
-    if (addBtn)         addBtn.style.display         = isMaster              ? '' : 'none';
-    if (assignSection)  assignSection.style.display  = (isMaster || isAdmin) ? '' : 'none';
-    if (summarySection) summarySection.style.display = isMaster              ? '' : 'none';
+    if (addBtn)         addBtn.style.display         = isMaster ? '' : 'none';
+    if (assignSection)  assignSection.style.display  = isMaster ? '' : 'none';
+    if (summarySection) summarySection.style.display = isMaster ? '' : 'none';
 
-    const branches = await getAllBranches();
+    // مدير الفرع يشوف فرعه بس
+    let branches = await getAllBranches();
+    if (!isMaster && isAdmin && u?.branch_id) {
+        branches = branches.filter(b => b.id === u.branch_id);
+    }
 
     if (!branches.length) {
         container.innerHTML = `
@@ -261,8 +277,8 @@ window.loadBranchesTable = async function () {
         return;
     }
 
-    // عدد الموظفين لكل فرع
-    const { data: usersData } = await window.supa.from('users').select('branch_id');
+    // جلب أعضاء الفرع
+    const { data: usersData } = await window.supa.from('users').select('id, name, email, branch_id');
     const countMap = {};
     (usersData || []).forEach(row => {
         if (row.branch_id) countMap[row.branch_id] = (countMap[row.branch_id] || 0) + 1;
@@ -274,7 +290,7 @@ window.loadBranchesTable = async function () {
         const color = palette[i % palette.length];
         const count = countMap[b.id] || 0;
 
-        // أزرار التعديل — مدير عام فقط
+        // أزرار الفرع: مدير عام = تعديل + حذف، مدير فرع = لا شيء
         const actionBtns = isMaster ? `
             <div class="d-flex gap-1 flex-shrink-0">
                 <button class="btn btn-sm btn-light border p-1"
@@ -287,31 +303,132 @@ window.loadBranchesTable = async function () {
                 </button>
             </div>` : '';
 
+        // أعضاء الفرع — مدير الفرع: إزالة | مدير عام: إزالة + حذف نهائي
+        const branchMembers = (usersData || []).filter(u => u.branch_id === b.id);
+        const showMembers = isMaster || (isAdmin && !isMaster);
+        const membersHTML = showMembers ? `
+            <div class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.08);">
+                <div style="font-size:10px;color:#94a3b8;margin-bottom:6px;">
+                    <i class="fa fa-users me-1" style="color:${color};"></i> الأعضاء (${branchMembers.length})
+                </div>
+                ${branchMembers.length === 0
+                    ? '<div style="font-size:11px;color:#64748b;text-align:center;padding:6px;">لا يوجد أعضاء</div>'
+                    : branchMembers.map(m => `
+                        <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-1 rounded-2"
+                             style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width:24px;height:24px;min-width:24px;background:${color}20;color:${color};font-size:10px;">
+                                    <i class="fa fa-user"></i>
+                                </div>
+                                <span style="font-size:12px;color:var(--card-text, #1e293b);">${m.name || m.email}</span>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <button style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:3px 7px;cursor:pointer;"
+                                    title="إزالة من الفرع" onclick="removeMemberFromBranch('${m.id}','${m.name || m.email}')">
+                                    <i class="fa fa-user-minus" style="color:#f59e0b;font-size:10px;"></i>
+                                </button>
+                                ${isMaster ? `
+                                <button style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 7px;cursor:pointer;"
+                                    title="حذف نهائي" onclick="deleteMemberPermanently('${m.id}','${m.name || m.email}')">
+                                    <i class="fa fa-trash-alt" style="color:#ef4444;font-size:10px;"></i>
+                                </button>` : ''}
+                            </div>
+                        </div>`).join('')
+                }
+            </div>` : '';
+
         return `
-        <div class="d-flex align-items-center p-2 mb-2 rounded-3 shadow-sm"
-             style="background:var(--card-bg);border:1px solid var(--card-border);border-right:4px solid ${color} !important;direction:rtl;">
+        <div class="mb-2 rounded-3 shadow-sm"
+             style="background:var(--card-bg);border:1px solid var(--card-border);border-right:4px solid ${color} !important;direction:rtl;overflow:hidden;">
 
-            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                 style="width:38px;height:38px;min-width:38px;background:${color}15;color:${color};">
-                <i class="fa fa-building" style="font-size:15px;"></i>
-            </div>
+            <!-- هيدر الكارت -->
+            <div class="d-flex align-items-center p-2" style="cursor:pointer;"
+                 onclick="toggleBranchMembers('branch-members-${b.id}', this)">
 
-            <div class="flex-grow-1 px-2">
-                <div class="fw-bold" style="font-size:13px;color:var(--card-text);">${b.name}</div>
-                <div class="d-flex align-items-center gap-2 mt-1">
-                    <small class="text-muted" style="font-size:10px;">
-                        <i class="fa fa-location-dot me-1"></i>${b.location || 'لم يُحدد الموقع'}
-                    </small>
-                    <span class="badge rounded-pill" style="background:${color}15;color:${color};border:1px solid ${color}35;font-size:9px;">
-                        <i class="fa fa-users me-1"></i>${count}
-                    </span>
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:38px;height:38px;min-width:38px;background:${color}15;color:${color};">
+                    <i class="fa fa-building" style="font-size:15px;"></i>
+                </div>
+
+                <div class="flex-grow-1 px-2">
+                    <div class="fw-bold" style="font-size:13px;color:var(--card-text);">${b.name}</div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <small class="text-muted" style="font-size:10px;">
+                            <i class="fa fa-location-dot me-1"></i>${b.location || 'لم يُحدد الموقع'}
+                        </small>
+                        <span class="badge rounded-pill" style="background:${color}15;color:${color};border:1px solid ${color}35;font-size:9px;">
+                            <i class="fa fa-users me-1"></i>${count}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-1">
+                    ${actionBtns}
+                    ${showMembers ? `
+                    <div style="width:28px;height:28px;border-radius:50%;background:${color}15;border:1px solid ${color}30;
+                                display:flex;align-items:center;justify-content:center;margin-right:4px;transition:transform 0.3s;">
+                        <i class="fa fa-chevron-down" style="color:${color};font-size:10px;transition:transform 0.3s;"></i>
+                    </div>` : ''}
                 </div>
             </div>
 
-            ${actionBtns}
+            <!-- قائمة الأعضاء (مخفية افتراضياً) -->
+            <div id="branch-members-${b.id}" style="display:none; padding:0 8px 8px 8px;">
+                ${membersHTML}
+            </div>
         </div>`;
     }).join('');
 };
+
+// إزالة عضو من الفرع
+window.removeMemberFromBranch = async function(userId, userName) {
+    const res = await Swal.fire({
+        title: 'إزالة من الفرع؟',
+        text: `سيتم إزالة "${userName}" من الفرع`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'نعم، أزل',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#f59e0b',
+        width: '340px'
+    });
+
+    if (res.isConfirmed) {
+        const { error } = await window.supa.from('users').update({ branch_id: null }).eq('id', userId);
+        if (error) {
+            showToast('❌ خطأ: ' + error.message, false);
+        } else {
+            showToast('✅ تم الإزالة بنجاح');
+            loadBranchesTable();
+        }
+    }
+};
+
+// حذف عضو نهائياً (للمدير العام فقط)
+window.deleteMemberPermanently = async function(userId, userName) {
+    const res = await Swal.fire({
+        title: 'حذف نهائي؟',
+        text: `سيتم حذف "${userName}" نهائياً من النظام`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'نعم، احذف',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#d33',
+        width: '340px'
+    });
+
+    if (res.isConfirmed) {
+        const { error } = await window.supa.from('users').delete().eq('id', userId);
+        if (error) {
+            showToast('❌ خطأ: ' + error.message, false);
+        } else {
+            showToast('✅ تم الحذف نهائياً');
+            loadBranchesTable();
+        }
+    }
+};
+
 
 
 // ══════════════════════════════════════════════════════════

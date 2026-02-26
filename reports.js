@@ -56,22 +56,25 @@ async function getDashboardStats() {
     const monthStr = `/${m}/${y}`;
     const todayStr = `${d}/${m}/${y}`;
 
+    const u  = window.currentUserData;
+    const bf = (q) => (typeof applyBranchFilter === 'function') ? applyBranchFilter(q, u) : q;
+
     const [
       { data: accountsRaw, error: accErr },
       { data: clients },
       { data: monthTxs },
       { data: lastFive }
     ] = await Promise.all([
-      window.supa.from('accounts').select('*'),
-      window.supa.from('clients').select('name, balance'),
-      window.supa.from('transactions')
+      bf(window.supa.from('accounts').select('*')),
+      bf(window.supa.from('clients').select('name, balance')),
+      bf(window.supa.from('transactions')
         .select('commission, amount, type, date')
         .ilike('date', `%${monthStr}`)
-        .limit(1000),
-      window.supa.from('transactions')
+        .limit(1000)),
+      bf(window.supa.from('transactions')
         .select('type, amount, date, time, added_by, notes')
         .order('id', { ascending: false })
-        .limit(5)
+        .limit(5))
     ]);
 
     if (accErr) throw accErr;

@@ -1,6 +1,4 @@
-
 // دالة جلب وعرض الأعضاء
-// تعريف الدالة كـ Global لضمان وصول الـ HTML لها
 window.loadUsersTable = async function() {
     const listDiv = document.getElementById('usersList');
     if (!listDiv) return;
@@ -8,75 +6,105 @@ window.loadUsersTable = async function() {
     listDiv.innerHTML = '<div class="text-center p-3 small text-muted">جاري الاتصال بقاعدة البيانات...</div>';
 
     try {
-        // جلب البيانات من جدول users
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const cu       = window.currentUserData;
+        const isMaster = cu?.isMaster === true;
+        const isAdmin  = cu?.isAdmin === true;
 
-        if (error) throw error;
+        // ✅ فلتر الفرع اليدوي المضمون
+        let q = supabase.from('users').select('*').order('created_at', { ascending: false });
 
-        // فحص لو البيانات وصلت فعلاً
-        if (!users) {
-            listDiv.innerHTML = '<div class="text-center p-4">لم يتم استلام أي بيانات من السيرفر</div>';
-            return;
+        if (!isMaster && cu?.branch_id) {
+            q = q.eq('branch_id', cu.branch_id);
+        } else if (!isMaster && !cu?.branch_id) {
+            q = q.eq('branch_id', '00000000-0000-0000-0000-000000000000');
         }
 
-        if (users.length === 0) {
+        const { data: users, error } = await q;
+        if (error) throw error;
+
+        if (!users || users.length === 0) {
             listDiv.innerHTML = '<div class="text-center p-4 text-muted small">لا يوجد أعضاء مسجلين حالياً</div>';
             return;
         }
 
-        // بناء القائمة (عرض + تعديل صلاحية + حذف)
-        listDiv.innerHTML = users.map(user => `
-            <div class="member-card d-flex align-items-center p-2 mb-2 bg-white border rounded-3 shadow-sm" style="direction: rtl;">
-                <div style="width: 50%;" class="text-start ps-2">
-                    <div class="fw-bold text-dark" style="font-size: 13px;">${user.name || 'مستخدم جديد'}</div>
-                    <div class="text-muted small" style="font-size: 10px;">${user.email}</div>
-                </div>
-                
-                <div style="width: 25%;" class="text-center">
-                    <span class="badge ${user.role === 'ADMIN' ? 'bg-primary' : 'bg-light text-primary border'}" style="font-size: 9px;">
-                        ${user.role === 'ADMIN' ? 'مدير' : 'موظف'}
-                    </span>
-                </div>
+        listDiv.innerHTML = users.map(user => {
+            const isM = user.is_master;
+            const lbl = isM ? '👑 مدير عام' : user.role === 'ADMIN' ? '🔑 مدير فرع' : '👤 موظف';
+            const bdg = isM ? 'bg-warning text-dark' : user.role === 'ADMIN' ? 'bg-primary' : 'bg-light text-primary border';
 
-                <div style="width: 25%;" class="text-end d-flex justify-content-end gap-1">
-                    <button class="btn btn-sm btn-light border p-1" onclick="openEditRoleModal('${user.id}', '${user.role}')">
-                        <i class="fa fa-shield-alt text-primary"></i>
-                    </button>
-                    <button class="btn btn-sm btn-light border p-1" onclick="confirmDeleteUser('${user.id}', '${user.name}')">
-                        <i class="fa fa-trash-alt text-danger"></i>
-                    </button>
+            // ✅ المدير العام: تعديل صلاحية + حذف
+            // ✅ مدير الفرع: إزالة من الفرع فقط
+            let btns = '';
+            if (isMaster) {
+                btns = `
+                <button class="btn btn-sm btn-light border p-1" title="تعديل الصلاحية" onclick="openEditRoleModal('${user.id}','${user.role}')">
+                    <i class="fa fa-shield-alt text-primary"></i>
+                </button>
+                <button class="btn btn-sm btn-light border p-1" title="حذف العضو" onclick="confirmDeleteUser('${user.id}','${user.name}')">
+                    <i class="fa fa-trash-alt text-danger"></i>
+                </button>`;
+            } else if (isAdmin && !isM) {
+                btns = `
+                <button class="btn btn-sm btn-light border p-1" title="إزالة من الفرع" onclick="removeUserFromBranch('${user.id}','${user.name}')">
+                    <i class="fa fa-user-minus text-warning"></i>
+                </button>`;
+            }
+
+            return `
+            <div class="member-card d-flex align-items-center p-2 mb-2 bg-white border rounded-3 shadow-sm" style="direction:rtl;">
+                <div style="width:50%;" class="text-start ps-2">
+                    <div class="fw-bold text-dark" style="font-size:13px;">${user.name || 'مستخدم جديد'}</div>
+                    <div class="text-muted small" style="font-size:10px;">${user.email}</div>
                 </div>
-            </div>
-        `).join('');
+                <div style="width:25%;" class="text-center">
+                    <span class="badge ${bdg}" style="font-size:9px;">${lbl}</span>
+                </div>
+                <div style="width:25%;" class="text-end d-flex justify-content-end gap-1">${btns}</div>
+            </div>`;
+        }).join('');
 
     } catch (err) {
         console.error("Fetch error:", err);
         listDiv.innerHTML = '<div class="alert alert-danger p-2 small text-center">خطأ في الربط: ' + err.message + '</div>';
     }
 };
-// دالة تعديل الصلاحية
+
+// ✅ إزالة موظف من الفرع (لمدير الفرع)
+async function removeUserFromBranch(userId, userName) {
+    const res = await Swal.fire({
+        title: 'إزالة من الفرع؟',
+        text: `سيتم إزالة "${userName}" من الفرع الحالي`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'نعم، أزل',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#f59e0b'
+    });
+
+    if (res.isConfirmed) {
+        try {
+            const { error } = await supabase.from('users').update({ branch_id: null }).eq('id', userId);
+            if (error) throw error;
+            Swal.fire({ icon: 'success', title: 'تم', timer: 1000, showConfirmButton: false, width: '300px' });
+            window.loadUsersTable();
+        } catch (err) {
+            Swal.fire('خطأ', err.message, 'error');
+        }
+    }
+}
+
+// تعديل الصلاحية (للمدير العام فقط)
 async function openEditRoleModal(userId, currentRole) {
-    // بناء محتوى التبويتة يدويًا للتحكم الكامل في الـ Max-Width
     const modalHtml = `
         <div class="edit-role-container" style="direction: rtl; padding: 10px;">
             <p style="color: #666; font-size: 14px; margin-bottom: 20px;">اختر الصلاحية الجديدة للعضو:</p>
-            
-            <select id="swal-custom-select" class="form-select" 
-                style="max-width: 180px !important; 
-                       margin: 0 auto !important; 
-                       display: block; 
-                       padding: 8px; 
-                       border-radius: 8px; 
-                       border: 1px solid #ddd; 
-                       text-align: center;">
-                <option value="USER" ${currentRole === 'USER' ? 'selected' : ''}>موظف</option>
-                <option value="ADMIN" ${currentRole === 'ADMIN' ? 'selected' : ''}>مدير نظام</option>
+            <select id="swal-custom-select" class="form-select"
+                style="max-width: 180px !important; margin: 0 auto !important; display: block;
+                       padding: 8px; border-radius: 8px; border: 1px solid #ddd; text-align: center;">
+                <option value="USER"  ${currentRole === 'USER'  ? 'selected' : ''}>موظف</option>
+                <option value="ADMIN" ${currentRole === 'ADMIN' ? 'selected' : ''}>مدير فرع</option>
             </select>
-        </div>
-    `;
+        </div>`;
 
     const { isConfirmed } = await Swal.fire({
         title: '<span style="font-size: 18px;">تعديل الصلاحية</span>',
@@ -88,42 +116,25 @@ async function openEditRoleModal(userId, currentRole) {
         cancelButtonColor: '#6c757d',
         width: '350px',
         focusConfirm: false,
-        preConfirm: () => {
-            // سحب القيمة من السيلكت اليدوي اللي عملناه
-            return document.getElementById('swal-custom-select').value;
-        }
+        preConfirm: () => document.getElementById('swal-custom-select').value
     });
 
-    // لو المستخدم داس حفظ
     if (isConfirmed) {
         const newRole = Swal.getHtmlContainer().querySelector('#swal-custom-select').value;
-        
         if (newRole !== currentRole) {
             try {
-                const { error } = await supabase
-                    .from('users')
-                    .update({ role: newRole })
-                    .eq('id', userId);
-                    
+                const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
                 if (error) throw error;
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'تم التحديث',
-                    timer: 1000,
-                    showConfirmButton: false,
-                    width: '300px'
-                });
-
-                loadUsersTable(); // تحديث الجدول
+                Swal.fire({ icon: 'success', title: 'تم التحديث', timer: 1000, showConfirmButton: false, width: '300px' });
+                window.loadUsersTable();
             } catch (err) {
-                console.error("Update Error:", err.message);
                 Swal.fire('خطأ', 'فشل في تحديث البيانات', 'error');
             }
         }
     }
 }
-// دالة حذف العضو
+
+// حذف العضو (للمدير العام فقط)
 async function confirmDeleteUser(userId, userName) {
     const res = await Swal.fire({
         title: 'هل أنت متأكد؟',
@@ -140,25 +151,35 @@ async function confirmDeleteUser(userId, userName) {
             const { error } = await supabase.from('users').delete().eq('id', userId);
             if (error) throw error;
             Swal.fire('تم!', 'تم حذف العضو بنجاح', 'success');
-            loadUsersTable();
+            window.loadUsersTable();
         } catch (err) {
             Swal.fire('خطأ', err.message, 'error');
         }
     }
-}// دالة تعديل الصلاحية
+}
 
-// دالة الحذف
+// سجل العمليات الإدارية
 async function loadAdminLogs() {
     const logsDiv = document.getElementById('adminLogsDiv');
     if (!logsDiv) return;
 
     try {
-        const { data: logs, error } = await supabase
+        const cu       = window.currentUserData;
+        const isMaster = cu?.isMaster === true;
+
+        let logsQuery = supabase
             .from('admin_logs')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(20);
 
+        if (!isMaster && cu?.branch_id) {
+            logsQuery = logsQuery.eq('branch_id', cu.branch_id);
+        } else if (!isMaster && !cu?.branch_id) {
+            logsQuery = logsQuery.eq('branch_id', '00000000-0000-0000-0000-000000000000');
+        }
+
+        const { data: logs, error } = await logsQuery;
         if (error) throw error;
 
         if (!logs || logs.length === 0) {
@@ -171,26 +192,25 @@ async function loadAdminLogs() {
             <table class="table table-borderless align-middle mb-0" style="direction: rtl; min-width: 450px;">
                 <thead>
                     <tr class="text-muted border-bottom" style="font-size: 11px; background-color: #f8f9fa;">
-                        <th style="width: 15%;" class="py-2 pr-3 text-start">الوقت</th>
+                        <th style="width: 15%;" class="py-2 text-start">الوقت</th>
                         <th style="width: 20%;" class="py-2 text-center">الإجراء</th>
                         <th style="width: 45%;" class="py-2 text-center">التفاصيل</th>
-                        <th style="width: 20%;" class="py-2 text-center">المسؤول</th> </tr>
+                        <th style="width: 20%;" class="py-2 text-center">المسؤول</th>
+                    </tr>
                 </thead>
                 <tbody style="font-size: 12.5px;">`;
 
         logs.forEach(log => {
             const logTime = new Date(log.created_at).toLocaleTimeString('en-EG', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
+                hour: '2-digit', minute: '2-digit', hour12: true
             });
-
             html += `
                 <tr class="border-bottom hover-row">
                     <td class="text-start text-muted english-num" style="font-size: 11px;">${logTime}</td>
                     <td class="text-center"><span class="badge bg-light text-primary border-0">${log.action}</span></td>
                     <td class="text-center text-secondary" style="line-height: 1.4;">${log.details || '---'}</td>
-                    <td class="text-center fw-bold text-dark">${log.created_by || 'النظام'}</td> </tr>`;
+                    <td class="text-center fw-bold text-dark">${log.created_by || 'النظام'}</td>
+                </tr>`;
         });
 
         html += `</tbody></table></div>`;

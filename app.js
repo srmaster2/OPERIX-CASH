@@ -64,8 +64,10 @@ async function initApp() {
   // لازم ينتهي أول عشان currentUserData يتملي قبل أي دالة تانية
   await initUserAccess();
 
-  // دلوقتي currentUserData جاهز — نشغّل المحافظ المثبتة بعد ما عرفنا الفرع
-  if (typeof renderPinnedWallets === 'function') renderPinnedWallets();
+  // currentUserData جاهز — نشغّل كل الدوال اللي بتحتاج فلتر الفرع
+  if (typeof loadWallets          === 'function') loadWallets();
+  if (typeof loadClientsToSelect  === 'function') loadClientsToSelect();
+  if (typeof renderPinnedWallets  === 'function') renderPinnedWallets();
 
   // تشغيل الباقي بالتوازي
   Promise.all([
@@ -488,29 +490,6 @@ async function loadAccountsList() {
 }
 
 //// تحميل العمليات من Supabase إلى جدول السجل
-async function getTransactionLogs(filters = {}) {
-    try {
-        let query = window.supa.from('transactions').select('*');
-
-        if (filters.type && !filters.type.includes("كل العمليات")) {
-            query = query.eq('type', filters.type);
-        }
-        if (filters.dateFrom) query = query.gte('date', filters.dateFrom);
-        if (filters.dateTo) query = query.lte('date', filters.dateTo);
-
-        const limitCount = (filters.type || filters.dateFrom || filters.dateTo) ? 1000 : 50;
-
-        const { data, error } = await query
-            .order('id', { ascending: false })
-            .limit(limitCount);
-
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error("Error fetching logs:", err.message);
-        return null;
-    }
-}
 // إعداد الأحداث مع التحقق من وجود العناصر
 function setupEventListeners() {
   const addAccBtn = document.getElementById('addAccountBtn');

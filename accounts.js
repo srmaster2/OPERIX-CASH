@@ -35,6 +35,7 @@ async function updateAccount(id, updates) {
 
 // حذف حساب
 async function deleteAccount(id) {
+    
   const result = await updateSupabase(TABLES.accounts, { deleted: true }, id);
   if (result.success) {
     showToast('تم الحذف');
@@ -55,9 +56,7 @@ async function loadAccountsTable() {
         let accQuery = supabase
             .from('accounts')
             .select('*')
-            .not('name', 'ilike', '%خزنة%') 
-            .not('name', 'ilike', '%كاش%');
-
+         
         // فلتر الفرع التلقائي ← جديد
         if (user && typeof applyBranchFilter === 'function') {
             accQuery = applyBranchFilter(accQuery, user);
@@ -658,7 +657,7 @@ async function saveUserRole() {
             .eq('id', user.id)
             .single();
 
-        if (fetchError || currentUserData.role !== 'ADMIN') {
+        if (fetchError || !currentUserData.is_master) {
             showToast('🚫 ليس لديك صلاحية تعديل الأدوار', false);
             return; 
         }

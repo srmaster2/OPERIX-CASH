@@ -55,6 +55,24 @@
   --text-secondary: var(--dark-text-secondary);
   --border-color: rgba(255, 255, 255, 0.1);
   --shadow-color: rgba(0, 0, 0, 0.3);
+
+  /* ✅ متغيرات المحافظ المثبتة (Pinned Wallets) - دارك مود */
+  --pin-card-bg: #1e293b;
+  --pin-card-border: rgba(255, 255, 255, 0.1);
+  --pin-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --pin-text-main: #f1f5f9;
+  --pin-text-muted: #94a3b8;
+  --pin-divider: rgba(255, 255, 255, 0.1);
+  --pin-in-bg: rgba(16, 185, 129, 0.15);
+  --pin-out-bg: rgba(239, 68, 68, 0.15);
+  
+  /* ✅ متغيرات عامة ناقصة */
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --bg-body: #0f172a;
+  --bg-card: #1e293b;
+  --card-hover-bg: rgba(255, 255, 255, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   
   /* Spacing */
   --spacing-xs: 4px;
@@ -95,6 +113,24 @@ body.light-mode {
   --table-row-hover: rgba(59, 130, 246, 0.04);
   --badge-muted-bg: #f1f5f9;
   --badge-muted-text: #64748b;
+
+  /* ✅ متغيرات المحافظ المثبتة (Pinned Wallets) - لايت مود */
+  --pin-card-bg: #ffffff;
+  --pin-card-border: rgba(0, 0, 0, 0.08);
+  --pin-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --pin-text-main: #1e293b;
+  --pin-text-muted: #64748b;
+  --pin-divider: rgba(0, 0, 0, 0.08);
+  --pin-in-bg: rgba(16, 185, 129, 0.08);
+  --pin-out-bg: rgba(239, 68, 68, 0.08);
+
+  /* ✅ متغيرات عامة ناقصة - لايت مود */
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --bg-body: #f8fafc;
+  --bg-card: #ffffff;
+  --card-hover-bg: rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 body {
@@ -3254,3 +3290,102 @@ body:not(.light-mode) .wlt-track {
     transform: rotate(-10deg);
 }
 
+
+/* ============================================================
+   PINNED WALLETS — كروت المحافظ المثبتة (دارك/لايت مود)
+   ============================================================ */
+
+/* الكارت الأساسي — بيستخدم CSS variables فقط */
+.pinned-wallet-card {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--pin-card-bg);
+    color: var(--pin-text-main);
+    border: 1px solid var(--pin-card-border);
+    border-radius: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    min-width: 140px;
+    direction: rtl;
+    user-select: none;
+    box-shadow: var(--pin-card-shadow);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* اسم المحفظة */
+.pinned-wallet-card .pin-name {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--pin-text-main);
+}
+
+/* قسم الرصيد */
+.pinned-wallet-card .pin-balance-section {
+    border-top: 1px dashed var(--pin-divider);
+    padding-top: 6px;
+}
+
+.pinned-wallet-card .pin-bal-label,
+.pinned-wallet-card .pin-bal-unit {
+    font-size: 9px;
+    color: var(--pin-text-muted);
+}
+
+/* مربعات دخول/خروج */
+.pinned-wallet-card .pin-limit-in {
+    flex: 1;
+    text-align: center;
+    background: var(--pin-in-bg);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.pinned-wallet-card .pin-limit-out {
+    flex: 1;
+    text-align: center;
+    background: var(--pin-out-bg);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.pinned-wallet-card .pin-limit-label {
+    font-size: 8px;
+    color: var(--pin-text-muted);
+    display: block;
+}
+
+/* ضمان ظهور الألوان في الدارك مود */
+body:not(.light-mode) .pinned-wallet-card {
+    background: var(--pin-card-bg, #1e293b) !important;
+    color: var(--pin-text-main, #f1f5f9) !important;
+    border-color: var(--pin-card-border, rgba(255,255,255,0.1)) !important;
+}
+
+body:not(.light-mode) .pinned-wallet-card .pin-name {
+    color: var(--pin-text-main, #f1f5f9) !important;
+}
+
+body:not(.light-mode) .pinned-wallet-card .pin-bal-label,
+body:not(.light-mode) .pinned-wallet-card .pin-bal-unit,
+body:not(.light-mode) .pinned-wallet-card .pin-limit-label {
+    color: var(--pin-text-muted, #94a3b8) !important;
+}
+
+/* اللايت مود */
+body.light-mode .pinned-wallet-card {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-color: rgba(0,0,0,0.08) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+}
+
+body.light-mode .pinned-wallet-card .pin-name {
+    color: #1e293b !important;
+}
+
+body.light-mode .pinned-wallet-card .pin-bal-label,
+body.light-mode .pinned-wallet-card .pin-bal-unit,
+body.light-mode .pinned-wallet-card .pin-limit-label {
+    color: #64748b !important;
+}

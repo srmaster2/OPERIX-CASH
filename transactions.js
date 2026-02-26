@@ -11,21 +11,24 @@ var isRenderingPins   = false;
 const _supa = () => window.supa;
 // دالة لتفعيل الاستماع اللحظي
 function setupLiveLogs() {
-    const supabase = _supa(); // استدعاء نسخة سوبابيز الخاصة بك
+    const supabase = _supa();
 
     supabase
-        .channel('public:transactions') // اسم القناة
-        .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'transactions' // تأكد أن هذا هو اسم جدول العمليات عندك
-        }, (payload) => {
-            console.log('New transaction detected!', payload.new);
-            // عند حدوث عملية إدخال جديدة، نقوم بتحديث الجدول فوراً
-            executeAdvancedSearch(); 
-            
-            // اختياري: إظهار إشعار صغير (Toast)
-            showToast("تم إضافة عملية جديدة بنجاح", "success");
+        .channel('public:transactions')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'transactions'
+        }, () => {
+            executeAdvancedSearch();
+        })
+        .on('postgres_changes', {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'transactions'
+        }, () => {
+            // تحديث الجدول بعد الرول باك
+            executeAdvancedSearch();
         })
         .subscribe();
 }
@@ -56,7 +59,10 @@ function setOp(typeValue, provider, element) {
     const target = _norm(provider);
     
     // التحقق هل الشركة من ضمن قائمة الشركات الديناميكية؟
-    const isLockOp = dynamicLockList.some(p => _norm(p) === target) &&
+    // cash_supply (تزويد) لا يقفل الـ wallet — المحفظة يختارها المستخدم
+    const isCashSupply = typeValue.includes("سحب كاش") && typeValue.includes("تزويد");
+    const isLockOp = !isCashSupply &&
+                     dynamicLockList.some(p => _norm(p) === target) &&
                      (typeValue.includes("سحب") || typeValue.includes("فاتورة"));
 
     if (isLockOp && walletSelect) {
@@ -119,22 +125,26 @@ const serviceMap = {
     client_withdraw: {
         label: 'سحب من عميل',
         buildTitle: (prov) => `سحب من عميل (تزويد ${prov})`,
-        filterTag: 'شركة'
+        filterTag: 'شركة',
+        needsWallet: false   // المحفظة = الخزنة، مش محفظة منفصلة
     },
     pay_bill: {
         label: 'دفع فاتورة',
         buildTitle: (prov) => `دفع فاتورة (${prov})`,
-        filterTag: 'شركة'
+        filterTag: 'شركة',
+        needsWallet: false
     },
     cash_supply: {
         label: 'سحب كاش',
         buildTitle: (prov) => `سحب كاش (تزويد ${prov})`,
-        filterTag: 'شركة'
+        filterTag: 'شركة',
+        needsWallet: true    // ✅ تزويد: لازم يختار محفظة بعد الشركة
     },
     visa_withdraw: {
         label: 'سحب فيزا',
         buildTitle: (prov) => `سحب فيزا (ماكينة ${prov})`,
-        filterTag: 'شركة'
+        filterTag: 'شركة',
+        needsWallet: false
     }
 };
 
@@ -233,7 +243,43 @@ function confirmProviderSelection(serviceKey, provider) {
     if (!config) return;
     closeProviderModal();
     const originalCard = document.querySelector(`.op-card[onclick*="${serviceKey}"]`);
-    setOp(config.buildTitle(provider), provider, originalCard);
+
+    if (config.needsWallet) {
+        // ✅ تزويد: اضبط النوع والـ provider، ثم اطلب من المستخدم يختار محفظة من الـ pinned
+        selectedProvider = provider;
+        const typeInput = document.getElementById('type');
+        if (typeInput) typeInput.value = config.buildTitle(provider);
+        document.querySelectorAll('.op-card').forEach(c => c.classList.remove('active','active-op'));
+        if (originalCard) originalCard.classList.add('active','active-op');
+        _toggleOpFields(config.buildTitle(provider));
+
+        // فتح محفظة الاختيار: reset الـ select وانتظر المستخدم
+        const walletSelect = document.getElementById('wallet');
+        if (walletSelect) {
+            walletSelect.disabled = false;
+            walletSelect.style.backgroundColor = "";
+            walletSelect.style.cursor = "default";
+            walletSelect.selectedIndex = 0;
+        }
+
+        // تمييز منطقة الـ pinned wallets عشان يشوفها
+        const pinnedContainer = document.getElementById('pinnedWallets');
+        if (pinnedContainer) {
+            pinnedContainer.style.outline = '2px solid var(--primary-blue)';
+            pinnedContainer.style.borderRadius = '14px';
+            pinnedContainer.style.transition = 'outline 0.3s';
+            setTimeout(() => {
+                pinnedContainer.style.outline = 'none';
+            }, 2500);
+            pinnedContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        showToast("📌 اختر المحفظة من الكروت المثبتة", true);
+        if (typeof updateLimitDisplay === "function") updateLimitDisplay();
+    } else {
+        // السلوك الطبيعي
+        setOp(config.buildTitle(provider), provider, originalCard);
+    }
 }
 function closeProviderModal() {
     const modal = document.getElementById('providerModal');
@@ -265,9 +311,8 @@ async function renderPinnedWallets() {
             return;
         }
 
-        const isDark =
-            document.body.classList.contains('dark') ||
-            document.documentElement.classList.contains('dark');
+        // الثيم في CSS يعتمد على body.light-mode — الدارك هو الحالة الافتراضية
+        const isDark = !document.body.classList.contains('light-mode');
 
         accounts.forEach(function(w) {
             const btn = document.createElement('div');
@@ -283,13 +328,13 @@ async function renderPinnedWallets() {
             const availOut = Math.max(0, lm > 0 ? Math.min(lo - uo, lm - um) : lo - uo);
             const availIn  = Math.max(0, li - ui);
 
-            // ⭐ لون مضمون
-            const dynamicMainColor = isDark ? '#ffffff' : '#1e293b';
-            const importantMainColor = dynamicMainColor + ' !important';
+            // ⭐ لون مضمون للدارك/لايت مود
+            const dynamicMainColor  = isDark ? '#f1f5f9' : '#1e293b';
+            const dynamicMutedColor = isDark ? '#94a3b8' : '#64748b';
 
-            const balColor = bal < 300 ? '#ef4444'
+            const balColor = bal < 300  ? '#ef4444'
                            : bal < 1000 ? '#f59e0b'
-                           : importantMainColor;
+                           : '#10b981';
 
             const inColor  = availIn  < 500 ? '#ef4444'
                            : availIn  < 2000 ? '#f59e0b'
@@ -305,16 +350,17 @@ async function renderPinnedWallets() {
                 display:inline-flex;
                 flex-direction:column;
                 gap:6px;
-                background:var(--card-bg, #ffffff);
-                color: ${isDark ? '#ffffff' : '#1e293b'};
-                border:1px solid var(--border-color, #e2e8f0);
+                background:var(--pin-card-bg);
+                color:var(--pin-text-main);
+                border:1px solid var(--pin-card-border);
                 border-radius:14px;
                 padding:10px 14px;
                 cursor:pointer;
                 min-width:140px;
                 direction:rtl;
                 user-select:none;
-                box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+                box-shadow:var(--pin-card-shadow);
+                transition: border-color 0.2s, box-shadow 0.2s;
             `;
 
             var tagHtml = (w.tag && w.tag.trim())
@@ -323,28 +369,28 @@ async function renderPinnedWallets() {
 
             var line1 = `
                 <div style="display:flex; justify-content:space-between;">
-                    <div style="display:flex; gap:6px;">
+                    <div style="display:flex; gap:6px; align-items:center;">
                         <i class="fa-solid fa-bolt" style="color:${tagColor}; font-size:11px;"></i>
-                        <span style="font-size:12px; font-weight:800; color:${importantMainColor};">${w.name}</span>
+                        <span style="font-size:12px; font-weight:800; color:var(--pin-text-main);">${w.name}</span>
                     </div>
                     ${tagHtml}
                 </div>`;
 
             var line2 = `
-                <div style="border-top:1px dashed var(--border-color, #e2e8f0); padding-top:6px;">
-                    <span style="font-size:9px; color:var(--text-muted, #64748b);">رصيد</span>
+                <div style="border-top:1px dashed var(--pin-divider); padding-top:6px;">
+                    <span style="font-size:9px; color:var(--pin-text-muted);">رصيد</span>
                     <span style="font-size:14px; font-weight:800; color:${balColor}; margin-right:4px;">${bal.toLocaleString()}</span>
-                    <span style="font-size:9px; color:var(--text-muted, #64748b);">ج.م</span>
+                    <span style="font-size:9px; color:var(--pin-text-muted);">ج.م</span>
                 </div>`;
 
             var line3 = `
                 <div style="display:flex; gap:6px;">
-                    <div style="flex:1; text-align:center; background:rgba(16,185,129,0.08); border-radius:8px; padding:4px;">
-                        <div style="font-size:8px;">دخول</div>
+                    <div style="flex:1; text-align:center; background:var(--pin-in-bg); border-radius:8px; padding:4px;">
+                        <div style="font-size:8px; color:var(--pin-text-muted);">دخول</div>
                         <div style="font-weight:700; color:${inColor};">${availIn.toLocaleString()}</div>
                     </div>
-                    <div style="flex:1; text-align:center; background:rgba(239,68,68,0.08); border-radius:8px; padding:4px;">
-                        <div style="font-size:8px;">خروج</div>
+                    <div style="flex:1; text-align:center; background:var(--pin-out-bg); border-radius:8px; padding:4px;">
+                        <div style="font-size:8px; color:var(--pin-text-muted);">خروج</div>
                         <div style="font-weight:700; color:${outColor};">${availOut.toLocaleString()}</div>
                     </div>
                 </div>`;
@@ -589,12 +635,12 @@ async function finalExecuteStep(btn) {
         const { walletId, walletName, type, provider, amount, comm, clientId, note, commDest, deductComm } = globalPendingData;
 
         const { data: allAccounts } = await _supa().from('accounts').select('*');
-        const cashAcc   = allAccounts?.find(a => a.name.includes("الخزنة"));
+        const branchId  = window.currentUserData?.branch_id || null;
+        const cashAcc   = allAccounts?.find(a => a.name.includes("الخزنة") && (!branchId || a.branch_id === branchId));
         const walletAcc = allAccounts?.find(a => a.id == walletId && !a.name.includes("الخزنة"));
-        const provAcc   = allAccounts?.find(a =>
-            _norm(a.name).includes(_norm(provider)) && Number(a.daily_out_limit) > 10000000);
+        const provAcc   = allAccounts?.find(a => _norm(a.name).includes(_norm(provider)) && Number(a.daily_out_limit) > 10000000 && (!branchId || a.branch_id === branchId));
 
-        if (!cashAcc) throw new Error("حساب الخزنة غير موجود");
+        if (!cashAcc) throw new Error("حساب الخزنة غير موجود لهذا الفرع");
 
         const val     = Number(amount);
         const fee     = Number(comm) || 0;
@@ -632,6 +678,11 @@ async function finalExecuteStep(btn) {
         }
 
         if (type.includes("سحب كاش") && /مكسب|فوري/.test(provider)) {
+            if (!walletAcc) throw new Error("❌ يجب تحديد المحفظة");
+            if (!provAcc)   throw new Error(`❌ حساب ${provider} غير موجود`);
+            const needed = val - fee; // الخصم الفعلي من المحفظة
+            if (+walletAcc.balance < needed)
+                throw new Error(`❌ رصيد المحفظة لا يكفي — المتاح: ${Number(walletAcc.balance).toLocaleString()} ج.م`);
             push(provAcc,   { balance: +provAcc.balance + val });
             push(walletAcc, { balance: +walletAcc.balance - val + fee, profit: +walletAcc.profit + fee,
                               daily_out_usage: +walletAcc.daily_out_usage + val,
@@ -639,6 +690,9 @@ async function finalExecuteStep(btn) {
             balanceAfter = +walletAcc.balance - val + fee;
         }
         else if (type.includes("سحب كاش") && provAcc) {
+            if (!walletAcc) throw new Error("❌ يجب تحديد المحفظة");
+            if (+walletAcc.balance < val)
+                throw new Error(`❌ رصيد المحفظة لا يكفي — المتاح: ${Number(walletAcc.balance).toLocaleString()} ج.م`);
             push(walletAcc, { balance: +walletAcc.balance - val,
                               daily_out_usage: +walletAcc.daily_out_usage + val,
                               monthly_usage_out: +walletAcc.monthly_usage_out + val });
@@ -663,7 +717,9 @@ async function finalExecuteStep(btn) {
             balanceAfter = +provAcc.balance + val;
         }
         else if (type.includes("دفع فاتورة")) {
-            if (!provAcc) throw new Error(`حساب ${provider} غير موجود`);
+            if (!provAcc) throw new Error(`❌ حساب ${provider} غير موجود`);
+            if (+provAcc.balance < val)
+                throw new Error(`❌ رصيد ${provider} لا يكفي — المتاح: ${Number(provAcc.balance).toLocaleString()} ج.م`);
             push(provAcc, { balance: +provAcc.balance - val });
             push(cashAcc, { balance: +cashAcc.balance + val + fee, profit: +cashAcc.profit + fee });
             balanceAfter = +provAcc.balance - val;
@@ -698,22 +754,58 @@ async function finalExecuteStep(btn) {
             balanceAfter = +walletAcc.balance + val;
         }
         else if (/دين|مديونية/.test(type)) {
-            const target = walletAcc || cashAcc;
+            // التحقق من وجود العميل أولاً
+            if (!clientId) throw new Error("❌ يجب اختيار العميل لعمليات الديون");
+
             const isOut  = /سحب|صادر/.test(type);
+            // تحديد الحساب المستهدف: المحفظة لو موجودة، وإلا الخزنة
+            const target = walletAcc || cashAcc;
+
             if (isOut) {
-                if (+target.balance < val) throw new Error("الرصيد لا يكفي");
-                push(target, { balance: +target.balance - val,
-                    ...(walletAcc ? { daily_out_usage: +walletAcc.daily_out_usage + val,
-                                       monthly_usage_out: +walletAcc.monthly_usage_out + val } : {}) });
-                if (fee > 0) push(cashAcc, { balance: +cashAcc.balance + fee, profit: +cashAcc.profit + fee });
+                // إخراج مبلغ (تسجيل دين جديد على العميل)
+                if (+target.balance < val) throw new Error("❌ الرصيد لا يكفي");
+
+                if (walletAcc) {
+                    // صادر من محفظة
+                    push(walletAcc, {
+                        balance: +walletAcc.balance - val,
+                        daily_out_usage:   +walletAcc.daily_out_usage   + val,
+                        monthly_usage_out: +walletAcc.monthly_usage_out + val
+                    });
+                    // العمولة تروح للخزنة
+                    if (fee > 0) push(cashAcc, { balance: +cashAcc.balance + fee, profit: +cashAcc.profit + fee });
+                } else {
+                    // صادر من الخزنة
+                    push(cashAcc, {
+                        balance: +cashAcc.balance - val + fee,
+                        ...(fee > 0 ? { profit: +cashAcc.profit + fee } : {})
+                    });
+                }
                 balanceAfter = +target.balance - val;
+                // زيادة دين العميل (اشتغلنا ليه)
+                await _updateClientBalance(clientId, val, "OUT");
+
             } else {
-                push(target, { balance: +target.balance + val + fee, profit: +target.profit + fee,
-                    ...(walletAcc ? { daily_in_usage: +walletAcc.daily_in_usage + val,
-                                       monthly_usage_in: +walletAcc.monthly_usage_in + val } : {}) });
+                // وارد (سداد دين من العميل)
+                if (walletAcc) {
+                    // وارد على محفظة
+                    push(walletAcc, {
+                        balance: +walletAcc.balance + val + fee,
+                        daily_in_usage:  +walletAcc.daily_in_usage  + val,
+                        monthly_usage_in: (+walletAcc.monthly_usage_in || 0) + val,
+                        ...(fee > 0 ? { profit: +walletAcc.profit + fee } : {})
+                    });
+                } else {
+                    // وارد على الخزنة
+                    push(cashAcc, {
+                        balance: +cashAcc.balance + val + fee,
+                        ...(fee > 0 ? { profit: +cashAcc.profit + fee } : {})
+                    });
+                }
                 balanceAfter = +target.balance + val + fee;
+                // تقليل دين العميل (سدد)
+                await _updateClientBalance(clientId, val, "IN");
             }
-            if (clientId) await _updateClientBalance(clientId, val, isOut ? "OUT" : "IN");
         }
         else {
             throw new Error(`نوع العملية '${type}' غير معرّف`);
@@ -730,7 +822,8 @@ async function finalExecuteStep(btn) {
             type, amount: val, commission: fee,
             wallet_name: walletName, provider,
             balance_after: balanceAfter,
-            notes: note || '', added_by: userName
+            notes: note || '', added_by: userName,
+            branch_id: window.currentUserData?.branch_id || null
         }]);
         if (txErr) throw txErr;
 
@@ -754,11 +847,21 @@ async function finalExecuteStep(btn) {
 }
 
 async function _updateClientBalance(clientId, amount, mode) {
-    const { data: cl } = await _supa()
+    if (!clientId) return;
+    const { data: cl, error } = await _supa()
         .from('clients').select('id, balance').eq('id', clientId).maybeSingle();
-    if (!cl) return;
-    const newBal = mode === "IN" ? +cl.balance + amount : +cl.balance - amount;
-    await _supa().from('clients').update({ balance: newBal }).eq('id', cl.id);
+    if (!cl || error) {
+        console.error("_updateClientBalance: عميل غير موجود id=", clientId);
+        return;
+    }
+    const currentBal = Number(cl.balance) || 0;
+    // OUT = اشتغلنا للعميل (دينه علينا زاد) → نزيد الرصيد (موجب = العميل مدين)
+    // IN  = العميل سدد (دينه قل)           → نقلل الرصيد
+    const newBal = mode === "OUT"
+        ? currentBal + amount
+        : Math.max(0, currentBal - amount); // ما نخليش الرصيد يطلع سالب
+    const { error: updErr } = await _supa().from('clients').update({ balance: newBal }).eq('id', cl.id);
+    if (updErr) console.error("_updateClientBalance update error:", updErr);
 }
 
 // ============================================================
@@ -819,9 +922,13 @@ function renderTransactionsTable(data) {
                     <div class="text-muted" style="font-size: 10px;">${tx.time || ''}</div>
                 </td>
                 
-                <td class="align-middle ${isOut ? 'text-danger' : 'text-success'} fw-bold">
-                    <i class="fa ${isOut ? 'fa-arrow-up' : 'fa-arrow-down'} me-1" style="font-size: 10px;"></i>
-                    ${tx.type || '-'}
+                <td class="align-middle text-center ${isOut ? 'text-danger' : 'text-success'} fw-bold">
+                    <div><i class="fa ${isOut ? 'fa-arrow-up' : 'fa-arrow-down'} me-1" style="font-size:10px;"></i>${tx.type || '-'}</div>
+                    ${(tx.wallet_name||tx.provider) ? `<div class="d-flex align-items-center justify-content-center gap-1 mt-1 flex-wrap">
+                        ${tx.wallet_name ? `<span class="badge bg-light text-dark border fw-normal" style="font-size:9px;"><i class="fa fa-wallet me-1 text-primary" style="font-size:8px;"></i>${tx.wallet_name}</span>` : ''}
+                        ${tx.wallet_name && tx.provider ? `<i class="fa fa-arrow-left text-muted" style="font-size:8px;"></i>` : ''}
+                        ${tx.provider ? `<span class="badge bg-light text-dark border fw-normal" style="font-size:9px;"><i class="fa fa-building me-1 text-warning" style="font-size:8px;"></i>${tx.provider}</span>` : ''}
+                    </div>` : ''}
                 </td>
                 
                 <td class="align-middle english-num fw-bold">
@@ -915,11 +1022,83 @@ async function rollbackTx(txId) {
         _norm(a.name).includes(_norm(tx.provider)) && Number(a.daily_out_limit) > 10000000);
     const push = (acc, ch) => { if (acc) updates.push({ id: acc.id, changes: ch }); };
 
-    if      (tx.type.includes("دفع فاتورة"))               { push(provAcc, { balance: +provAcc?.balance + val }); push(cashAcc, { balance: +cashAcc?.balance - val - fee, profit: clamp(+cashAcc?.profit - fee) }); }
-    else if (/سحب من عميل|سحب فيزا/.test(tx.type))        { push(provAcc, { balance: +provAcc?.balance - val }); push(cashAcc, { balance: +cashAcc?.balance + val - fee, profit: clamp(+cashAcc?.profit - fee) }); }
-    else if (/إيداع|شحن|تحويل/.test(tx.type) && walletAcc) { push(walletAcc, { balance: +walletAcc.balance + val, daily_out_usage: clamp(+walletAcc.daily_out_usage - val), monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) }); push(cashAcc, { balance: +cashAcc?.balance - val, profit: clamp(+cashAcc?.profit - fee) }); }
-    else if (tx.type.includes("سحب من محفظة") && walletAcc) { push(walletAcc, { balance: +walletAcc.balance - val, daily_in_usage: clamp(+walletAcc.daily_in_usage - val), monthly_usage_in: clamp(+walletAcc.monthly_usage_in - val) }); push(cashAcc, { balance: +cashAcc?.balance + val - fee, profit: clamp(+cashAcc?.profit - fee) }); }
-    else if (tx.type.includes("سحب كاش") && walletAcc)      { push(walletAcc, { balance: +walletAcc.balance + val, profit: clamp(+walletAcc.profit - fee), daily_out_usage: clamp(+walletAcc.daily_out_usage - val), monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) }); push(provAcc, { balance: +provAcc?.balance - val }); }
+    if (tx.type.includes("دفع فاتورة")) {
+        // العملية الأصلية: provAcc - val، cashAcc + val + fee
+        // العكس:          provAcc + val، cashAcc - val - fee
+        if (!provAcc) return showToast(`❌ حساب ${tx.provider} غير موجود`, false);
+        push(provAcc, { balance: +provAcc.balance + val });
+        push(cashAcc, { balance: +cashAcc.balance - val - fee, profit: clamp(+cashAcc.profit - fee) });
+    }
+    else if (/سحب من عميل|سحب فيزا/.test(tx.type)) {
+        // العملية الأصلية: cashAcc - val، provAcc + val
+        // العكس:          cashAcc + val، provAcc - val
+        push(provAcc, { balance: +provAcc?.balance - val });
+        push(cashAcc, { balance: +cashAcc?.balance + val - fee, profit: clamp(+cashAcc?.profit - fee) });
+    }
+    else if (/إيداع|شحن|تحويل|باقة|تجديد|رصيد/.test(tx.type) && walletAcc) {
+        // العملية الأصلية: walletAcc - val - 1، cashAcc + val
+        // العكس:          walletAcc + val + 1، cashAcc - val
+        push(walletAcc, { balance: +walletAcc.balance + val + 1,
+                          daily_out_usage:   clamp(+walletAcc.daily_out_usage   - val),
+                          monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) });
+        push(cashAcc,   { balance: +cashAcc?.balance - val,
+                          profit: clamp(+cashAcc?.profit - fee) });
+    }
+    else if (tx.type.includes("سحب من محفظة") && walletAcc) {
+        // العملية الأصلية: walletAcc + val، cashAcc - cashEffect
+        // cashEffect = deductComm ? val : val - fee — نفترض val - fee (الأكثر شيوعاً)
+        push(walletAcc, { balance: +walletAcc.balance - val,
+                          daily_in_usage:  clamp(+walletAcc.daily_in_usage  - val),
+                          monthly_usage_in: clamp(+walletAcc.monthly_usage_in - val) });
+        push(cashAcc,   { balance: +cashAcc?.balance + val - fee,
+                          profit: clamp(+cashAcc?.profit - fee) });
+    }
+    else if (tx.type.includes("سحب كاش") && walletAcc) {
+        // العملية الأصلية: walletAcc - val، provAcc + val (+ fee لو commDest=provAcc)
+        // العكس: walletAcc + val، provAcc - val
+        push(walletAcc, { balance: +walletAcc.balance + val,
+                          profit: clamp(+walletAcc.profit - fee),
+                          daily_out_usage:   clamp(+walletAcc.daily_out_usage   - val),
+                          monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) });
+        push(provAcc,   { balance: +provAcc?.balance - val });
+        // لو العمولة كانت للخزنة نرجعها
+        if (fee > 0) push(cashAcc, { balance: +cashAcc?.balance - fee, profit: clamp(+cashAcc?.profit - fee) });
+    }
+    else if (tx.type.includes("مصروف")) {
+        // العملية الأصلية: cashAcc - val
+        // العكس:          cashAcc + val
+        push(cashAcc, { balance: +cashAcc?.balance + val });
+    }
+    else if (/دين|مديونية/.test(tx.type)) {
+        // عكس عملية الديون
+        const isOut = /سحب|صادر/.test(tx.type);
+        const target = walletAcc || cashAcc;
+        if (isOut) {
+            // كانت صادرة (اشتغلنا للعميل) → نرجع المبلغ
+            if (walletAcc) {
+                push(walletAcc, { balance: +walletAcc.balance + val,
+                    daily_out_usage:   clamp(+walletAcc.daily_out_usage   - val),
+                    monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) });
+                if (fee > 0) push(cashAcc, { balance: +cashAcc?.balance - fee, profit: clamp(+cashAcc?.profit - fee) });
+            } else {
+                push(cashAcc, { balance: +cashAcc?.balance + val - fee, profit: clamp(+cashAcc?.profit - fee) });
+            }
+            // عكس دين العميل: كان زاد → نقلل
+            if (tx.client_id) await _updateClientBalance(tx.client_id, val, "IN");
+        } else {
+            // كانت واردة (سداد) → نرجع المبلغ
+            if (walletAcc) {
+                push(walletAcc, { balance: +walletAcc.balance - val - fee,
+                    daily_in_usage:  clamp(+walletAcc.daily_in_usage  - val),
+                    monthly_usage_in: clamp((+walletAcc.monthly_usage_in || 0) - val),
+                    profit: clamp(+walletAcc.profit - fee) });
+            } else {
+                push(cashAcc, { balance: +cashAcc?.balance - val - fee, profit: clamp(+cashAcc?.profit - fee) });
+            }
+            // عكس سداد العميل: كان قل → نزيد
+            if (tx.client_id) await _updateClientBalance(tx.client_id, val, "OUT");
+        }
+    }
 
     for (const upd of updates)
         await _supa().from('accounts').update(upd.changes).eq('id', upd.id);
@@ -942,11 +1121,13 @@ const adminName = profile?.name || session?.user?.email;
 await _supa().from('admin_logs').insert([{
     action: 'ROLLBACK', 
     details: `تراجع: ${tx.type} بمبلغ ${val}`,
-    created_by: adminName // سيتم تخزين الاسم الآن وليس الميل
+    created_by: adminName,
+    branch_id: window.currentUserData?.branch_id || null  // ✅ أضف دي
 }]);
     showToast("✅ تم التراجع بنجاح", true);
-    if (typeof loadTransactionLogs === "function") loadTransactionLogs();
-    if (typeof loadDash            === "function") loadDash();
+    if (typeof executeAdvancedSearch === "function") executeAdvancedSearch();
+    if (typeof renderPinnedWallets   === "function") renderPinnedWallets();
+    if (typeof loadDash              === "function") loadDash();
 }
 
 // ============================================================
@@ -973,9 +1154,7 @@ async function calculateStats() {
 window.addEventListener('DOMContentLoaded', function() {
     if (typeof applyTheme    === "function") applyTheme();
     if (typeof checkUserRole === "function") checkUserRole();
-    // ننتظر currentUserData يتحمل قبل ما نشغّل الدوال اللي بتفلتر بالفرع
-    loadWallets();
-    loadClientsToSelect();
+    // loadWallets و loadClientsToSelect هيتشغلوا من initApp بعد ما currentUserData يتحمل
     if (typeof toggleClientField  === "function") toggleClientField();
     if (typeof renderWalletsCards === "function") renderWalletsCards();
     if (typeof loadDash           === "function") loadDash();
