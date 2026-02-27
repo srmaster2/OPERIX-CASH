@@ -58,7 +58,7 @@ function renderCurrentBranchBadge() {
     if (!el || !window.currentUserData) return;
     const u = window.currentUserData;
     if (u.isMaster) {
-        el.innerHTML = '<span class="badge bg-warning text-dark ms-2"><i class="fa fa-crown me-1"></i>مدير عام</span>';
+        el.innerHTML = '<span class="badge bg-warning text-dark ms-2"><i class="fa fa-crown me-1"></i>MASTER</span>';
     } else if (u.isAdmin) {
         el.innerHTML = `<span class="badge bg-primary ms-2"><i class="fa fa-building me-1"></i>مدير ${u.branchName}</span>`;
     } else {

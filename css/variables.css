@@ -1,0 +1,144 @@
+/* ========================================
+   GLOBAL STYLES & CSS VARIABLES
+======================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Primary Colors */
+  --primary-blue: #3b82f6;
+  --primary-cyan: #06b6d4;
+  --primary-indigo: #271fc7;
+  
+  /* Card Variables (Dark default) */
+  --card-bg: #1e293b;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-text: #f1f5f9;
+  --input-bg: rgba(15, 23, 42, 0.6);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --input-text: #f1f5f9;
+  --input-placeholder: rgba(255, 255, 255, 0.4);
+  --table-header-bg: rgba(15, 23, 42, 0.8);
+  --table-row-hover: rgba(59, 130, 246, 0.06);
+  --badge-muted-bg: rgba(255, 255, 255, 0.06);
+  --badge-muted-text: rgba(255, 255, 255, 0.6);
+  
+  
+  /* Semantic Colors */
+  --success-green: #10b981;
+  --warning-orange: #f59e0b;
+  --danger-red: #ef4444;
+  --info-cyan: #06b6d4;
+  
+  /* Neutrals */
+  --dark-bg: #0f172a;
+  --dark-secondary: rgba(30, 41, 75, 0.4);
+  --dark-tertiary: rgba(15, 23, 42, 0.6);
+  --dark-text: #ffffff;
+  --dark-text-secondary: rgba(255, 255, 255, 0.65);
+  
+  --light-bg: #f7f7f7;
+  --light-secondary: #f1f5f9;
+  --light-tertiary: #e2e8f0;
+  --light-text: #0f172a;
+  --light-text-secondary: rgba(15, 23, 42, 0.65);
+  
+  /* Current Theme (Dark by default) */
+  --bg-primary: var(--dark-bg);
+  --bg-secondary: var(--dark-secondary);
+  --bg-tertiary: var(--dark-tertiary);
+  --text-primary: var(--dark-text);
+  --text-secondary: var(--dark-text-secondary);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  /* متغيرات المحافظ المثبتة (Pinned Wallets) - دارك مود */
+  --pin-card-bg: #1e293b;
+  --pin-card-border: rgba(255, 255, 255, 0.1);
+  --pin-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --pin-text-main: #f1f5f9;
+  --pin-text-muted: #94a3b8;
+  --pin-divider: rgba(255, 255, 255, 0.1);
+  --pin-in-bg: rgba(16, 185, 129, 0.15);
+  --pin-out-bg: rgba(239, 68, 68, 0.15);
+  
+  /* متغيرات عامة */
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --bg-body: #0f172a;
+  --bg-card: #1e293b;
+  --card-hover-bg: rgba(255, 255, 255, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.light-mode {
+  --bg-primary: var(--light-bg);
+  --bg-secondary: var(--light-secondary);
+  --bg-tertiary: var(--light-tertiary);
+  --text-primary: var(--light-text);
+  --text-secondary: var(--light-text-secondary);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.08);
+  
+  /* Card Variables (Light) */
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.08);
+  --card-text: #0f172a;
+  --input-bg: #f8fafc;
+  --input-border: rgba(0, 0, 0, 0.12);
+  --input-text: #0f172a;
+  --input-placeholder: rgba(15, 23, 42, 0.4);
+  --table-header-bg: #f1f5f9;
+  --table-row-hover: rgba(59, 130, 246, 0.04);
+  --badge-muted-bg: #f1f5f9;
+  --badge-muted-text: #64748b;
+
+  /* متغيرات المحافظ المثبتة (Pinned Wallets) - لايت مود */
+  --pin-card-bg: #ffffff;
+  --pin-card-border: rgba(0, 0, 0, 0.08);
+  --pin-card-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --pin-text-main: #1e293b;
+  --pin-text-muted: #64748b;
+  --pin-divider: rgba(0, 0, 0, 0.08);
+  --pin-in-bg: rgba(16, 185, 129, 0.08);
+  --pin-out-bg: rgba(239, 68, 68, 0.08);
+
+  /* متغيرات عامة - لايت مود */
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --bg-body: #f8fafc;
+  --bg-card: #ffffff;
+  --card-hover-bg: rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+body {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  direction: rtl;
+  overflow-x: hidden;
+}
+

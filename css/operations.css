@@ -1,0 +1,205 @@
+/* ========================================
+   OPERATIONS VIEW STYLES
+======================================== */
+
+.op-tabs-container {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 20px;
+}
+
+.op-tabs-container .btn {
+  padding: 10px 15px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+}
+
+.op-tabs-container .btn:hover { transform: translateY(-1px); }
+.op-tabs-container .btn.active { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+.new-op-panel {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+}
+
+.log-op-panel {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+}
+
+.services-grid-compact {
+  gap: 6px !important;
+  margin-bottom: 12px !important;
+}
+
+.services-grid-compact .op-card {
+  padding: 8px 4px !important;
+  min-height: 70px;
+  font-size: 0.7rem;
+}
+
+.services-grid-compact .op-card i { font-size: 1rem !important; margin-bottom: 3px; }
+.services-grid-compact .op-card span { font-size: 0.7rem; }
+.new-op-panel .card-box { padding: 12px; }
+
+@keyframes tabSwitch {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.op-both-container { animation: tabSwitch 0.3s ease; }
+.log-op-panel .table { font-size: 0.8rem; }
+.log-op-panel .table th, .log-op-panel .table td { padding: 8px 4px; }
+.log-op-panel .table-responsive { border-radius: 8px; overflow: hidden; }
+
+.row-in { background: rgba(16, 185, 129, 0.05); }
+.row-out { background: rgba(239, 68, 68, 0.05); }
+.row-in:hover { background: rgba(16, 185, 129, 0.1); }
+.row-out:hover { background: rgba(239, 68, 68, 0.1); }
+
+/* ========================================
+   MODAL OVERLAYS
+======================================== */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+  z-index: 10000;
+  animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.details-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+}
+
+.log-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+}
+
+.log-modal-content {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: modalSlideIn 0.25s ease;
+}
+
+#adminSettingsSection { display: none; }
+
+/* ========================================
+   TOAST NOTIFICATIONS
+======================================== */
+
+.custom-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1e293b;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.custom-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.custom-toast.toast-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.custom-toast.toast-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.bg-card { background: var(--card-bg) !important; color: var(--card-text) !important; }
+
+/* ========================================
+   OP VIEW - SPLIT SCREEN LAYOUT
+======================================== */
+
+@media (min-width: 992px) {
+  #col-new-op, #col-log-op { display: block !important; }
+  .op-tabs-bar { display: none !important; }
+  #col-log-op .table-responsive { max-height: calc(100vh - 220px) !important; }
+}
+
+@media (max-width: 991.98px) {
+  #col-new-op, #col-log-op { display: none; width: 100%; }
+  #col-new-op.mob-active, #col-log-op.mob-active { display: block !important; }
+  .op-tabs-bar { display: block !important; }
+  #col-log-op .table-responsive { max-height: calc(100vh - 220px) !important; }
+}
+
+@media (min-width: 992px) {
+  .new-op-panel {
+    position: sticky;
+    top: 85px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+

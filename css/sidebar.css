@@ -1,0 +1,444 @@
+/* ========================================
+   SIDEBAR STYLES
+======================================== */
+
+.nav-link,
+.sidebar-link {
+display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-weight: 500;
+  font-size: 15px;
+  border-right: 3px solid transparent;
+  position: relative;
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.sidebar-link:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--text-primary);
+  border-right-color: var(--primary-blue);
+  padding-right: calc(var(--spacing-lg) + 2px);
+}
+
+.nav-link.active,
+.sidebar-link.active {
+  background: #f7f7f7 !important;
+  color: var(--primary-blue);
+  border-right-color: var(--primary-blue);
+  font-weight: 700;
+}
+
+.nav-link i,
+.sidebar-link i {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.link-text {
+  flex: 1;
+}
+
+.nav-parent > .nav-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.submenu-toggle {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at 30%, rgba(59, 130, 246, 0.5), rgba(6, 182, 212, 0.3));
+  border-radius: 50%;
+  transition: all var(--transition-normal);
+  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0);
+  display: inline-block;
+}
+
+.nav-parent > .nav-link:hover .submenu-toggle {
+  transform: scale(1.2);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
+.nav-parent.open > .nav-link .submenu-toggle {
+  transform: scale(1.4);
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.6);
+  background: radial-gradient(circle at 30%, rgba(6, 182, 212, 0.8), rgba(6, 182, 212, 0.5));
+}
+
+.nav-submenu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(59, 130, 246, 0.05);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-parent.open .nav-submenu {
+  max-height: 500px;
+}
+
+.nav-submenu li {
+  list-style: none;
+}
+
+.submenu-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  font-weight: 500;
+  font-size: 14px;
+  border-right: 3px solid transparent;
+  text-decoration: none;
+}
+
+.submenu-link:hover {
+  color: var(--text-primary);
+  background: rgba(59, 130, 246, 0.1);
+  border-right-color: var(--primary-blue);
+}
+
+.submenu-link.active {
+  color: var(--primary-cyan);
+  font-weight: 600;
+  border-right-color: var(--primary-cyan);
+}
+
+
+/* ============================================================
+   SIDEBAR MODERN DESIGN (THE NOTCH)
+   ============================================================ */
+
+.sidebar {
+  position: fixed !important;
+  right: 15px;
+  top: 85px;
+  bottom: 15px;
+  width: 260px;
+  /* الوضع الافتراضي (Dark Mode) */
+  background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 24px;
+  z-index: 1000;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible !important;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+/* ============================================================
+   LIGHT MODE — SIDEBAR (خلفية بيضاء منسجمة)
+   ============================================================ */
+
+/* الخلفية نفسها */
+body.light-mode .sidebar {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* الروابط الرئيسية */
+body.light-mode .nav-link,
+body.light-mode .sidebar-link {
+  color: #475569 !important;
+}
+
+body.light-mode .nav-link:hover,
+body.light-mode .sidebar-link:hover {
+  background: rgba(59, 130, 246, 0.07) !important;
+  color: #1d4ed8 !important;
+  border-right-color: var(--primary-blue) !important;
+}
+
+body.light-mode .nav-link.active,
+body.light-mode .sidebar-link.active {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #1d4ed8 !important;
+  border-right-color: var(--primary-blue) !important;
+}
+
+/* الأيقونات */
+body.light-mode .nav-link i,
+body.light-mode .sidebar-link i {
+  color: #64748b;
+}
+
+body.light-mode .nav-link.active i,
+body.light-mode .sidebar-link.active i,
+body.light-mode .nav-link:hover i,
+body.light-mode .sidebar-link:hover i {
+  color: #1d4ed8;
+}
+
+/* القائمة الفرعية */
+body.light-mode .nav-submenu {
+  background: rgba(59, 130, 246, 0.03) !important;
+}
+
+body.light-mode .submenu-link {
+  color: #64748b !important;
+}
+
+body.light-mode .submenu-link:hover {
+  color: #1d4ed8 !important;
+  background: rgba(59, 130, 246, 0.07) !important;
+  border-right-color: var(--primary-blue) !important;
+}
+
+body.light-mode .submenu-link.active {
+  color: var(--primary-cyan) !important;
+  border-right-color: var(--primary-cyan) !important;
+}
+
+/*زرار الاخفاء**/
+body.light-mode .sidebar-toggle-floating {
+  background: linear-gradient(135deg, #3b82f6, #06b6d4) !important;
+  box-shadow: -4px 0 15px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* الـ notch المقوس يتطابق مع خلفية الصفحة الفاتحة */
+body.light-mode .sidebar-notch::before {
+  box-shadow: 10px 10px 0 0 var(--light-bg, #f8fafc) !important;
+}
+
+body.light-mode .sidebar-notch::after {
+  box-shadow: 10px -10px 0 0 var(--light-bg, #f8fafc) !important;
+}
+
+body.sidebar-closed .sidebar {
+  right: -280px;
+}
+
+.sidebar-notch {
+  position: absolute;
+  left: -28px;
+  top: 25px;
+  width: 40px;
+  height: 80px;
+}
+
+.sidebar-toggle-floating {
+  position: absolute;
+  left: -35px;
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: -4px 0 15px rgba(30, 64, 175, 0.5);
+  z-index: 1200;
+  transition: all 0.3s ease;
+}
+
+
+body.sidebar-closed .sidebar-toggle-floating i {
+  transform: rotate(180deg);
+}
+
+.main-content {
+  margin-right: 290px;
+  transition: all 0.4s ease;
+}
+
+body.sidebar-closed .main-content {
+  margin-right: 20px;
+}
+
+.sidebar-menu-list {
+  list-style: none;
+  padding: 15px 10px;
+  margin: 0;
+}
+
+.menu-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  border-radius: 14px;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.menu-link:hover, .menu-link.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white !important;
+}
+
+/* ============================================================
+   MOBILE SIDEBAR TRANSFORMATION (UNDER HEADER)
+   ============================================================ */
+
+.mobile-menu-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 20px;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-menu-btn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (min-width: 769px) {
+  .mobile-menu-btn { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  .sidebar-notch { display: none !important; }
+
+  .sidebar {
+    position: fixed !important;
+    top: 75px !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto !important;
+    border-radius: 0 0 25px 25px !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    /* ✅ التدرج على الموبايل */
+    background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
+    transform: translateY(0);
+    opacity: 1;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 999;
+    padding: 10px 15px 20px 15px !important;
+    margin: 0 !important;
+  }
+
+  body.sidebar-closed .sidebar {
+    transform: translateY(-150%) !important;
+    opacity: 0;
+    pointer-events: none;
+    right: 0 !important;
+  }
+
+  .sidebar-menu-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 0 !important;
+  }
+
+  .nav-link, .sidebar-link {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px 15px !important;
+    margin: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .nav-link:hover, .sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white !important;
+    transform: translateX(-5px);
+    border-right-color: transparent;
+  }
+
+  .nav-submenu {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 10px !important;
+    margin-top: 5px !important;
+  }
+
+  .content-area {
+    margin-right: 0 !important;
+    padding-top: 20px !important;
+  }
+
+  /* Light mode للموبايل */
+  body.light-mode .sidebar {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.07) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  body.light-mode .nav-link,
+  body.light-mode .sidebar-link {
+    background: rgba(0, 0, 0, 0.02) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    color: #475569 !important;
+  }
+
+  body.light-mode .nav-link:hover,
+  body.light-mode .sidebar-link:hover {
+    background: rgba(59, 130, 246, 0.07) !important;
+    color: #1d4ed8 !important;
+    transform: translateX(-5px);
+  }
+
+  body.light-mode .nav-link.active,
+  body.light-mode .sidebar-link.active {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: #1d4ed8 !important;
+  }
+
+  body.light-mode .nav-submenu {
+    background: rgba(0, 0, 0, 0.02) !important;
+  }
+
+  body.light-mode .submenu-link {
+    color: #64748b !important;
+  }
+
+  body.light-mode .submenu-link:hover {
+    background: rgba(59, 130, 246, 0.07) !important;
+    color: #1d4ed8 !important;
+  }
+}
+
+@media (max-width: 482px) {
+  .header-left .icon-btn:not(.logout-special),
+  .theme-switch-wrapper { display: none !important; }
+
+  .logout-special {
+    display: flex !important;
+    width: 38px !important;
+    height: 38px !important;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .header-content { padding: 0 8px !important; gap: 5px !important; }
+  .header-right { gap: 5px !important; }
+  .main-title { font-size: 1rem !important; white-space: nowrap; }
+  .brand-wrapper i { font-size: 1.1rem !important; }
+}

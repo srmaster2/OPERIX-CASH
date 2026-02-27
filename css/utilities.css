@@ -1,0 +1,154 @@
+/* ========================================
+   RESPONSIVE DESIGN
+======================================== */
+
+@media (max-width: 768px) {
+  .app-header-main { padding: 0 var(--spacing-md); }
+  .main-title { font-size: 18px; }
+  .header-icon { font-size: 22px; }
+  .user-info-box { display: none !important; }
+  .content-area { margin-right: 0 !important; }
+  .sidebar-wrapper { right: -250px; }
+  body.sidebar-closed .sidebar-wrapper { right: -250px; }
+  body.sidebar-closed .content-area { margin-right: 0 !important; }
+  .stats-grid-main { grid-template-columns: 1fr; }
+  .dashboard-title { font-size: 1.6rem; }
+  .dashboard-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .app-header-main {
+    height: 60px;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+  }
+  .header-icon { font-size: 18px; }
+  .main-title { font-size: 16px; letter-spacing: 0.5px; }
+  .icon-btn { width: 36px; height: 36px; font-size: 16px; }
+  .content-area { padding: var(--spacing-md); }
+  .dashboard-title { font-size: 1.3rem; }
+  .dashboard-title i { font-size: 1.3rem; }
+  .profits-container { grid-template-columns: 1fr; }
+  .wallets-grid { grid-template-columns: 1fr; }
+  .wallets-modern-grid { grid-template-columns: 1fr; }
+}
+
+/* ========================================
+   UTILITY CLASSES
+======================================== */
+
+.text-primary { color: var(--primary-blue) !important; }
+.text-success { color: var(--success-green) !important; }
+.text-warning { color: var(--warning-orange) !important; }
+.text-danger { color: var(--danger-red) !important; }
+.text-info { color: var(--info-cyan) !important; }
+
+.blur-v {
+  position: relative;
+  overflow: hidden;
+  filter: blur(6px);
+  color: transparent;
+}
+
+.blur-v::before {
+  content: 'نقاط';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  filter: blur(0);
+  color: var(--text-secondary);
+  font-size: 0.8em;
+  font-weight: bold;
+  letter-spacing: 2px;
+  z-index: 10;
+}
+
+.d-none { display: none !important; }
+.d-md-flex { display: flex !important; }
+
+@media (max-width: 768px) {
+  .d-md-flex { display: none !important; }
+}
+
+.ms-auto { margin-left: auto; }
+.nav-parent { list-style: none; }
+.nav-item.nav-parent > a { position: relative; }
+.mb-1 { margin-bottom: var(--spacing-sm); }
+.mb-2 { margin-bottom: var(--spacing-md); }
+.mb-3 { margin-bottom: var(--spacing-lg); }
+.mb-4 { margin-bottom: var(--spacing-xl); }
+.mt-2 { margin-top: var(--spacing-md); }
+.mt-3 { margin-top: var(--spacing-lg); }
+.mt-4 { margin-top: var(--spacing-xl); }
+.p-5 { padding: var(--spacing-xl); }
+.text-center { text-align: center; }
+
+.spinner-border {
+  border: 3px solid rgba(59, 130, 246, 0.1);
+  border-top-color: var(--primary-blue);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.text-muted { color: var(--text-secondary); }
+
+.alert {
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin: 0;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--danger-red);
+}
+
+/* ========================================
+   ANIMATIONS
+======================================== */
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-100%); opacity: 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.5); }
+
+/* ========================================
+   LOADING STATES
+======================================== */
+
+.loading { opacity: 0.6; pointer-events: none; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-tertiary), var(--bg-secondary), var(--bg-tertiary));
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: var(--radius-md);
+  min-height: 20px;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
