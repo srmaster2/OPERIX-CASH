@@ -1,351 +1,11 @@
-// ============================================================
-// transactions.js — Sadek Cash (Supabase)
-// ملاحظة: searchTimeout, loadClientsToSelect, getTransactionLogs
-//         كلهم معرّفين في utils.js بس — مش هنا
-// ============================================================
-let dynamicLockList = []; // سيتم ملؤها تلقائياً بأسماء الشركات من قاعدة البيانات
-var globalPendingData = null;
-var selectedProvider  = "";
-var isRenderingPins   = false;
-
-const _supa = () => window.supa;
-// دالة لتفعيل الاستماع اللحظي
-function setupLiveLogs() {
-    const supabase = _supa();
-
-    supabase
-        .channel('public:transactions')
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'transactions'
-        }, () => {
-            executeAdvancedSearch();
-        })
-        .on('postgres_changes', {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'transactions'
-        }, () => {
-            // تحديث الجدول بعد الرول باك
-            executeAdvancedSearch();
-        })
-        .subscribe();
-}
-
-// استدعاء الدالة عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-    setupLiveLogs();
-    executeAdvancedSearch(); // تحميل البيانات لأول مرة
-});
-async function getSession() {
-    const { data } = await _supa().auth.getSession();
-    return data.session;
-}
-
-// ============================================================
-// 1. setOp
-// ============================================================
-function setOp(typeValue, provider, element) {
-    const walletSelect = document.getElementById('wallet');
-    const typeInput    = document.getElementById('type');
-
-    if (typeInput) typeInput.value = typeValue;
-    selectedProvider = provider || "";
-
-    document.querySelectorAll('.op-card').forEach(c => c.classList.remove('active','active-op'));
-    if (element) element.classList.add('active','active-op');
-
-    const target = _norm(provider);
-    
-    // التحقق هل الشركة من ضمن قائمة الشركات الديناميكية؟
-    // cash_supply (تزويد) لا يقفل الـ wallet — المحفظة يختارها المستخدم
-    const isCashSupply = typeValue.includes("سحب كاش") && typeValue.includes("تزويد");
-    const isLockOp = !isCashSupply &&
-                     dynamicLockList.some(p => _norm(p) === target) &&
-                     (typeValue.includes("سحب") || typeValue.includes("فاتورة"));
-
-    if (isLockOp && walletSelect) {
-        let found = false;
-        for (let i = 0; i < walletSelect.options.length; i++) {
-            if (_norm(walletSelect.options[i].text).includes(target)) {
-                walletSelect.selectedIndex = i;
-                found = true;
-                break;
-            }
-        }
-        
-        if (found) {
-            walletSelect.disabled = true;
-            walletSelect.style.backgroundColor = "var(--bg-body)";
-            walletSelect.style.cursor = "not-allowed";
-        }
-    } else if (walletSelect) {
-        walletSelect.disabled = false;
-        walletSelect.style.backgroundColor = "";
-        walletSelect.style.cursor = "default";
-        
-        // إذا لم تكن شركة مسجلة، نعود للخيار الافتراضي
-        if (!dynamicLockList.some(p => _norm(p) === target)) {
-             walletSelect.selectedIndex = 0;
-        }
-    }
-
-    _toggleOpFields(typeValue);
-    if (typeof updateLimitDisplay === "function") updateLimitDisplay();
-    walletSelect?.dispatchEvent(new Event('change'));
-
-    // توجيه المستخدم لمبلغ العملية
-    setTimeout(() => {
-        const f = document.getElementById('amount');
-        if (f) { f.scrollIntoView({ behavior:'smooth', block:'center' }); f.focus(); }
-    }, 400);
-}
-function _norm(txt) {
-    return txt ? String(txt).replace(/[أإآا]/g,'ا').replace(/\s+/g,'').trim().toLowerCase() : "";
-}
-
-function _toggleOpFields(typeValue) {
-    const isDebt   = /دين|مديونية|سداد/.test(typeValue || '');
-    const isWallet = typeValue && !isDebt && !typeValue.includes("مصروف");
-    const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? 'block' : 'none'; };
-    show('clientFieldContainer',     isDebt);
-    show('commDestinationContainer', isWallet);
-    show('deductCommContainer',      isWallet);
-    if (isDebt && typeof loadClientsToSelect === "function") loadClientsToSelect();
-}
-
-// ============================================================
-// 2. openProviderSelect
-// ============================================================
-// ============================================================
-// serviceMap: خريطة العمليات — الشركات بتتجيب من Supabase أوتوماتيك
-// ============================================================
-const serviceMap = {
-    client_withdraw: {
-        label: 'سحب من عميل',
-        buildTitle: (prov) => `سحب من عميل (تزويد ${prov})`,
-        filterTag: 'شركة',
-        needsWallet: false   // المحفظة = الخزنة، مش محفظة منفصلة
-    },
-    pay_bill: {
-        label: 'دفع فاتورة',
-        buildTitle: (prov) => `دفع فاتورة (${prov})`,
-        filterTag: 'شركة',
-        needsWallet: false
-    },
-    cash_supply: {
-        label: 'سحب كاش',
-        buildTitle: (prov) => `سحب كاش (تزويد ${prov})`,
-        filterTag: 'شركة',
-        needsWallet: true    // ✅ تزويد: لازم يختار محفظة بعد الشركة
-    },
-    visa_withdraw: {
-        label: 'سحب فيزا',
-        buildTitle: (prov) => `سحب فيزا (ماكينة ${prov})`,
-        filterTag: 'شركة',
-        needsWallet: false
-    }
-};
-
-
-function getProviderGradient(name) {
-    const presets = {
-        'فوري': ['#ff6b00', '#ff8f00'],
-        'أمان': ['#21bce2', '#0ea5e9'],
-        'مكسب': ['#153d96', '#1e40af'],
-        'ضامن': ['#7c3aed', '#5b21b6'],
-        'بساطة': ['#dc2626', '#ef4444'],
-        'مشتريات': ['#059669', '#10b981'],
-        '2090': ['#1e293b', '#475569']
-    };
-
-    if (presets[name]) {
-        return `linear-gradient(135deg, ${presets[name][0]}, ${presets[name][1]})`;
-    }
-
-    // توليد لون عشوائي ذكي لأي شركة جديدة تضاف مستقبلاً
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    const h = Math.abs(hash) % 360;
-    return `linear-gradient(135deg, hsl(${h}, 75%, 40%), hsl(${h}, 75%, 30%))`;
-}
-
-// 3. دالة فتح اختيار الشركة (تحديث القائمة + رسم الكروت)
-async function openProviderSelect(serviceKey, element) {
-    // تمييز الكارت المختار
-    document.querySelectorAll('.op-card').forEach(c => c.classList.remove('active','active-op'));
-    if (element) element.classList.add('active','active-op');
-
-    const config = serviceMap[serviceKey];
-    if (!config) return;
-
-    document.getElementById('selectedServiceKey').value = serviceKey;
-    const grid = document.getElementById('providerButtonsGrid');
-    const modal = document.getElementById('providerModal');
-    if (!grid || !modal) return;
-
-    grid.innerHTML = '<div class="text-center p-4"><i class="fa fa-circle-notch fa-spin fa-3x text-primary"></i></div>';
-    modal.style.display = 'flex';
-
-    try {
-        const user = window.currentUserData;
-        let compQuery = _supa()
-            .from('accounts')
-            .select('id, name, balance')
-            .gt('daily_out_limit', 9000000)
-            .not('name', 'ilike', '%خزنة%')
-            .not('name', 'ilike', '%كاش%');
-        if (typeof applyBranchFilter === 'function') compQuery = applyBranchFilter(compQuery, user);
-        compQuery = compQuery.order('name');
-        const { data: companies, error } = await compQuery;
-
-        if (error) throw error;
-
-        // تحديث مصفوفة الشركات للربط التلقائي
-        dynamicLockList = companies ? companies.map(c => c.name) : [];
-        grid.innerHTML = '';
-
-        if (dynamicLockList.length === 0) {
-            grid.innerHTML = '<div class="p-4 text-center text-muted">لا توجد شركات مسجلة حالياً</div>';
-            return;
-        }
-
-        companies.forEach(company => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'provider-card';
-            
-            const gradient = getProviderGradient(company.name);
-            const bal = Number(company.balance || 0).toLocaleString();
-
-            btn.style.background = gradient;
-            btn.innerHTML = `
+let dynamicLockList=[];var globalPendingData=null,selectedProvider="",isRenderingPins=!1;const _supa=()=>window.supa;function setupLiveLogs(){let e=_supa();e.channel("public:transactions").on("postgres_changes",{event:"INSERT",schema:"public",table:"transactions"},()=>{executeAdvancedSearch()}).on("postgres_changes",{event:"DELETE",schema:"public",table:"transactions"},()=>{executeAdvancedSearch()}).subscribe()}async function getSession(){let{data:e}=await _supa().auth.getSession();return e.session}function setOp(e,t,a){let n=document.getElementById("wallet"),i=document.getElementById("type");i&&(i.value=e),selectedProvider=t||"",document.querySelectorAll(".op-card").forEach(e=>e.classList.remove("active","active-op")),a&&a.classList.add("active","active-op");let l=_norm(t),o=e.includes("سحب كاش")&&e.includes("تزويد"),s=!o&&dynamicLockList.some(e=>_norm(e)===l)&&(e.includes("سحب")||e.includes("فاتورة"));if(s&&n){let r=!1;for(let d=0;d<n.options.length;d++)if(_norm(n.options[d].text).includes(l)){n.selectedIndex=d,r=!0;break}r&&(n.disabled=!0,n.style.backgroundColor="var(--bg-body)",n.style.cursor="not-allowed")}else n&&(n.disabled=!1,n.style.backgroundColor="",n.style.cursor="default",dynamicLockList.some(e=>_norm(e)===l)||(n.selectedIndex=0));_toggleOpFields(e),"function"==typeof updateLimitDisplay&&updateLimitDisplay(),n?.dispatchEvent(new Event("change")),setTimeout(()=>{let e=document.getElementById("amount");e&&(e.scrollIntoView({behavior:"smooth",block:"center"}),e.focus())},400)}function _norm(e){return e?String(e).replace(/[أإآا]/g,"ا").replace(/\s+/g,"").trim().toLowerCase():""}function _toggleOpFields(e){let t=/دين|مديونية|سداد/.test(e||""),a=e&&!t&&!e.includes("مصروف"),n=(e,t)=>{let a=document.getElementById(e);a&&(a.style.display=t?"block":"none")};n("clientFieldContainer",t),n("commDestinationContainer",a),n("deductCommContainer",a),t&&"function"==typeof loadClientsToSelect&&loadClientsToSelect()}document.addEventListener("DOMContentLoaded",()=>{setupLiveLogs(),executeAdvancedSearch()});const serviceMap={client_withdraw:{label:"سحب من عميل",buildTitle:e=>`سحب من عميل (تزويد ${e})`,filterTag:"شركة",needsWallet:!1},pay_bill:{label:"دفع فاتورة",buildTitle:e=>`دفع فاتورة (${e})`,filterTag:"شركة",needsWallet:!1},cash_supply:{label:"سحب كاش",buildTitle:e=>`سحب كاش (تزويد ${e})`,filterTag:"شركة",needsWallet:!0},visa_withdraw:{label:"سحب فيزا",buildTitle:e=>`سحب فيزا (ماكينة ${e})`,filterTag:"شركة",needsWallet:!1}};function getProviderGradient(e){let t={فوري:["#ff6b00","#ff8f00"],أمان:["#21bce2","#0ea5e9"],مكسب:["#153d96","#1e40af"],ضامن:["#7c3aed","#5b21b6"],بساطة:["#dc2626","#ef4444"],مشتريات:["#059669","#10b981"],2090:["#1e293b","#475569"]};if(t[e])return`linear-gradient(135deg, ${t[e][0]}, ${t[e][1]})`;let a=0;for(let n=0;n<e.length;n++)a=e.charCodeAt(n)+((a<<5)-a);let i=Math.abs(a)%360;return`linear-gradient(135deg, hsl(${i}, 75%, 40%), hsl(${i}, 75%, 30%))`}async function openProviderSelect(e,t){document.querySelectorAll(".op-card").forEach(e=>e.classList.remove("active","active-op")),t&&t.classList.add("active","active-op");let a=serviceMap[e];if(!a)return;document.getElementById("selectedServiceKey").value=e;let n=document.getElementById("providerButtonsGrid"),i=document.getElementById("providerModal");if(n&&i){n.innerHTML='<div class="text-center p-4"><i class="fa fa-circle-notch fa-spin fa-3x text-primary"></i></div>',i.style.display="flex";try{let l=window.currentUserData,o=_supa().from("accounts").select("id, name, balance").gt("daily_out_limit",9e6).not("name","ilike","%خزنة%").not("name","ilike","%كاش%");"function"==typeof applyBranchFilter&&(o=applyBranchFilter(o,l)),o=o.order("name");let{data:s,error:r}=await o;if(r)throw r;if(dynamicLockList=s?s.map(e=>e.name):[],n.innerHTML="",0===dynamicLockList.length){n.innerHTML='<div class="p-4 text-center text-muted">لا توجد شركات مسجلة حالياً</div>';return}s.forEach(t=>{let a=document.createElement("button");a.type="button",a.className="provider-card";let i=getProviderGradient(t.name),l=Number(t.balance||0).toLocaleString();a.style.background=i,a.innerHTML=`
                 <div class="provider-info">
-                    <span class="provider-name">${company.name}</span>
-                    <span class="provider-balance"><i class="fa fa-wallet"></i> رصيد: ${bal} ج.م</span>
+                    <span class="provider-name">${t.name}</span>
+                    <span class="provider-balance"><i class="fa fa-wallet"></i> رصيد: ${l} ج.م</span>
                 </div>
                 <i class="fa fa-university provider-icon-bg"></i>
                 <i class="fa fa-chevron-left" style="z-index:2; font-size: 14px; opacity:0.8"></i>
-            `;
-
-            btn.onclick = () => confirmProviderSelection(serviceKey, company.name);
-            grid.appendChild(btn);
-        });
-
-    } catch(e) {
-        grid.innerHTML = '<div class="alert alert-danger mx-3">فشل تحميل بيانات الشركات</div>';
-    }
-}
-function confirmProviderSelection(serviceKey, provider) {
-    const config = serviceMap[serviceKey];
-    if (!config) return;
-    closeProviderModal();
-    const originalCard = document.querySelector(`.op-card[onclick*="${serviceKey}"]`);
-
-    if (config.needsWallet) {
-        // ✅ تزويد: اضبط النوع والـ provider، ثم اطلب من المستخدم يختار محفظة من الـ pinned
-        selectedProvider = provider;
-        const typeInput = document.getElementById('type');
-        if (typeInput) typeInput.value = config.buildTitle(provider);
-        document.querySelectorAll('.op-card').forEach(c => c.classList.remove('active','active-op'));
-        if (originalCard) originalCard.classList.add('active','active-op');
-        _toggleOpFields(config.buildTitle(provider));
-
-        // فتح محفظة الاختيار: reset الـ select وانتظر المستخدم
-        const walletSelect = document.getElementById('wallet');
-        if (walletSelect) {
-            walletSelect.disabled = false;
-            walletSelect.style.backgroundColor = "";
-            walletSelect.style.cursor = "default";
-            walletSelect.selectedIndex = 0;
-        }
-
-        // تمييز منطقة الـ pinned wallets عشان يشوفها
-        const pinnedContainer = document.getElementById('pinnedWallets');
-        if (pinnedContainer) {
-            pinnedContainer.style.outline = '2px solid var(--primary-blue)';
-            pinnedContainer.style.borderRadius = '14px';
-            pinnedContainer.style.transition = 'outline 0.3s';
-            setTimeout(() => {
-                pinnedContainer.style.outline = 'none';
-            }, 2500);
-            pinnedContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        showToast("📌 اختر المحفظة من الكروت المثبتة", true);
-        if (typeof updateLimitDisplay === "function") updateLimitDisplay();
-    } else {
-        // السلوك الطبيعي
-        setOp(config.buildTitle(provider), provider, originalCard);
-    }
-}
-function closeProviderModal() {
-    const modal = document.getElementById('providerModal');
-    if (modal) modal.style.display = 'none';
-}
-
-
-// ============================================================
-// 3. renderPinnedWallets
-// ============================================================
-async function renderPinnedWallets() {
-    const container = document.getElementById('pinnedWallets');
-    if (!container || isRenderingPins) return;
-    isRenderingPins = true;
-
-    try {
-        const user = window.currentUserData;
-        let pinQuery = _supa()
-            .from('accounts')
-            .select('id, name, balance, is_pinned, tag, color, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out')
-            .eq('is_pinned', true)
-            .order('name');
-        if (typeof applyBranchFilter === 'function') pinQuery = applyBranchFilter(pinQuery, user);
-        const { data: accounts, error } = await pinQuery;
-
-        container.innerHTML = '';
-        if (error || !accounts || !accounts.length) {
-            container.innerHTML = '<span class="text-muted small">لا توجد محافظ مثبتة.</span>';
-            return;
-        }
-
-        // الثيم في CSS يعتمد على body.light-mode — الدارك هو الحالة الافتراضية
-        const isDark = !document.body.classList.contains('light-mode');
-
-        accounts.forEach(function(w) {
-            const btn = document.createElement('div');
-
-            const bal      = Number(w.balance || 0);
-            const lo       = Number(w.daily_out_limit || 0);
-            const li       = Number(w.daily_in_limit  || 0);
-            const lm       = Number(w.monthly_limit   || 0);
-            const uo       = Number(w.daily_out_usage || 0);
-            const ui       = Number(w.daily_in_usage  || 0);
-            const um       = Number(w.monthly_usage_out || 0);
-
-            const availOut = Math.max(0, lm > 0 ? Math.min(lo - uo, lm - um) : lo - uo);
-            const availIn  = Math.max(0, li - ui);
-
-            // ⭐ لون مضمون للدارك/لايت مود
-            const dynamicMainColor  = isDark ? '#f1f5f9' : '#1e293b';
-            const dynamicMutedColor = isDark ? '#94a3b8' : '#64748b';
-
-            const balColor = bal < 300  ? '#ef4444'
-                           : bal < 1000 ? '#f59e0b'
-                           : '#10b981';
-
-            const inColor  = availIn  < 500 ? '#ef4444'
-                           : availIn  < 2000 ? '#f59e0b'
-                           : '#10b981';
-
-            const outColor = availOut < 500 ? '#ef4444'
-                           : availOut < 2000 ? '#f59e0b'
-                           : '#10b981';
-
-            const tagColor = w.color || '#0ea5e9';
-
-            btn.style.cssText = `
+            `,a.onclick=()=>confirmProviderSelection(e,t.name),n.appendChild(a)})}catch(d){n.innerHTML='<div class="alert alert-danger mx-3">فشل تحميل بيانات الشركات</div>'}}}function confirmProviderSelection(e,t){let a=serviceMap[e];if(!a)return;closeProviderModal();let n=document.querySelector(`.op-card[onclick*="${e}"]`);if(a.needsWallet){selectedProvider=t;let i=document.getElementById("type");i&&(i.value=a.buildTitle(t)),document.querySelectorAll(".op-card").forEach(e=>e.classList.remove("active","active-op")),n&&n.classList.add("active","active-op"),_toggleOpFields(a.buildTitle(t));let l=document.getElementById("wallet");l&&(l.disabled=!1,l.style.backgroundColor="",l.style.cursor="default",l.selectedIndex=0);let o=document.getElementById("pinnedWallets");o&&(o.style.outline="2px solid var(--primary-blue)",o.style.borderRadius="14px",o.style.transition="outline 0.3s",setTimeout(()=>{o.style.outline="none"},2500),o.scrollIntoView({behavior:"smooth",block:"nearest"})),showToast("\uD83D\uDCCC اختر المحفظة من الكروت المثبتة",!0),"function"==typeof updateLimitDisplay&&updateLimitDisplay()}else setOp(a.buildTitle(t),t,n)}function closeProviderModal(){let e=document.getElementById("providerModal");e&&(e.style.display="none")}async function renderPinnedWallets(){let e=document.getElementById("pinnedWallets");if(e&&!isRenderingPins){isRenderingPins=!0;try{let t=window.currentUserData,a=_supa().from("accounts").select("id, name, balance, is_pinned, tag, color, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out").eq("is_pinned",!0).order("name");"function"==typeof applyBranchFilter&&(a=applyBranchFilter(a,t));let{data:n,error:i}=await a;if(e.innerHTML="",i||!n||!n.length){e.innerHTML='<span class="text-muted small">لا توجد محافظ مثبتة.</span>';return}document.body.classList.contains("light-mode"),n.forEach(function(t){let a=document.createElement("div"),n=Number(t.balance||0),i=Number(t.daily_out_limit||0),l=Number(t.daily_in_limit||0),o=Number(t.monthly_limit||0),s=Number(t.daily_out_usage||0),r=Number(t.daily_in_usage||0),d=Number(t.monthly_usage_out||0),c=Math.max(0,o>0?Math.min(i-s,o-d):i-s),u=Math.max(0,l-r),f=t.color||"#0ea5e9";a.style.cssText=`
                 display:inline-flex;
                 flex-direction:column;
                 gap:6px;
@@ -360,250 +20,83 @@ async function renderPinnedWallets() {
                 user-select:none;
                 box-shadow:var(--pin-card-shadow);
                 transition: border-color 0.2s, box-shadow 0.2s;
-            `;
-
-            var tagHtml = (w.tag && w.tag.trim())
-                ? `<span style="font-size:9px; background:${tagColor}; color:#fff; padding:1px 7px; border-radius:20px; font-weight:700;">${w.tag}</span>`
-                : '';
-
-            var line1 = `
+            `;var p=`
                 <div style="display:flex; justify-content:space-between;">
                     <div style="display:flex; gap:6px; align-items:center;">
-                        <i class="fa-solid fa-bolt" style="color:${tagColor}; font-size:11px;"></i>
-                        <span style="font-size:12px; font-weight:800; color:var(--pin-text-main);">${w.name}</span>
+                        <i class="fa-solid fa-bolt" style="color:${f}; font-size:11px;"></i>
+                        <span style="font-size:12px; font-weight:800; color:var(--pin-text-main);">${t.name}</span>
                     </div>
-                    ${tagHtml}
-                </div>`;
-
-            var line2 = `
+                    ${t.tag&&t.tag.trim()?`<span style="font-size:9px; background:${f}; color:#fff; padding:1px 7px; border-radius:20px; font-weight:700;">${t.tag}</span>`:""}
+                </div>`,m=`
                 <div style="border-top:1px dashed var(--pin-divider); padding-top:6px;">
                     <span style="font-size:9px; color:var(--pin-text-muted);">رصيد</span>
-                    <span style="font-size:14px; font-weight:800; color:${balColor}; margin-right:4px;">${bal.toLocaleString()}</span>
+                    <span style="font-size:14px; font-weight:800; color:${n<300?"#ef4444":n<1e3?"#f59e0b":"#10b981"}; margin-right:4px;">${n.toLocaleString()}</span>
                     <span style="font-size:9px; color:var(--pin-text-muted);">ج.م</span>
-                </div>`;
-
-            var line3 = `
+                </div>`,b=`
                 <div style="display:flex; gap:6px;">
                     <div style="flex:1; text-align:center; background:var(--pin-in-bg); border-radius:8px; padding:4px;">
                         <div style="font-size:8px; color:var(--pin-text-muted);">دخول</div>
-                        <div style="font-weight:700; color:${inColor};">${availIn.toLocaleString()}</div>
+                        <div style="font-weight:700; color:${u<500?"#ef4444":u<2e3?"#f59e0b":"#10b981"};">${u.toLocaleString()}</div>
                     </div>
                     <div style="flex:1; text-align:center; background:var(--pin-out-bg); border-radius:8px; padding:4px;">
                         <div style="font-size:8px; color:var(--pin-text-muted);">خروج</div>
-                        <div style="font-weight:700; color:${outColor};">${availOut.toLocaleString()}</div>
+                        <div style="font-weight:700; color:${c<500?"#ef4444":c<2e3?"#f59e0b":"#10b981"};">${c.toLocaleString()}</div>
                     </div>
-                </div>`;
-
-            btn.innerHTML = line1 + line2 + line3;
-
-            btn.onmouseenter = function() { btn.style.borderColor = tagColor; btn.style.boxShadow = '0 0 0 2px ' + tagColor + '33'; };
-            btn.onmouseleave = function() {
-                if (!btn.classList.contains('active')) {
-                    btn.style.borderColor = 'var(--border-color, #e2e8f0)';
-                    btn.style.boxShadow = 'var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))';
-                }
-            };
-            btn.onclick = function() {
-                document.querySelectorAll('#pinnedWallets > div').forEach(function(b) {
-                    b.classList.remove('active');
-                    b.style.borderColor = 'var(--border-color, #e2e8f0)';
-                    b.style.boxShadow = 'var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))';
-                });
-                btn.classList.add('active');
-                btn.style.borderColor = tagColor;
-                btn.style.boxShadow = '0 0 0 3px ' + tagColor + '44';
-                selectWalletFast(w.id, w.name, btn);
-            };
-
-            container.appendChild(btn);
-        });
-
-    } catch(e) {
-        if (container) container.innerHTML = '<span class="text-muted small">خطأ في العرض</span>';
-    } finally {
-        isRenderingPins = false;
-    }
-}
-function selectWalletFast(walletId, walletName, btn) {
-    const select = document.getElementById('wallet');
-    if (!select) return;
-    for (let i = 0; i < select.options.length; i++) {
-        if (select.options[i].value == walletId ||
-            _norm(select.options[i].text).includes(_norm(walletName))) {
-            select.selectedIndex = i; break;
-        }
-    }
-    document.querySelectorAll('.pin-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
-    if (typeof updateLimitDisplay === "function") updateLimitDisplay();
-    select.dispatchEvent(new Event('change'));
-}
-
-// ============================================================
-// 4. loadWalletsToSelect — للفلترة حسب الفئة (SAFE/WALLET/COMPANY)
-//    loadWallets في utils.js للقائمة العامة بدون فلترة
-// ============================================================
-async function loadWalletsToSelect(category) {
-    const select = document.getElementById('wallet');
-    if (!select) return;
-    select.innerHTML = '<option value="">جاري التحميل...</option>';
-
-    const user = window.currentUserData;
-    let query = _supa().from('accounts').select('id, name, balance, daily_out_limit').order('name');
-    if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
-    const { data: accounts, error } = await query;
-
-    if (error || !accounts) {
-        select.innerHTML = '<option value="">خطأ في التحميل</option>';
-        return;
-    }
-    select.innerHTML = '<option value="">اختر الحساب...</option>';
-    accounts.forEach(acc => {
-        const limit     = Number(acc.daily_out_limit) || 0;
-        const isCompany = limit > 10000000;
-        const isSafe    = acc.name.includes("الخزنة");
-        if (category === 'SAFE'    && !isSafe)               return;
-        if (category === 'WALLET'  && (isSafe || isCompany)) return;
-        if (category === 'COMPANY' && !isCompany)             return;
-        const bal = Number(acc.balance) || 0;
-        select.innerHTML += `<option value="${acc.id}"
-            data-lo="${acc.daily_out_limit||0}"
-            data-li="${acc.daily_in_limit||0}"
-            data-lm="${acc.monthly_limit||0}">
-            ${acc.name} (${bal.toLocaleString()} ج.م)
-        </option>`;
-    });
-}
-
-// ============================================================
-// 5. runTransaction
-// ============================================================
-function runTransaction() {
-    try {
-        const get = id => document.getElementById(id);
-        const typeEl     = get('type');
-        const amountEl   = get('amount');
-        const walletEl   = get('wallet');
-        const commEl     = get('comm');
-        const commDestEl = get('commDestination');
-        const clientEl   = get('client');
-        const noteEl     = get('note');
-        const deductEl   = get('deductCommFromAmount');
-
-        if (!typeEl?.value?.trim())
-            return showToast("⚠️ يجب اختيار نوع الخدمة من الكروت أولاً", false);
-        if (!amountEl?.value || Number(amountEl.value) <= 0)
-            return showToast("⚠️ برجاء إدخال مبلغ صحيح", false);
-        if (!walletEl?.value)
-            return showToast("⚠️ يرجى اختيار المحفظة أو الخزنة", false);
-
-        const type       = typeEl.value;
-        const amount     = amountEl.value.replace(/,/g,'');
-        const walletId   = walletEl.value;
-        const walletName = (walletEl.options[walletEl.selectedIndex]?.text||"").replace(/\s*\(.*\)/,'').trim();
-        const comm       = (commEl?.value||'0').replace(/,/g,'');
-        const commDest   = commDestEl?.value || 'CASH';
-        const clientId   = clientEl?.value   || '';
-        const note       = noteEl?.value     || '';
-        const deductComm = deductEl?.checked  || false;
-        const provider   = selectedProvider  || walletName || "الخزنة";
-
-        if (/دين|مديونية|سداد/.test(type) && !clientId)
-            return showToast("⚠️ هذه العملية تتطلب اختيار عميل", false);
-
-        const summaryCard = `
+                </div>`;a.innerHTML=p+m+b,a.onmouseenter=function(){a.style.borderColor=f,a.style.boxShadow="0 0 0 2px "+f+"33"},a.onmouseleave=function(){a.classList.contains("active")||(a.style.borderColor="var(--border-color, #e2e8f0)",a.style.boxShadow="var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))")},a.onclick=function(){document.querySelectorAll("#pinnedWallets > div").forEach(function(e){e.classList.remove("active"),e.style.borderColor="var(--border-color, #e2e8f0)",e.style.boxShadow="var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05))"}),a.classList.add("active"),a.style.borderColor=f,a.style.boxShadow="0 0 0 3px "+f+"44",selectWalletFast(t.id,t.name,a)},e.appendChild(a)})}catch(l){e&&(e.innerHTML='<span class="text-muted small">خطأ في العرض</span>')}finally{isRenderingPins=!1}}}function selectWalletFast(e,t,a){let n=document.getElementById("wallet");if(n){for(let i=0;i<n.options.length;i++)if(n.options[i].value==e||_norm(n.options[i].text).includes(_norm(t))){n.selectedIndex=i;break}document.querySelectorAll(".pin-btn").forEach(e=>e.classList.remove("active")),a&&a.classList.add("active"),"function"==typeof updateLimitDisplay&&updateLimitDisplay(),n.dispatchEvent(new Event("change"))}}async function loadWalletsToSelect(e){let t=document.getElementById("wallet");if(!t)return;t.innerHTML='<option value="">جاري التحميل...</option>';let a=window.currentUserData,n=_supa().from("accounts").select("id, name, balance, daily_out_limit").order("name");"function"==typeof applyBranchFilter&&(n=applyBranchFilter(n,a));let{data:i,error:l}=await n;if(l||!i){t.innerHTML='<option value="">خطأ في التحميل</option>';return}t.innerHTML='<option value="">اختر الحساب...</option>',i.forEach(a=>{let n=Number(a.daily_out_limit)||0,i=n>1e7,l=a.name.includes("الخزنة");if("SAFE"===e&&!l||"WALLET"===e&&(l||i)||"COMPANY"===e&&!i)return;let o=Number(a.balance)||0;t.innerHTML+=`<option value="${a.id}"
+            data-lo="${a.daily_out_limit||0}"
+            data-li="${a.daily_in_limit||0}"
+            data-lm="${a.monthly_limit||0}">
+            ${a.name} (${o.toLocaleString()} ج.م)
+        </option>`})}function runTransaction(){try{let e=e=>document.getElementById(e),t=e("type"),a=e("amount"),n=e("wallet"),i=e("comm"),l=e("commDestination"),o=e("client"),s=e("note"),r=e("deductCommFromAmount");if(!t?.value?.trim())return showToast("⚠️ يجب اختيار نوع الخدمة من الكروت أولاً",!1);if(!a?.value||0>=Number(a.value))return showToast("⚠️ برجاء إدخال مبلغ صحيح",!1);if(!n?.value)return showToast("⚠️ يرجى اختيار المحفظة أو الخزنة",!1);let d=t.value,c=a.value.replace(/,/g,""),u=n.value,f=(n.options[n.selectedIndex]?.text||"").replace(/\s*\(.*\)/,"").trim(),p=(i?.value||"0").replace(/,/g,""),m=l?.value||"CASH",b=o?.value||"",y=s?.value||"",g=r?.checked||!1,$=selectedProvider||f||"الخزنة";if(/دين|مديونية|سداد/.test(d)&&!b)return showToast("⚠️ هذه العملية تتطلب اختيار عميل",!1);let v=`
             <div style="background:rgba(255,255,255,0.05);border-radius:18px;padding:15px;margin-bottom:15px;border:1px solid rgba(255,255,255,0.1);">
                 <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                     <span style="color:var(--text-muted);font-size:13px;">نوع العملية:</span>
-                    <span style="color:var(--text-main);font-weight:800;">${type}</span>
+                    <span style="color:var(--text-main);font-weight:800;">${d}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                     <span style="color:var(--text-muted);font-size:13px;">المبلغ:</span>
-                    <span style="color:var(--text-main);font-weight:800;font-size:18px;">${Number(amount).toLocaleString()} ج.م</span>
+                    <span style="color:var(--text-main);font-weight:800;font-size:18px;">${Number(c).toLocaleString()} ج.م</span>
                 </div>
-                ${Number(comm)>0 ? `
+                ${Number(p)>0?`
                 <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                     <span style="color:var(--text-muted);font-size:13px;">العمولة:</span>
-                    <span style="color:#f59e0b;font-weight:bold;">${Number(comm).toLocaleString()} ← ${commDest==='CASH'?'💰 الخزنة':'📱 المحفظة'}</span>
-                </div>` : ''}
+                    <span style="color:#f59e0b;font-weight:bold;">${Number(p).toLocaleString()} ← ${"CASH"===m?"\uD83D\uDCB0 الخزنة":"\uD83D\uDCF1 المحفظة"}</span>
+                </div>`:""}
                 <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.2);">
                     <span style="color:var(--text-muted);font-size:13px;">الجهة:</span>
-                    <span style="color:#ffca28;font-weight:bold;">${provider}</span>
+                    <span style="color:#ffca28;font-weight:bold;">${$}</span>
                 </div>
-            </div>`;
-
-        globalPendingData = { walletId, walletName, type, provider, amount, comm, clientId, note, commDest, deductComm };
-        showCustomConfirmModal(summaryCard + _buildFlowCard(type, provider, walletName), _getOpColor(type));
-    } catch(err) {
-        alert("خطأ: " + err.message);
-    }
-}
-
-function _getOpColor(type) {
-    if (/سداد|وارد|سحب من محفظة/.test(type)) return "#10b981";
-    if (/مصروف|سحب|إيداع/.test(type))         return "#ef4444";
-    return "#3b82f6";
-}
-
-function _buildFlowCard(type, provider, walletName) {
-    const box = (from, fi, to, ti, color, detail) => `
+            </div>`;globalPendingData={walletId:u,walletName:f,type:d,provider:$,amount:c,comm:p,clientId:b,note:y,commDest:m,deductComm:g},showCustomConfirmModal(v+_buildFlowCard(d,$,f),_getOpColor(d))}catch(x){alert("خطأ: "+x.message)}}function _getOpColor(e){return/سداد|وارد|سحب من محفظة/.test(e)?"#10b981":/مصروف|سحب|إيداع/.test(e)?"#ef4444":"#3b82f6"}function _buildFlowCard(e,t,a){let n=(e,t,a,n,i,l)=>`
         <div style="background:rgba(255,255,255,0.02);padding:15px;border-radius:18px;border:1px solid rgba(255,255,255,0.05);">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                 <div style="text-align:center;width:70px;">
                     <div style="width:45px;height:45px;background:rgba(255,255,255,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;">
-                        <i class="fas ${fi}" style="color:var(--text-main)"></i></div>
-                    <span style="font-size:10px;color:var(--text-muted);font-weight:bold;">${from}</span>
+                        <i class="fas ${t}" style="color:var(--text-main)"></i></div>
+                    <span style="font-size:10px;color:var(--text-muted);font-weight:bold;">${e}</span>
                 </div>
-                <i class="fas fa-long-arrow-alt-left fa-2x" style="color:${color};opacity:0.8;flex:1;text-align:center;"></i>
+                <i class="fas fa-long-arrow-alt-left fa-2x" style="color:${i};opacity:0.8;flex:1;text-align:center;"></i>
                 <div style="text-align:center;width:70px;">
-                    <div style="width:45px;height:45px;background:${color};border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;">
-                        <i class="fas ${ti}" style="color:#fff"></i></div>
-                    <span style="font-size:10px;color:var(--text-muted);font-weight:bold;">${to}</span>
+                    <div style="width:45px;height:45px;background:${i};border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;">
+                        <i class="fas ${n}" style="color:#fff"></i></div>
+                    <span style="font-size:10px;color:var(--text-muted);font-weight:bold;">${a}</span>
                 </div>
             </div>
-            <p style="margin:0;font-size:13px;color:var(--text-main);direction:rtl;line-height:1.5;">${detail}</p>
-        </div>`;
-
-    if (/سحب من عميل|سحب فيزا/.test(type))
-        return box("العميل","fa-user",provider,"fa-server","#10b981",`📥 رصيد ${provider} هيزيد.<br>📤 كاش الخزنة هيقل.`);
-    if (type.includes("دفع فاتورة"))
-        return box("العميل","fa-money-bill",provider,"fa-server","#ef4444",`📥 كاش الخزنة هيزيد.<br>📤 رصيد ${provider} هيقل.`);
-    if (/سحب كاش|تزويد/.test(type))
-        return box("المحفظة","fa-wallet",provider,"fa-server","#3b82f6",`📥 رصيد ${provider} هيزيد.<br>ℹ️ عملية تنظيمية.`);
-    if (/إيداع|شحن|تحويل/.test(type))
-        return box(walletName,"fa-wallet","العميل","fa-user","#ef4444","�ى كاش الخزنة زاد.<br>📤 رصيد المحفظة قل.");
-    if (type.includes("سحب من محفظة"))
-        return box("العميل","fa-user",walletName,"fa-wallet","#10b981","📥 رصيد المحفظة هيزيد.<br>📤 كاش الخزنة هيقل.");
-    if (type.includes("سداد"))
-        return `<div style="padding:15px;text-align:center;color:#10b981;font-weight:bold;">✅ العميل يسدد دين</div>`;
-    if (/دين|مديونية/.test(type))
-        return `<div style="padding:15px;text-align:center;color:#ef4444;font-weight:bold;">⚠️ تسجيل دين جديد</div>`;
-    if (type.includes("مصروف"))
-        return `<div style="padding:15px;text-align:center;color:#f59e0b;font-weight:bold;">💸 مصروف من الخزنة</div>`;
-    return `<p style="text-align:center;padding:10px;">تأكيد: <b>${type}</b></p>`;
-}
-
-// ============================================================
-// 6. showCustomConfirmModal
-// ============================================================
-function showCustomConfirmModal(content, themeColor) {
-    themeColor = themeColor || "#3b82f6";
-    document.getElementById('customConfirmModal')?.remove();
-    document.body.insertAdjacentHTML('beforeend', `
+            <p style="margin:0;font-size:13px;color:var(--text-main);direction:rtl;line-height:1.5;">${l}</p>
+        </div>`;return/سحب من عميل|سحب فيزا/.test(e)?n("العميل","fa-user",t,"fa-server","#10b981",`📥 رصيد ${t} هيزيد.<br>📤 كاش الخزنة هيقل.`):e.includes("دفع فاتورة")?n("العميل","fa-money-bill",t,"fa-server","#ef4444",`📥 كاش الخزنة هيزيد.<br>📤 رصيد ${t} هيقل.`):/سحب كاش|تزويد/.test(e)?n("المحفظة","fa-wallet",t,"fa-server","#3b82f6",`📥 رصيد ${t} هيزيد.<br>ℹ️ عملية تنظيمية.`):/إيداع|شحن|تحويل/.test(e)?n(a,"fa-wallet","العميل","fa-user","#ef4444","�ى كاش الخزنة زاد.<br>\uD83D\uDCE4 رصيد المحفظة قل."):e.includes("سحب من محفظة")?n("العميل","fa-user",a,"fa-wallet","#10b981","\uD83D\uDCE5 رصيد المحفظة هيزيد.<br>\uD83D\uDCE4 كاش الخزنة هيقل."):e.includes("سداد")?`<div style="padding:15px;text-align:center;color:#10b981;font-weight:bold;">✅ العميل يسدد دين</div>`:/دين|مديونية/.test(e)?`<div style="padding:15px;text-align:center;color:#ef4444;font-weight:bold;">⚠️ تسجيل دين جديد</div>`:e.includes("مصروف")?`<div style="padding:15px;text-align:center;color:#f59e0b;font-weight:bold;">💸 مصروف من الخزنة</div>`:`<p style="text-align:center;padding:10px;">تأكيد: <b>${e}</b></p>`}function showCustomConfirmModal(e,t){t=t||"#3b82f6",document.getElementById("customConfirmModal")?.remove(),document.body.insertAdjacentHTML("beforeend",`
         <div id="customConfirmModal"
             style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.85);
                    backdrop-filter:blur(4px);display:flex;justify-content:center;align-items:center;
                    z-index:10000;padding:20px;font-family:'Cairo',sans-serif;">
             <div style="background:var(--bg-card,#1e293b);width:100%;max-width:390px;border-radius:24px;
                         box-shadow:0 20px 50px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);overflow:hidden;">
-                <div style="background:${themeColor};padding:15px;text-align:center;color:#fff;">
+                <div style="background:${t};padding:15px;text-align:center;color:#fff;">
                     <i class="fas fa-file-invoice-dollar fa-2x mb-2"></i>
                     <h6 style="margin:0;font-weight:800;font-size:16px;">مراجعة وتأكيد العملية</h6>
                 </div>
-                <div style="padding:25px 20px;">${content}</div>
+                <div style="padding:25px 20px;">${e}</div>
                 <div style="padding:0 20px 25px;display:flex;gap:12px;">
                     <button onclick="finalExecuteStep(this)"
-                        style="flex:2;padding:14px;border:none;border-radius:15px;background:${themeColor};
+                        style="flex:2;padding:14px;border:none;border-radius:15px;background:${t};
                                color:#fff;font-weight:bold;font-size:15px;cursor:pointer;">
                         ✅ تأكيد العملية
                     </button>
@@ -614,542 +107,52 @@ function showCustomConfirmModal(content, themeColor) {
                     </button>
                 </div>
             </div>
-        </div>`);
-}
-
-// ============================================================
-// 7. finalExecuteStep
-// ============================================================
-async function finalExecuteStep(btn) {
-    if (!globalPendingData) return;
-    btn.disabled  = true;
-    btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> جاري الحفظ...';
-
-    try {
-        const session  = await getSession();
-        const userName = session?.user?.user_metadata?.name || session?.user?.email || 'Unknown';
-        const now      = new Date();
-        const { walletId, walletName, type, provider, amount, comm, clientId, note, commDest, deductComm } = globalPendingData;
-
-        const { data: allAccounts } = await _supa().from('accounts').select('*');
-        const branchId  = window.currentUserData?.branch_id || null;
-        const cashAcc   = allAccounts?.find(a => a.name.includes("الخزنة") && (!branchId || a.branch_id === branchId));
-        const walletAcc = allAccounts?.find(a => a.id == walletId && !a.name.includes("الخزنة"));
-        const provAcc   = allAccounts?.find(a => _norm(a.name).includes(_norm(provider)) && Number(a.daily_out_limit) > 10000000 && (!branchId || a.branch_id === branchId));
-
-        if (!cashAcc) throw new Error("حساب الخزنة غير موجود لهذا الفرع");
-
-        const val     = Number(amount);
-        const fee     = Number(comm) || 0;
-        const updates = [];
-        let balanceAfter = 0;
-        const push = (acc, changes) => { if (acc) updates.push({ id: acc.id, changes }); };
-
-
-        // ── التحقق من الليميت قبل التنفيذ ──
-        const _checkLimit = (acc, opVal, dir) => {
-            if (!acc) return;
-            if (Number(acc.daily_out_limit) > 10000000) return; // شركات بدون ليميت
-            if (dir === 'OUT') {
-                const availDay   = Math.max(0, Number(acc.daily_out_limit)  - Number(acc.daily_out_usage));
-                const availMonth = Math.max(0, Number(acc.monthly_limit)    - Number(acc.monthly_usage_out));
-                const avail      = Number(acc.monthly_limit) > 0 ? Math.min(availDay, availMonth) : availDay;
-                if (opVal > avail)
-                    throw new Error('❌ تجاوز الليميت — المتاح للإرسال: ' + avail.toLocaleString() + ' ج.م');
-            } else if (dir === 'IN') {
-                const availIn = Math.max(0, Number(acc.daily_in_limit) - Number(acc.daily_in_usage));
-                if (Number(acc.daily_in_limit) > 0 && opVal > availIn)
-                    throw new Error('❌ تجاوز ليميت الاستقبال — المتاح: ' + availIn.toLocaleString() + ' ج.م');
-            }
-        };
-
-        if (/إيداع|شحن|تحويل|باقة|تجديد|رصيد|دفع فيزا/.test(type) && !type.includes("سحب من")) {
-            _checkLimit(walletAcc, val, 'OUT');
-        } else if (type.includes("سحب من محفظة")) {
-            _checkLimit(walletAcc, val, 'IN');
-        } else if (type.includes("سحب كاش")) {
-            _checkLimit(walletAcc, val, 'OUT');
-        } else if (/دين|مديونية/.test(type)) {
-            if (/سحب|صادر/.test(type)) _checkLimit(walletAcc, val, 'OUT');
-            else                        _checkLimit(walletAcc, val, 'IN');
-        }
-
-        if (type.includes("سحب كاش") && /مكسب|فوري/.test(provider)) {
-            if (!walletAcc) throw new Error("❌ يجب تحديد المحفظة");
-            if (!provAcc)   throw new Error(`❌ حساب ${provider} غير موجود`);
-            const needed = val - fee; // الخصم الفعلي من المحفظة
-            if (+walletAcc.balance < needed)
-                throw new Error(`❌ رصيد المحفظة لا يكفي — المتاح: ${Number(walletAcc.balance).toLocaleString()} ج.م`);
-            push(provAcc,   { balance: +provAcc.balance + val });
-            push(walletAcc, { balance: +walletAcc.balance - val + fee, profit: +walletAcc.profit + fee,
-                              daily_out_usage: +walletAcc.daily_out_usage + val,
-                              monthly_usage_out: +walletAcc.monthly_usage_out + val });
-            balanceAfter = +walletAcc.balance - val + fee;
-        }
-        else if (type.includes("سحب كاش") && provAcc) {
-            if (!walletAcc) throw new Error("❌ يجب تحديد المحفظة");
-            if (+walletAcc.balance < val)
-                throw new Error(`❌ رصيد المحفظة لا يكفي — المتاح: ${Number(walletAcc.balance).toLocaleString()} ج.م`);
-            push(walletAcc, { balance: +walletAcc.balance - val,
-                              daily_out_usage: +walletAcc.daily_out_usage + val,
-                              monthly_usage_out: +walletAcc.monthly_usage_out + val });
-            if (commDest === 'CASH') {
-                push(provAcc, { balance: +provAcc.balance + val });
-                push(cashAcc, { balance: +cashAcc.balance + fee, profit: +cashAcc.profit + fee });
-            } else {
-                push(provAcc, { balance: +provAcc.balance + val + fee, profit: +provAcc.profit + fee });
-            }
-            balanceAfter = +walletAcc.balance - val;
-        }
-        else if (/سحب من عميل|سحب فيزا/.test(type)) {
-            if (!provAcc)               throw new Error(`حساب ${provider} غير موجود`);
-            if (+cashAcc.balance < val) throw new Error("رصيد الخزنة لا يكفي");
-            if (commDest === 'CASH') {
-                push(cashAcc, { balance: +cashAcc.balance - val + fee, profit: +cashAcc.profit + fee });
-                push(provAcc, { balance: +provAcc.balance + val });
-            } else {
-                push(cashAcc, { balance: +cashAcc.balance - val });
-                push(provAcc, { balance: +provAcc.balance + val + fee, profit: +provAcc.profit + fee });
-            }
-            balanceAfter = +provAcc.balance + val;
-        }
-        else if (type.includes("دفع فاتورة")) {
-            if (!provAcc) throw new Error(`❌ حساب ${provider} غير موجود`);
-            if (+provAcc.balance < val)
-                throw new Error(`❌ رصيد ${provider} لا يكفي — المتاح: ${Number(provAcc.balance).toLocaleString()} ج.م`);
-            push(provAcc, { balance: +provAcc.balance - val });
-            push(cashAcc, { balance: +cashAcc.balance + val + fee, profit: +cashAcc.profit + fee });
-            balanceAfter = +provAcc.balance - val;
-        }
-        else if (type.includes("مصروف")) {
-            if (+cashAcc.balance < val) throw new Error("رصيد الخزنة لا يكفي");
-            push(cashAcc, { balance: +cashAcc.balance - val });
-            balanceAfter = +cashAcc.balance - val;
-        }
-        else if (/إيداع|شحن|تحويل|باقة|تجديد|رصيد|دفع فيزا/.test(type) && !type.includes("سحب من")) {
-            if (!walletAcc) throw new Error("يجب تحديد المحفظة");
-            let finalW = +walletAcc.balance - val - 1 + (commDest === 'WALLET' ? fee : 0);
-            if (finalW < 0) throw new Error(`الرصيد لا يكفي — المتاح ${Number(walletAcc.balance).toLocaleString()}`);
-            push(walletAcc, { balance: finalW,
-                              daily_out_usage: +walletAcc.daily_out_usage + val,
-                              monthly_usage_out: +walletAcc.monthly_usage_out + val,
-                              ...(commDest==='WALLET' ? { profit: +walletAcc.profit + fee } : {}) });
-            push(cashAcc,   { balance: +cashAcc.balance + val,
-                              ...(commDest==='CASH' ? { profit: +cashAcc.profit + fee } : {}) });
-            balanceAfter = finalW;
-        }
-        else if (type.includes("سحب من محفظة")) {
-            if (!walletAcc) throw new Error("المحفظة غير محددة");
-            const cashEffect = deductComm ? val : val - fee;
-            if (+cashAcc.balance < cashEffect) throw new Error("رصيد الخزنة لا يكفي");
-            push(walletAcc, { balance: +walletAcc.balance + val,
-                              daily_in_usage: +walletAcc.daily_in_usage + val,
-                              monthly_usage_in: +walletAcc.monthly_usage_in + val,
-                              ...(commDest==='WALLET'&&fee>0 ? { profit: +walletAcc.profit + fee } : {}) });
-            push(cashAcc,   { balance: +cashAcc.balance - cashEffect,
-                              ...(commDest==='CASH'&&fee>0 ? { profit: +cashAcc.profit + fee } : {}) });
-            balanceAfter = +walletAcc.balance + val;
-        }
-        else if (/دين|مديونية/.test(type)) {
-            // التحقق من وجود العميل أولاً
-            if (!clientId) throw new Error("❌ يجب اختيار العميل لعمليات الديون");
-
-            const isOut  = /سحب|صادر/.test(type);
-            // تحديد الحساب المستهدف: المحفظة لو موجودة، وإلا الخزنة
-            const target = walletAcc || cashAcc;
-
-            if (isOut) {
-                // إخراج مبلغ (تسجيل دين جديد على العميل)
-                if (+target.balance < val) throw new Error("❌ الرصيد لا يكفي");
-
-                if (walletAcc) {
-                    // صادر من محفظة
-                    push(walletAcc, {
-                        balance: +walletAcc.balance - val,
-                        daily_out_usage:   +walletAcc.daily_out_usage   + val,
-                        monthly_usage_out: +walletAcc.monthly_usage_out + val
-                    });
-                    // العمولة تروح للخزنة
-                    if (fee > 0) push(cashAcc, { balance: +cashAcc.balance + fee, profit: +cashAcc.profit + fee });
-                } else {
-                    // صادر من الخزنة
-                    push(cashAcc, {
-                        balance: +cashAcc.balance - val + fee,
-                        ...(fee > 0 ? { profit: +cashAcc.profit + fee } : {})
-                    });
-                }
-                balanceAfter = +target.balance - val;
-                // زيادة دين العميل (اشتغلنا ليه)
-                await _updateClientBalance(clientId, val, "OUT");
-
-            } else {
-                // وارد (سداد دين من العميل)
-                if (walletAcc) {
-                    // وارد على محفظة
-                    push(walletAcc, {
-                        balance: +walletAcc.balance + val + fee,
-                        daily_in_usage:  +walletAcc.daily_in_usage  + val,
-                        monthly_usage_in: (+walletAcc.monthly_usage_in || 0) + val,
-                        ...(fee > 0 ? { profit: +walletAcc.profit + fee } : {})
-                    });
-                } else {
-                    // وارد على الخزنة
-                    push(cashAcc, {
-                        balance: +cashAcc.balance + val + fee,
-                        ...(fee > 0 ? { profit: +cashAcc.profit + fee } : {})
-                    });
-                }
-                balanceAfter = +target.balance + val + fee;
-                // تقليل دين العميل (سدد)
-                await _updateClientBalance(clientId, val, "IN");
-            }
-        }
-        else {
-            throw new Error(`نوع العملية '${type}' غير معرّف`);
-        }
-
-        for (const upd of updates) {
-            const { error } = await _supa().from('accounts').update(upd.changes).eq('id', upd.id);
-            if (error) throw error;
-        }
-
-        const { error: txErr } = await _supa().from('transactions').insert([{
-            date:          now.toLocaleDateString('en-GB'),
-            time:          now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }),
-            type, amount: val, commission: fee,
-            wallet_name: walletName, provider,
-            balance_after: balanceAfter,
-            notes: note || '', added_by: userName,
-            branch_id: window.currentUserData?.branch_id || null
-        }]);
-        if (txErr) throw txErr;
-
-        document.getElementById('customConfirmModal')?.remove();
-        showToast("✅ تمت العملية بنجاح", true);
-        resetSystemInterface();
-
-        if (typeof loadDash              === "function") loadDash();
-        if (typeof loadTransactionLogs   === "function") loadTransactionLogs();
-        if (typeof renderPinnedWallets   === "function") renderPinnedWallets();
-        if (typeof refreshAllWalletViews === "function") refreshAllWalletViews();
-
-    } catch(err) {
-        showToast("❌ " + err.message, false);
-        btn.disabled  = false;
-        btn.innerHTML = "✅ تأكيد العملية";
-    } finally {
-        globalPendingData = null;
-    }
-}
-
-async function _updateClientBalance(clientId, amount, mode) {
-    if (!clientId) return;
-    const { data: cl, error } = await _supa()
-        .from('clients').select('id, balance').eq('id', clientId).maybeSingle();
-    if (!cl || error) {
-        return;
-    }
-    const currentBal = Number(cl.balance) || 0;
-    // OUT = اشتغلنا للعميل (دينه علينا زاد) → نزيد الرصيد (موجب = العميل مدين)
-    // IN  = العميل سدد (دينه قل)           → نقلل الرصيد
-    const newBal = mode === "OUT"
-        ? currentBal + amount
-        : Math.max(0, currentBal - amount); // ما نخليش الرصيد يطلع سالب
-    const { error: updErr } = await _supa().from('clients').update({ balance: newBal }).eq('id', cl.id);
-}
-
-// ============================================================
-// 8. resetSystemInterface
-// ============================================================
-function resetSystemInterface() {
-    ['amount','note','type'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.value = '';
-    });
-    const commEl = document.getElementById('comm');
-    if (commEl) commEl.value = '0';
-    const commDest = document.getElementById('commDestination');
-    if (commDest) { commDest.value = 'CASH'; commDest.dispatchEvent(new Event('change')); }
-    ['wallet','client'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.selectedIndex = 0; el.disabled = false; el.style.backgroundColor = ""; el.style.cursor = "default"; }
-    });
-    document.querySelectorAll('.op-card').forEach(c => {
-        c.classList.remove('active','active-op'); c.style.background = ""; c.style.borderColor = "";
-    });
-    document.querySelectorAll('.pin-btn').forEach(b => b.classList.remove('active'));
-    globalPendingData = null; selectedProvider = "";
-    const cs = document.getElementById('clientBalanceStatus'); if (cs) cs.innerHTML = '';
-    const lb = document.getElementById('limitStatus'); if (lb) lb.style.display = 'none';
-    if (typeof toggleClientField === "function") toggleClientField();
-}
-
-var resetTransactionForm = resetSystemInterface;
-
-// ============================================================
-// 9. renderTransactionsTable + executeAdvancedSearch + rollbackTx
-// ============================================================
-function renderTransactionsTable(data) {
-    const container = document.getElementById('timelineContainer');
-    if (!container) return;
-
-    if (!data || !data.length) {
-        container.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">لا توجد بيانات</td></tr>';
-        return;
-    }
-
-    let i = 1;
-    container.innerHTML = data.map(tx => {
-        // 1. تحديد نوع العملية (وارد/صادر) بناءً على منطقك القديم
-        const isOut = /سحب|صادر|مصروف|فاتورة/.test(tx.type || '');
-        
-        // 2. فحص إذا كانت العملية "لحظية" (تمت منذ أقل من 10 ثوانٍ) لإضافة ومضة
-        const txTime = new Date(tx.created_at || new Date()); 
-        const isLive = (new Date() - txTime) < 10000;
-        const liveClass = isLive ? 'new-row-flash' : '';
-
-        return `
-            <tr class="${liveClass}">
-                <td class="align-middle">${i++}</td>
+        </div>`)}async function finalExecuteStep(e){if(globalPendingData){e.disabled=!0,e.innerHTML='<i class="fa fa-circle-notch fa-spin"></i> جاري الحفظ...';try{let t=await getSession(),a=t?.user?.user_metadata?.name||t?.user?.email||"Unknown",n=new Date,{walletId:i,walletName:l,type:o,provider:s,amount:r,comm:d,clientId:c,note:u,commDest:f,deductComm:p}=globalPendingData,{data:m}=await _supa().from("accounts").select("*"),b=window.currentUserData?.branch_id||null,y=m?.find(e=>e.name.includes("الخزنة")&&(!b||e.branch_id===b)),g=m?.find(e=>e.id==i&&!e.name.includes("الخزنة")),$=m?.find(e=>_norm(e.name).includes(_norm(s))&&Number(e.daily_out_limit)>1e7&&(!b||e.branch_id===b));if(!y)throw Error("حساب الخزنة غير موجود لهذا الفرع");let v=Number(r),x=Number(d)||0,h=[],w=0,_=(e,t)=>{e&&h.push({id:e.id,changes:t})},L=(e,t,a)=>{if(e&&!(Number(e.daily_out_limit)>1e7)){if("OUT"===a){let n=Math.max(0,Number(e.daily_out_limit)-Number(e.daily_out_usage)),i=Math.max(0,Number(e.monthly_limit)-Number(e.monthly_usage_out)),l=Number(e.monthly_limit)>0?Math.min(n,i):n;if(t>l)throw Error("❌ تجاوز الليميت — المتاح للإرسال: "+l.toLocaleString()+" ج.م")}else if("IN"===a){let o=Math.max(0,Number(e.daily_in_limit)-Number(e.daily_in_usage));if(Number(e.daily_in_limit)>0&&t>o)throw Error("❌ تجاوز ليميت الاستقبال — المتاح: "+o.toLocaleString()+" ج.م")}}};if(/إيداع|شحن|تحويل|باقة|تجديد|رصيد|دفع فيزا/.test(o)&&!o.includes("سحب من")?L(g,v,"OUT"):o.includes("سحب من محفظة")?L(g,v,"IN"):o.includes("سحب كاش")?L(g,v,"OUT"):/دين|مديونية/.test(o)&&L(g,v,/سحب|صادر/.test(o)?"OUT":"IN"),o.includes("سحب كاش")&&/مكسب|فوري/.test(s)){if(!g)throw Error("❌ يجب تحديد المحفظة");if(!$)throw Error(`❌ حساب ${s} غير موجود`);if(+g.balance<v-x)throw Error(`❌ رصيد المحفظة لا يكفي — المتاح: ${Number(g.balance).toLocaleString()} ج.م`);_($,{balance:+$.balance+v}),_(g,{balance:+g.balance-v+x,profit:+g.profit+x,daily_out_usage:+g.daily_out_usage+v,monthly_usage_out:+g.monthly_usage_out+v}),w=+g.balance-v+x}else if(o.includes("سحب كاش")&&$){if(!g)throw Error("❌ يجب تحديد المحفظة");if(+g.balance<v)throw Error(`❌ رصيد المحفظة لا يكفي — المتاح: ${Number(g.balance).toLocaleString()} ج.م`);_(g,{balance:+g.balance-v,daily_out_usage:+g.daily_out_usage+v,monthly_usage_out:+g.monthly_usage_out+v}),"CASH"===f?(_($,{balance:+$.balance+v}),_(y,{balance:+y.balance+x,profit:+y.profit+x})):_($,{balance:+$.balance+v+x,profit:+$.profit+x}),w=+g.balance-v}else if(/سحب من عميل|سحب فيزا/.test(o)){if(!$)throw Error(`حساب ${s} غير موجود`);if(+y.balance<v)throw Error("رصيد الخزنة لا يكفي");"CASH"===f?(_(y,{balance:+y.balance-v+x,profit:+y.profit+x}),_($,{balance:+$.balance+v})):(_(y,{balance:+y.balance-v}),_($,{balance:+$.balance+v+x,profit:+$.profit+x})),w=+$.balance+v}else if(o.includes("دفع فاتورة")){if(!$)throw Error(`❌ حساب ${s} غير موجود`);if(+$.balance<v)throw Error(`❌ رصيد ${s} لا يكفي — المتاح: ${Number($.balance).toLocaleString()} ج.م`);_($,{balance:+$.balance-v}),_(y,{balance:+y.balance+v+x,profit:+y.profit+x}),w=+$.balance-v}else if(o.includes("مصروف")){if(+y.balance<v)throw Error("رصيد الخزنة لا يكفي");_(y,{balance:+y.balance-v}),w=+y.balance-v}else if(/إيداع|شحن|تحويل|باقة|تجديد|رصيد|دفع فيزا/.test(o)&&!o.includes("سحب من")){if(!g)throw Error("يجب تحديد المحفظة");let S=+g.balance-v-1+("WALLET"===f?x:0);if(S<0)throw Error(`الرصيد لا يكفي — المتاح ${Number(g.balance).toLocaleString()}`);_(g,{balance:S,daily_out_usage:+g.daily_out_usage+v,monthly_usage_out:+g.monthly_usage_out+v,..."WALLET"===f?{profit:+g.profit+x}:{}}),_(y,{balance:+y.balance+v,..."CASH"===f?{profit:+y.profit+x}:{}}),w=S}else if(o.includes("سحب من محفظة")){if(!g)throw Error("المحفظة غير محددة");let T=p?v:v-x;if(+y.balance<T)throw Error("رصيد الخزنة لا يكفي");_(g,{balance:+g.balance+v,daily_in_usage:+g.daily_in_usage+v,monthly_usage_in:+g.monthly_usage_in+v,..."WALLET"===f&&x>0?{profit:+g.profit+x}:{}}),_(y,{balance:+y.balance-T,..."CASH"===f&&x>0?{profit:+y.profit+x}:{}}),w=+g.balance+v}else if(/دين|مديونية/.test(o)){if(!c)throw Error("❌ يجب اختيار العميل لعمليات الديون");let E=/سحب|صادر/.test(o),C=g||y;if(E){if(+C.balance<v)throw Error("❌ الرصيد لا يكفي");g?(_(g,{balance:+g.balance-v,daily_out_usage:+g.daily_out_usage+v,monthly_usage_out:+g.monthly_usage_out+v}),x>0&&_(y,{balance:+y.balance+x,profit:+y.profit+x})):_(y,{balance:+y.balance-v+x,...x>0?{profit:+y.profit+x}:{}}),w=+C.balance-v,await _updateClientBalance(c,v,"OUT")}else g?_(g,{balance:+g.balance+v+x,daily_in_usage:+g.daily_in_usage+v,monthly_usage_in:(+g.monthly_usage_in||0)+v,...x>0?{profit:+g.profit+x}:{}}):_(y,{balance:+y.balance+v+x,...x>0?{profit:+y.profit+x}:{}}),w=+C.balance+v+x,await _updateClientBalance(c,v,"IN")}else throw Error(`نوع العملية '${o}' غير معرّف`);for(let I of h){let{error:k}=await _supa().from("accounts").update(I.changes).eq("id",I.id);if(k)throw k}let{error:B}=await _supa().from("transactions").insert([{date:n.toLocaleDateString("en-GB"),time:n.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}),type:o,amount:v,commission:x,wallet_name:l,provider:s,balance_after:w,notes:u||"",added_by:a,branch_id:window.currentUserData?.branch_id||null}]);if(B)throw B;document.getElementById("customConfirmModal")?.remove(),showToast("✅ تمت العملية بنجاح",!0),resetSystemInterface(),"function"==typeof loadDash&&loadDash(),"function"==typeof loadTransactionLogs&&loadTransactionLogs(),renderPinnedWallets(),"function"==typeof refreshAllWalletViews&&refreshAllWalletViews()}catch(M){showToast("❌ "+M.message,!1),e.disabled=!1,e.innerHTML="✅ تأكيد العملية"}finally{globalPendingData=null}}}async function _updateClientBalance(e,t,a){if(!e)return;let{data:n,error:i}=await _supa().from("clients").select("id, balance").eq("id",e).maybeSingle();if(!n||i)return;let l=Number(n.balance)||0,{error:o}=await _supa().from("clients").update({balance:"OUT"===a?l+t:Math.max(0,l-t)}).eq("id",n.id)}function resetSystemInterface(){["amount","note","type"].forEach(e=>{let t=document.getElementById(e);t&&(t.value="")});let e=document.getElementById("comm");e&&(e.value="0");let t=document.getElementById("commDestination");t&&(t.value="CASH",t.dispatchEvent(new Event("change"))),["wallet","client"].forEach(e=>{let t=document.getElementById(e);t&&(t.selectedIndex=0,t.disabled=!1,t.style.backgroundColor="",t.style.cursor="default")}),document.querySelectorAll(".op-card").forEach(e=>{e.classList.remove("active","active-op"),e.style.background="",e.style.borderColor=""}),document.querySelectorAll(".pin-btn").forEach(e=>e.classList.remove("active")),globalPendingData=null,selectedProvider="";let a=document.getElementById("clientBalanceStatus");a&&(a.innerHTML="");let n=document.getElementById("limitStatus");n&&(n.style.display="none"),"function"==typeof toggleClientField&&toggleClientField()}var resetTransactionForm=resetSystemInterface;function renderTransactionsTable(e){let t=document.getElementById("timelineContainer");if(!t)return;if(!e||!e.length){t.innerHTML='<tr><td colspan="8" class="text-center py-4 text-muted">لا توجد بيانات</td></tr>';return}let a=1;t.innerHTML=e.map(e=>{let t=/سحب|صادر|مصروف|فاتورة/.test(e.type||""),n=new Date(e.created_at||new Date),i=new Date-n<1e4;return`
+            <tr class="${i?"new-row-flash":""}">
+                <td class="align-middle">${a++}</td>
                 
                 <td class="align-middle english-num small text-nowrap">
-                    <div class="fw-bold">${tx.date || '-'}</div>
-                    <div class="text-muted" style="font-size: 10px;">${tx.time || ''}</div>
+                    <div class="fw-bold">${e.date||"-"}</div>
+                    <div class="text-muted" style="font-size: 10px;">${e.time||""}</div>
                 </td>
                 
-                <td class="align-middle text-center ${isOut ? 'text-danger' : 'text-success'} fw-bold">
-                    <div><i class="fa ${isOut ? 'fa-arrow-up' : 'fa-arrow-down'} me-1" style="font-size:10px;"></i>${esc(tx.type) || '-'}</div>
-                    ${(tx.wallet_name||tx.provider) ? `<div class="d-flex align-items-center justify-content-center gap-1 mt-1 flex-wrap">
-                        ${tx.wallet_name ? `<span class="badge bg-light text-dark border fw-normal" style="font-size:9px;"><i class="fa fa-wallet me-1 text-primary" style="font-size:8px;"></i>${esc(tx.wallet_name)}</span>` : ''}
-                        ${tx.wallet_name && tx.provider ? `<i class="fa fa-arrow-left text-muted" style="font-size:8px;"></i>` : ''}
-                        ${tx.provider ? `<span class="badge bg-light text-dark border fw-normal" style="font-size:9px;"><i class="fa fa-building me-1 text-warning" style="font-size:8px;"></i>${esc(tx.provider)}</span>` : ''}
-                    </div>` : ''}
+                <td class="align-middle text-center ${t?"text-danger":"text-success"} fw-bold">
+                    <div><i class="fa ${t?"fa-arrow-up":"fa-arrow-down"} me-1" style="font-size:10px;"></i>${esc(e.type)||"-"}</div>
+                    ${e.wallet_name||e.provider?`<div class="d-flex align-items-center justify-content-center gap-1 mt-1 flex-wrap">
+                        ${e.wallet_name?`<span class="badge bg-light text-dark border fw-normal" style="font-size:9px;"><i class="fa fa-wallet me-1 text-primary" style="font-size:8px;"></i>${esc(e.wallet_name)}</span>`:""}
+                        ${e.wallet_name&&e.provider?'<i class="fa fa-arrow-left text-muted" style="font-size:8px;"></i>':""}
+                        ${e.provider?`<span class="badge bg-light text-dark border fw-normal" style="font-size:9px;"><i class="fa fa-building me-1 text-warning" style="font-size:8px;"></i>${esc(e.provider)}</span>`:""}
+                    </div>`:""}
                 </td>
                 
                 <td class="align-middle english-num fw-bold">
-                    <div>${Number(tx.amount || 0).toLocaleString()}</div>
-                    ${tx.commission ? `<small class="text-warning fw-normal" style="font-size: 10px;">عمولة: ${Number(tx.commission).toLocaleString()}</small>` : ''}
+                    <div>${Number(e.amount||0).toLocaleString()}</div>
+                    ${e.commission?`<small class="text-warning fw-normal" style="font-size: 10px;">عمولة: ${Number(e.commission).toLocaleString()}</small>`:""}
                 </td>
                 
                 <td class="align-middle english-num text-primary fw-bold">
-                    ${Number(tx.balance_after || 0).toLocaleString()}
+                    ${Number(e.balance_after||0).toLocaleString()}
                 </td>
                 
                 <td class="align-middle small text-muted" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">
-                    ${esc(tx.notes) || '-'}
+                    ${esc(e.notes)||"-"}
                 </td>
                 
                 <td class="align-middle">
                     <span class="badge bg-light text-dark border fw-normal">
-                        <i class="fa fa-user-circle me-1 text-secondary"></i>${esc(tx.added_by) || '-'}
+                        <i class="fa fa-user-circle me-1 text-secondary"></i>${esc(e.added_by)||"-"}
                     </span>
                 </td>
                 
                 <td class="align-middle">
                     <div class="d-flex justify-content-center gap-1">
-                        <button class="btn btn-sm btn-outline-secondary border-0" onclick="showDetails(${tx.id})" title="عرض">
+                        <button class="btn btn-sm btn-outline-secondary border-0" onclick="showDetails(${e.id})" title="عرض">
                             <i class="fa fa-eye"></i>
                         </button>
                         
-                        <button class="btn btn-sm btn-outline-danger admin-only border-0" onclick="rollbackTx(${tx.id})" title="تراجع">
+                        <button class="btn btn-sm btn-outline-danger admin-only border-0" onclick="rollbackTx(${e.id})" title="تراجع">
                             <i class="fa fa-undo"></i>
                         </button>
                     </div>
                 </td>
-            </tr>`;
-    }).join('');
-}// دالة لتنسيق التاريخ والوقت بشكل احترافي
-function formatDate(dateString) {
-    if (!dateString) return "-";
-    const date = new Date(dateString);
-    
-    // تنسيق الوقت (الساعة:الدقيقة AM/PM)
-    const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
-    const time = date.toLocaleTimeString('en-US', timeOptions);
-    
-    // تنسيق التاريخ (يوم/شهر)
-    const day = date.getDate();
-    const month = date.getMonth() + 1;
-    
-    return `${day}/${month} | ${time}`;
-}
-function executeAdvancedSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(async () => {
-        const filters = {
-            text:     (document.getElementById('advSearchText')?.value||"").trim().toLowerCase(),
-            type:     document.getElementById('advSearchType')?.value  || "",
-            dateFrom: document.getElementById('advDateFrom')?.value    || "",
-            dateTo:   document.getElementById('advDateTo')?.value      || ""
-        };
-        const container = document.getElementById('timelineContainer');
-        if (container)
-            container.innerHTML = '<tr><td colspan="8" class="py-4 text-center"><i class="fa fa-sync fa-spin"></i> جاري البحث...</td></tr>';
-
-        const data = await getTransactionLogs(filters);
-        if (!data) return;
-
-        const filtered = data.filter(tx =>
-            (tx.wallet_name?.toLowerCase()||"").includes(filters.text) ||
-            (tx.notes?.toLowerCase()||"").includes(filters.text)       ||
-            String(tx.amount).includes(filters.text)
-        );
-        renderTransactionsTable(filtered);
-        const countEl = document.getElementById('rowsCountDisplay');
-        if (countEl) countEl.innerText = `تم العثور على ${filtered.length} عملية`;
-    }, 500);
-}
-
-async function rollbackTx(txId) {
-    if (!confirm("⚠️ هل أنت متأكد من التراجع عن هذه العملية؟")) return;
-    const { data: tx } = await _supa().from('transactions').select('*').eq('id', txId).maybeSingle();
-    if (!tx) return showToast("❌ العملية غير موجودة", false);
-
-    const { data: allAccounts } = await _supa().from('accounts').select('*');
-    const val     = Number(tx.amount);
-    const fee     = Number(tx.commission) || 0;
-    const updates = [];
-    const clamp   = v => Math.max(0, v);
-    const cashAcc   = allAccounts?.find(a => a.name.includes("الخزنة"));
-    const walletAcc = allAccounts?.find(a => a.name === tx.wallet_name &&
-                      !a.name.includes("الخزنة") && Number(a.daily_out_limit) <= 10000000);
-    const provAcc   = allAccounts?.find(a =>
-        _norm(a.name).includes(_norm(tx.provider)) && Number(a.daily_out_limit) > 10000000);
-    const push = (acc, ch) => { if (acc) updates.push({ id: acc.id, changes: ch }); };
-
-    if (tx.type.includes("دفع فاتورة")) {
-        // العملية الأصلية: provAcc - val، cashAcc + val + fee
-        // العكس:          provAcc + val، cashAcc - val - fee
-        if (!provAcc) return showToast(`❌ حساب ${tx.provider} غير موجود`, false);
-        push(provAcc, { balance: +provAcc.balance + val });
-        push(cashAcc, { balance: +cashAcc.balance - val - fee, profit: clamp(+cashAcc.profit - fee) });
-    }
-    else if (/سحب من عميل|سحب فيزا/.test(tx.type)) {
-        // العملية الأصلية: cashAcc - val، provAcc + val
-        // العكس:          cashAcc + val، provAcc - val
-        push(provAcc, { balance: +provAcc?.balance - val });
-        push(cashAcc, { balance: +cashAcc?.balance + val - fee, profit: clamp(+cashAcc?.profit - fee) });
-    }
-    else if (/إيداع|شحن|تحويل|باقة|تجديد|رصيد/.test(tx.type) && walletAcc) {
-        // العملية الأصلية: walletAcc - val - 1، cashAcc + val
-        // العكس:          walletAcc + val + 1، cashAcc - val
-        push(walletAcc, { balance: +walletAcc.balance + val + 1,
-                          daily_out_usage:   clamp(+walletAcc.daily_out_usage   - val),
-                          monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) });
-        push(cashAcc,   { balance: +cashAcc?.balance - val,
-                          profit: clamp(+cashAcc?.profit - fee) });
-    }
-    else if (tx.type.includes("سحب من محفظة") && walletAcc) {
-        // العملية الأصلية: walletAcc + val، cashAcc - cashEffect
-        // cashEffect = deductComm ? val : val - fee — نفترض val - fee (الأكثر شيوعاً)
-        push(walletAcc, { balance: +walletAcc.balance - val,
-                          daily_in_usage:  clamp(+walletAcc.daily_in_usage  - val),
-                          monthly_usage_in: clamp(+walletAcc.monthly_usage_in - val) });
-        push(cashAcc,   { balance: +cashAcc?.balance + val - fee,
-                          profit: clamp(+cashAcc?.profit - fee) });
-    }
-    else if (tx.type.includes("سحب كاش") && walletAcc) {
-        // العملية الأصلية: walletAcc - val، provAcc + val (+ fee لو commDest=provAcc)
-        // العكس: walletAcc + val، provAcc - val
-        push(walletAcc, { balance: +walletAcc.balance + val,
-                          profit: clamp(+walletAcc.profit - fee),
-                          daily_out_usage:   clamp(+walletAcc.daily_out_usage   - val),
-                          monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) });
-        push(provAcc,   { balance: +provAcc?.balance - val });
-        // لو العمولة كانت للخزنة نرجعها
-        if (fee > 0) push(cashAcc, { balance: +cashAcc?.balance - fee, profit: clamp(+cashAcc?.profit - fee) });
-    }
-    else if (tx.type.includes("مصروف")) {
-        // العملية الأصلية: cashAcc - val
-        // العكس:          cashAcc + val
-        push(cashAcc, { balance: +cashAcc?.balance + val });
-    }
-    else if (/دين|مديونية/.test(tx.type)) {
-        // عكس عملية الديون
-        const isOut = /سحب|صادر/.test(tx.type);
-        const target = walletAcc || cashAcc;
-        if (isOut) {
-            // كانت صادرة (اشتغلنا للعميل) → نرجع المبلغ
-            if (walletAcc) {
-                push(walletAcc, { balance: +walletAcc.balance + val,
-                    daily_out_usage:   clamp(+walletAcc.daily_out_usage   - val),
-                    monthly_usage_out: clamp(+walletAcc.monthly_usage_out - val) });
-                if (fee > 0) push(cashAcc, { balance: +cashAcc?.balance - fee, profit: clamp(+cashAcc?.profit - fee) });
-            } else {
-                push(cashAcc, { balance: +cashAcc?.balance + val - fee, profit: clamp(+cashAcc?.profit - fee) });
-            }
-            // عكس دين العميل: كان زاد → نقلل
-            if (tx.client_id) await _updateClientBalance(tx.client_id, val, "IN");
-        } else {
-            // كانت واردة (سداد) → نرجع المبلغ
-            if (walletAcc) {
-                push(walletAcc, { balance: +walletAcc.balance - val - fee,
-                    daily_in_usage:  clamp(+walletAcc.daily_in_usage  - val),
-                    monthly_usage_in: clamp((+walletAcc.monthly_usage_in || 0) - val),
-                    profit: clamp(+walletAcc.profit - fee) });
-            } else {
-                push(cashAcc, { balance: +cashAcc?.balance - val - fee, profit: clamp(+cashAcc?.profit - fee) });
-            }
-            // عكس سداد العميل: كان قل → نزيد
-            if (tx.client_id) await _updateClientBalance(tx.client_id, val, "OUT");
-        }
-    }
-
-    for (const upd of updates)
-        await _supa().from('accounts').update(upd.changes).eq('id', upd.id);
-
-    await _supa().from('transactions').delete().eq('id', txId);
-const session = await getSession();
-const userId = session?.user?.id;
-
-// 2. جلب الاسم من جدول users باستخدام الـ id
-const { data: profile } = await _supa()
-    .from('users')
-    .select('name')
-    .eq('id', userId)
-    .single();
-
-// 3. تخزين الاسم في متغير (ووضع الإيميل كخيار احتياطي إذا كان الاسم فارغاً)
-const adminName = profile?.name || session?.user?.email;
-
-// 4. الآن قم بعملية الإدراج في الـ logs
-await _supa().from('admin_logs').insert([{
-    action: 'ROLLBACK', 
-    details: `تراجع: ${tx.type} بمبلغ ${val}`,
-    created_by: adminName,
-    branch_id: window.currentUserData?.branch_id || null  // ✅ أضف دي
-}]);
-    showToast("✅ تم التراجع بنجاح", true);
-    if (typeof executeAdvancedSearch === "function") executeAdvancedSearch();
-    if (typeof renderPinnedWallets   === "function") renderPinnedWallets();
-    if (typeof loadDash              === "function") loadDash();
-}
-
-// ============================================================
-// 10. الدوال الثانوية
-// ============================================================
-function applySecurityUI(role) {
-    document.querySelectorAll('.admin-only').forEach(el => {
-        if (role === 'ADMIN')
-            el.style.setProperty('display', (el.tagName==='TD'||el.tagName==='TH') ? 'table-cell' : 'block', 'important');
-        else el.style.display = 'none';
-    });
-}
-
-async function calculateStats() {
-    const { data: accounts }     = await _supa().from('accounts').select('balance');
-    const { data: transactions } = await _supa().from('transactions').select('commission').limit(1000);
-    return {
-        totalBalance:      (accounts||[]).reduce((s,a) => s + Number(a.balance), 0),
-        totalProfit:       (transactions||[]).reduce((s,t) => s + Number(t.commission), 0),
-        totalTransactions: transactions?.length || 0
-    };
-}
-
-window.addEventListener('DOMContentLoaded', function() {
-    if (typeof applyTheme    === "function") applyTheme();
-    if (typeof checkUserRole === "function") checkUserRole();
-    // loadWallets و loadClientsToSelect هيتشغلوا من initApp بعد ما currentUserData يتحمل
-    if (typeof toggleClientField  === "function") toggleClientField();
-    if (typeof renderWalletsCards === "function") renderWalletsCards();
-    if (typeof loadDash           === "function") loadDash();
-});
+            </tr>`}).join("")}function formatDate(e){if(!e)return"-";let t=new Date(e),a=t.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit",hour12:!0}),n=t.getDate(),i=t.getMonth()+1;return`${n}/${i} | ${a}`}function executeAdvancedSearch(){clearTimeout(searchTimeout),searchTimeout=setTimeout(async()=>{let e={text:(document.getElementById("advSearchText")?.value||"").trim().toLowerCase(),type:document.getElementById("advSearchType")?.value||"",dateFrom:document.getElementById("advDateFrom")?.value||"",dateTo:document.getElementById("advDateTo")?.value||""},t=document.getElementById("timelineContainer");t&&(t.innerHTML='<tr><td colspan="8" class="py-4 text-center"><i class="fa fa-sync fa-spin"></i> جاري البحث...</td></tr>');let a=await getTransactionLogs(e);if(!a)return;let n=a.filter(t=>(t.wallet_name?.toLowerCase()||"").includes(e.text)||(t.notes?.toLowerCase()||"").includes(e.text)||String(t.amount).includes(e.text));renderTransactionsTable(n);let i=document.getElementById("rowsCountDisplay");i&&(i.innerText=`تم العثور على ${n.length} عملية`)},500)}async function rollbackTx(e){if(!confirm("⚠️ هل أنت متأكد من التراجع عن هذه العملية؟"))return;let{data:t}=await _supa().from("transactions").select("*").eq("id",e).maybeSingle();if(!t)return showToast("❌ العملية غير موجودة",!1);let{data:a}=await _supa().from("accounts").select("*"),n=Number(t.amount),i=Number(t.commission)||0,l=[],o=e=>Math.max(0,e),s=a?.find(e=>e.name.includes("الخزنة")),r=a?.find(e=>e.name===t.wallet_name&&!e.name.includes("الخزنة")&&1e7>=Number(e.daily_out_limit)),d=a?.find(e=>_norm(e.name).includes(_norm(t.provider))&&Number(e.daily_out_limit)>1e7),c=(e,t)=>{e&&l.push({id:e.id,changes:t})};if(t.type.includes("دفع فاتورة")){if(!d)return showToast(`❌ حساب ${t.provider} غير موجود`,!1);c(d,{balance:+d.balance+n}),c(s,{balance:+s.balance-n-i,profit:o(+s.profit-i)})}else if(/سحب من عميل|سحب فيزا/.test(t.type))c(d,{balance:+d?.balance-n}),c(s,{balance:+s?.balance+n-i,profit:o(+s?.profit-i)});else if(/إيداع|شحن|تحويل|باقة|تجديد|رصيد/.test(t.type)&&r)c(r,{balance:+r.balance+n+1,daily_out_usage:o(+r.daily_out_usage-n),monthly_usage_out:o(+r.monthly_usage_out-n)}),c(s,{balance:+s?.balance-n,profit:o(+s?.profit-i)});else if(t.type.includes("سحب من محفظة")&&r)c(r,{balance:+r.balance-n,daily_in_usage:o(+r.daily_in_usage-n),monthly_usage_in:o(+r.monthly_usage_in-n)}),c(s,{balance:+s?.balance+n-i,profit:o(+s?.profit-i)});else if(t.type.includes("سحب كاش")&&r)c(r,{balance:+r.balance+n,profit:o(+r.profit-i),daily_out_usage:o(+r.daily_out_usage-n),monthly_usage_out:o(+r.monthly_usage_out-n)}),c(d,{balance:+d?.balance-n}),i>0&&c(s,{balance:+s?.balance-i,profit:o(+s?.profit-i)});else if(t.type.includes("مصروف"))c(s,{balance:+s?.balance+n});else if(/دين|مديونية/.test(t.type)){let u=/سحب|صادر/.test(t.type);u?(r?(c(r,{balance:+r.balance+n,daily_out_usage:o(+r.daily_out_usage-n),monthly_usage_out:o(+r.monthly_usage_out-n)}),i>0&&c(s,{balance:+s?.balance-i,profit:o(+s?.profit-i)})):c(s,{balance:+s?.balance+n-i,profit:o(+s?.profit-i)}),t.client_id&&await _updateClientBalance(t.client_id,n,"IN")):(r?c(r,{balance:+r.balance-n-i,daily_in_usage:o(+r.daily_in_usage-n),monthly_usage_in:o((+r.monthly_usage_in||0)-n),profit:o(+r.profit-i)}):c(s,{balance:+s?.balance-n-i,profit:o(+s?.profit-i)}),t.client_id&&await _updateClientBalance(t.client_id,n,"OUT"))}for(let f of l)await _supa().from("accounts").update(f.changes).eq("id",f.id);await _supa().from("transactions").delete().eq("id",e);let p=await getSession(),m=p?.user?.id,{data:b}=await _supa().from("users").select("name").eq("id",m).single(),y=b?.name||p?.user?.email;await _supa().from("admin_logs").insert([{action:"ROLLBACK",details:`تراجع: ${t.type} بمبلغ ${n}`,created_by:y,branch_id:window.currentUserData?.branch_id||null}]),showToast("✅ تم التراجع بنجاح",!0),executeAdvancedSearch(),renderPinnedWallets(),"function"==typeof loadDash&&loadDash()}function applySecurityUI(e){document.querySelectorAll(".admin-only").forEach(t=>{"ADMIN"===e?t.style.setProperty("display","TD"===t.tagName||"TH"===t.tagName?"table-cell":"block","important"):t.style.display="none"})}async function calculateStats(){let{data:e}=await _supa().from("accounts").select("balance"),{data:t}=await _supa().from("transactions").select("commission").limit(1e3);return{totalBalance:(e||[]).reduce((e,t)=>e+Number(t.balance),0),totalProfit:(t||[]).reduce((e,t)=>e+Number(t.commission),0),totalTransactions:t?.length||0}}window.addEventListener("DOMContentLoaded",function(){"function"==typeof applyTheme&&applyTheme(),"function"==typeof checkUserRole&&checkUserRole(),"function"==typeof toggleClientField&&toggleClientField(),"function"==typeof renderWalletsCards&&renderWalletsCards(),"function"==typeof loadDash&&loadDash()});
