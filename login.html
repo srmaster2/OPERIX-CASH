@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل الدخول - OPERIX</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="security.js"></script>
+  <script src="config.js"></script>
+  <style>
+:root {
+  --font: 'Cairo', sans-serif;
+  --bg:           #060d1a;
+  --surface:      #111e35;
+  --surface2:     #182844;
+  --border:       rgba(99,179,237,0.10);
+  --border2:      rgba(99,179,237,0.22);
+  --text:         #ffffff;
+  --text2:        #8fa8c8;
+  --text3:        #546a87;
+  --blue:         #3b82f6;
+  --blue2:        #2563eb;
+  --input-bg:     #ffffff;
+  --input-border: rgba(99,179,237,0.14);
+  --input-focus:  rgba(59,130,246,0.28);
+  --btn-shadow:   rgba(37,99,235,0.45);
+  --error:        #f87171;
+  --success:      #34d399;
+}
+
+body.light-mode {
+  --bg:           #eef2fb;
+  --surface:      #ffffff;
+  --surface2:     #f4f7ff;
+  --border:       rgba(59,130,246,0.12);
+  --border2:      rgba(59,130,246,0.28);
+  --text:         #f0f2f5;
+  --text2:        #4a6080;
+  --text3:        #8fa8c8;
+  --blue:         #2563eb;
+  --blue2:        #1d4ed8;
+  --input-bg:     #ffffff;
+  --input-border: rgba(59,130,246,0.18);
+  --input-focus:  rgba(59,130,246,0.14);
+  --btn-shadow:   rgba(37,99,235,0.28);
+  --error:        #dc2626;
+  --success:      #059669;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.4s, color 0.4s;
+}
+
+/* شبكة خلفية */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.light-mode::before {
+  background-image:
+    linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px);
+}
+
+/* نقاط ضوئية */
+.bg-orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+.orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(59,130,246,0.16), transparent 70%); top: -100px; right: -80px; animation: orb-float 14s ease-in-out infinite; }
+.orb-2 { width: 380px; height: 380px; background: radial-gradient(circle, rgba(6,182,212,0.12), transparent 70%); bottom: -60px; left: -60px; animation: orb-float 18s ease-in-out infinite reverse; }
+body.light-mode .orb-1 { background: radial-gradient(circle, rgba(59,130,246,0.10), transparent 70%); }
+body.light-mode .orb-2 { background: radial-gradient(circle, rgba(6,182,212,0.07), transparent 70%); }
+
+@keyframes orb-float {
+  0%,100% { transform: translate(0,0); }
+  50%      { transform: translate(25px,-20px); }
+}
+.card:hover {
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 40px 0 rgba(59, 130, 246, 0.2);
+}
+/* زرار المود */
+.theme-btn {
+  position: fixed;
+  top: 20px; left: 20px;
+  z-index: 100;
+  width: 44px; height: 44px;
+  border-radius: 13px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; color: var(--text2);
+  transition: all 0.3s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.theme-btn:hover { border-color: var(--blue); color: var(--blue); transform: rotate(20deg) scale(1.08); }
+
+/* الكارت */
+.card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 430px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 38px 34px 34px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.28), 0 0 80px rgba(59,130,246,0.12);
+  animation: card-in 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
+  transition: background 0.4s, border-color 0.4s;
+}
+
+body.light-mode .card {
+  box-shadow: 0 20px 50px rgba(37,99,235,0.10), 0 0 60px rgba(59,130,246,0.08);
+}
+
+@keyframes card-in {
+  from { opacity:0; transform: translateY(28px) scale(0.97); }
+  to   { opacity:1; transform: translateY(0) scale(1); }
+}
+
+/* خط توهج علوي */
+.glow-bar {
+  position: absolute;
+  top: -1px; right: 22%; left: 22%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue), #06b6d4, transparent);
+  border-radius: 2px;
+  animation: glow-bar 3.5s ease-in-out infinite;
+}
+@keyframes glow-bar {
+  0%,100% { opacity:0.55; right:22%; left:22%; }
+  50%      { opacity:1;    right:10%; left:10%; }
+}
+
+/* اللوجو */
+/* تنسيق الحاوية الأساسية */
+.logo-box {
+  margin-bottom: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.logo-wrapper {
+  display: flex;
+  /* row-reverse هتعكس أماكن العناصر جوه الحاوية */
+  flex-direction: row-reverse; 
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.text-content {
+  display: flex;
+  flex-direction: column;
+  /* النص هيفضل محاذاته لليمين عشان يبقى "ضهره" للأيقونة اللي بقت على الشمال */
+  text-align: right; 
+}/* تكبير الأيقونة والتحكم فيها */
+.main-icon {
+  width: 140px; /* كبر الحجم من هنا */
+  height: auto;
+  filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3)); /* توهج أزرق خفيف */
+}
+
+/* تنسيق النصوص */
+.text-content {
+  text-align: center;
+}
+
+.brand-title {
+  font-family: var(--font);
+  font-size: 70px; /* حجم اسم الشركة */
+  font-weight: 900;
+  color: #ffffff; /* اللون الأبيض للدارك مود */
+  line-height: 1;
+  margin: 0;
+  letter-spacing: 2px;
+  transition: color 0.4s ease;
+}
+
+.brand-tagline {
+  font-family: var(--font);
+  font-size: 16px; /* حجم الوصف */
+  font-weight: 600;
+  color: var(--text2); /* لون هادئ */
+  margin-top: 8px;
+  transition: color 0.4s ease;
+}
+
+/* ----------------------------------
+   السحر: التغيير عند تفعيل اللايت مود
+------------------------------------- */
+
+body.light-mode .brand-title {
+  color: #0f1e35; /* النص يقلب أسود (نفس لون الـ text في اللايت مود) */
+}
+
+body.light-mode .brand-tagline {
+  color: #4a6080; /* الوصف يغمق برضه */
+}
+
+/* تعديل بسيط للأيقونة في اللايت مود عشان تنطق مع الخلفية البيضا */
+body.light-mode .main-icon {
+  filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.1));
+}
+
+/* للموبايل: تصغير الحجم قليلاً */
+@media (max-width: 480px) {
+  .main-icon { width: 110px; }
+  .brand-title { font-size: 36px; }
+}
+/* تابات */
+.tabs {
+  display: flex;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 4px; gap: 4px;
+  margin-bottom: 26px;
+}
+.tab {
+  flex: 1; padding: 10px;
+  border-radius: 10px;
+  background: none; border: none;
+  font-family: var(--font); font-size: 13px; font-weight: 700;
+  color: var(--text3); cursor: pointer;
+  transition: all 0.22s;
+}
+.tab.on {
+  background: var(--surface);
+  color: var(--blue);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border2);
+}
+
+/* فورم */
+.form { display: none; }
+.form.on { display: block; animation: fade-up 0.28s ease both; }
+@keyframes fade-up {
+  from { opacity:0; transform: translateY(8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.field { margin-bottom: 15px; }
+.field label {
+  display: block;
+  font-size: 11px; font-weight: 800;
+  color: var(--text2);
+  margin-bottom: 7px;
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+
+.inp-wrap { position: relative; }
+.inp-wrap .ico {
+  position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+  color: var(--text3); font-size: 13px; pointer-events: none;
+  transition: color 0.2s;
+}
+.inp-wrap:focus-within .ico { color: var(--blue); }
+
+.inp-wrap input {
+  width: 100%;
+  padding: 13px 40px 13px 42px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 11px;
+  color: #1e293b;
+  font-family: var(--font); font-size: 14px; font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.3s;
+  direction: ltr; text-align: right;
+}
+.inp-wrap input::placeholder { color: #94a3b8; }
+.inp-wrap input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--input-focus);
+}
+
+.eye-btn {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text3);
+  cursor: pointer; font-size: 13px; padding: 0; line-height: 1;
+  transition: color 0.2s;
+}
+.eye-btn:hover { color: var(--blue); }
+
+.forgot {
+  display: block; text-align: left;
+  font-size: 11px; color: var(--text3);
+  text-decoration: none; margin-top: 7px; font-weight: 700;
+  transition: color 0.2s;
+}
+.forgot:hover { color: var(--blue); }
+
+/* زرار الإرسال */
+.btn-go {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue2) 60%, #1e40af 100%);
+  border: none; border-radius: 13px;
+  color: #fff; font-family: var(--font);
+  font-size: 15px; font-weight: 800;
+  cursor: pointer; margin-top: 18px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 6px 24px var(--btn-shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.3px;
+}
+.btn-go::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
+}
+.btn-go:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--btn-shadow); }
+.btn-go:hover::after { transform: translateX(100%); }
+.btn-go:active { transform: translateY(0); }
+.btn-go:disabled { opacity: 0.75; pointer-events: none; }
+
+/* فوتر */
+.card-foot {
+  text-align: center; margin-top: 18px;
+  font-size: 11px; color: var(--text3); font-weight: 600;
+}
+
+/* Toast */
+.toast {
+  position: fixed; top: 22px; left: 50%;
+  transform: translateX(-50%) translateY(-70px);
+  padding: 12px 22px;
+  border-radius: 13px;
+  font-family: var(--font); font-weight: 700; font-size: 13px;
+  z-index: 9999; display: flex; align-items: center; gap: 9px;
+  white-space: nowrap;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+  transition: transform 0.4s cubic-bezier(0.34,1.4,0.64,1), opacity 0.3s;
+  opacity: 0; pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.ok  { background:#064e3b; color:#34d399; border:1px solid rgba(52,211,153,0.28); }
+.toast.err { background:#450a0a; color:#f87171; border:1px solid rgba(248,113,113,0.28); }
+body.light-mode .toast.ok  { background:#ecfdf5; color:#065f46; border:1px solid rgba(16,185,129,0.3); }
+body.light-mode .toast.err { background:#fef2f2; color:#991b1b; border:1px solid rgba(239,68,68,0.2); }
+
+@media (max-width: 480px) {
+  .card { padding: 28px 20px 26px; }
+  .logo-box img { width: 190px; }
+  .theme-btn { top: 12px; left: 12px; width: 40px; height: 40px; font-size: 15px; }
+}
+#preloader {
+position: fixed;
+  inset: 0;
+  background: var(--bg); /* بياخد نفس لون خلفية الموقع */
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease, visibility 0.5s;
+}
+.loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* حركة الدائرة */
+.spinner {
+  width: 100px;
+  height: 100px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loader-text {
+font-family: var(--font);
+  font-size: 2.5rem; /* كبّر أو صغّر من هنا */
+  font-weight: 900;
+  color: var(--blue);
+  letter-spacing: 10px; /* المسافة بين الحروف */
+  text-transform: uppercase;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* لما اللودر يخلص، بنضيف الكلاس ده بالـ JS */
+/* التنسيق العام المطور للأزرار */
+button {
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  font-family: var(--font);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden; /* ضروري لتأثير اللمعة */
+}
+
+/* زر تسجيل الدخول (الأساسي) - تأثير النيون */
+#btnLogin {
+  background: rgb(3, 54, 219);
+  color: var(--text);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(5px);
+}
+
+/* زر إنشاء الحساب - تأثير زجاجي شفاف */
+#btnSignup {
+  background: rgb(3, 54, 219);
+  color: var(--text);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(5px);
+}
+
+/* --- انيميشن عند قرب الماوس (Hover Effects) --- */
+
+button:hover {
+  transform: translateY(-3px) scale(1.02); /* يرتفع للأعلى قليلاً */
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+}
+
+/* تأثير اللمعة المتحركة (Shine Effect) */
+button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 20%;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(30deg);
+  transition: all 0s;
+  opacity: 0;
+}
+
+button:hover::after {
+  left: 120%;
+  transition: all 0.7s ease-in-out;
+  opacity: 1;
+}
+
+/* تأثير النبض عند الضغط */
+button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* تحسين شكل الأيقونات داخل الأزرار */
+button i {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+
+button:hover i {
+  transform: translateX(-5px); /* تحريك الأيقونة لليسار قليلاً */
+}
+
+#btnLogin::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: 0.5s;
+  z-index: -1;
+}
+
+#btnLogin:hover::before {
+  left: 100%;
+}
+/* كلاس الإخفاء */
+#preloader.hide {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease 0.2s; /* تأخير بسيط عشان الانميشن يظهر */
+}
+  </style>
+</head>
+<body>
+<div id="preloader">
+  <div class="loader-content">
+    <div class="spinner"></div>
+    <span class="loader-text">OPERIX</span>
+  </div>
+  <div class="flash-effect"></div>
+</div>
+<div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-2"></div>
+
+<button class="theme-btn" onclick="toggleTheme()" title="تبديل المظهر">
+  <i class="fa fa-moon" id="themeIco"></i>
+</button>
+
+<div class="card">
+  <div class="glow-bar"></div>
+
+  <!-- لوجو -->
+<div class="logo-box">
+  <div class="logo-wrapper">
+    <img src="img/image.png" alt="Icon" class="main-icon">
+    <div class="text-content">
+      <h1 class="brand-title">OPERIX</h1>
+      <p class="brand-tagline">كل شغلك في نظام واحد</p>
+    </div>
+  </div>
+</div>  <!-- تابات -->
+  <div class="tabs">
+    <button class="tab on" id="t1" onclick="switchTab('login')">
+      <i class="fa fa-right-to-bracket" style="margin-left:5px;"></i>تسجيل الدخول
+    </button>
+    <button class="tab" id="t2" onclick="switchTab('signup')">
+      <i class="fa fa-user-plus" style="margin-left:5px;"></i>حساب جديد
+    </button>
+  </div>
+
+  <!-- فورم الدخول -->
+  <div class="form on" id="fLogin">
+    <div class="field">
+      <label>البريد الإلكتروني</label>
+      <div class="inp-wrap">
+        <input type="email" id="email" placeholder="user@example.com" autocomplete="email">
+        <i class="fa fa-envelope ico"></i>
+      </div>
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <div class="inp-wrap">
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        <i class="fa fa-lock ico"></i>
+        <button class="eye-btn" type="button" onclick="toggleEye('password',this)">
+          <i class="fa fa-eye"></i>
+        </button>
+      </div>
+      <a href="javascript:void(0)" class="forgot" onclick="forgotPassword()">
+        <i class="fa fa-key" style="font-size:9px; margin-left:3px;"></i>نسيت كلمة المرور؟
+      </a>
+    </div>
+    <button class="btn-go" id="btnLogin" onclick="login()">
+      <i class="fa fa-bolt" style="margin-left:8px;"></i>دخول
+    </button>
+  </div>
+
+  <!-- فورم الإنشاء -->
+  <div class="form" id="fSignup">
+    <div class="field">
+      <label>الاسم الكامل</label>
+      <div class="inp-wrap">
+        <input type="text" id="signupName" placeholder="الاسم الكامل" autocomplete="name">
+        <i class="fa fa-user ico"></i>
+      </div>
+    </div>
+    <div class="field">
+      <label>البريد الإلكتروني</label>
+      <div class="inp-wrap">
+        <input type="email" id="signupEmail" placeholder="user@example.com" autocomplete="email">
+        <i class="fa fa-envelope ico"></i>
+      </div>
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <div class="inp-wrap">
+        <input type="password" id="signupPassword" placeholder="••••••••" autocomplete="new-password">
+        <i class="fa fa-lock ico"></i>
+        <button class="eye-btn" type="button" onclick="toggleEye('signupPassword',this)">
+          <i class="fa fa-eye"></i>
+        </button>
+      </div>
+    </div>
+    <button class="btn-go" id="btnSignup" onclick="signup()">
+      <i class="fa fa-user-plus" style="margin-left:8px;"></i>إنشاء الحساب
+    </button>
+  </div>
+
+  <div class="card-foot">OPERIX &copy; 2025 — كل شغلك في نظام واحد</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* Theme */
+(function(){
+  if(localStorage.getItem('theme')==='light'){
+    document.body.classList.add('light-mode');
+    document.getElementById('themeIco').className='fa fa-sun';
+  }
+})();
+
+function toggleTheme(){
+  const light = document.body.classList.toggle('light-mode');
+  document.getElementById('themeIco').className = light ? 'fa fa-sun' : 'fa fa-moon';
+  localStorage.setItem('theme', light ? 'light' : 'dark');
+}
+
+/* Tabs */
+function switchTab(t){
+  const isLogin = t==='login';
+  document.getElementById('t1').classList.toggle('on', isLogin);
+  document.getElementById('t2').classList.toggle('on', !isLogin);
+  document.getElementById('fLogin').classList.toggle('on', isLogin);
+  document.getElementById('fSignup').classList.toggle('on', !isLogin);
+}
+
+/* Eye toggle */
+function toggleEye(id, btn){
+  const inp = document.getElementById(id);
+  const ico = btn.querySelector('i');
+  inp.type = inp.type==='password' ? 'text' : 'password';
+  ico.className = inp.type==='password' ? 'fa fa-eye' : 'fa fa-eye-slash';
+}
+
+/* Toast */
+function toast(msg, ok=true){
+  const el = document.getElementById('toast');
+  el.innerHTML = `<i class="fa fa-${ok?'check-circle':'circle-exclamation'}"></i> ${msg}`;
+  el.className = `toast ${ok?'ok':'err'} show`;
+  setTimeout(()=>el.classList.remove('show'), 3500);
+}
+
+/* Auth */
+async function login(){
+  // ── Rate Limiting: حماية من Brute Force ──
+  if(window.LoginSecurity){
+    const blocked = window.LoginSecurity.isBlocked();
+    if(blocked){
+      toast(`الحساب محظور مؤقتاً، حاول بعد ${blocked} دقيقة`, false);
+      return;
+    }
+  }
+
+  const email = document.getElementById('email').value.trim();
+  const pass  = document.getElementById('password').value;
+  if(!email||!pass) return toast('يرجى إدخال البريد وكلمة المرور', false);
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.innerHTML = '<i class="fa fa-circle-notch fa-spin" style="margin-left:8px;"></i>جاري الدخول...';
+  const {error} = await window.supa.auth.signInWithPassword({email, password:pass});
+  btn.disabled = false; btn.innerHTML = '<i class="fa fa-bolt" style="margin-left:8px;"></i>دخول';
+  if(error){
+    if(window.LoginSecurity) window.LoginSecurity.record(); // سجّل المحاولة الفاشلة
+    toast('بيانات خاطئة، حاول مرة أخرى', false);
+  } else {
+    if(window.LoginSecurity) window.LoginSecurity.reset(); // نجح — امسح السجل
+    toast('تم تسجيل الدخول بنجاح');
+    setTimeout(()=>window.location.href='index.html', 900);
+  }
+}
+
+window.addEventListener('load', () => {
+  const preloader = document.getElementById('preloader');
+  // بنأخر الإخفاء نص ثانية عشان المستخدم يلحق يشوف الانميشن
+  setTimeout(() => {
+    preloader.classList.add('hide');
+  }, 600); 
+});
+async function signup(){
+  const name  = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass  = document.getElementById('signupPassword').value;
+  if(!name||!email||!pass) return toast('يرجى ملء جميع الحقول', false);
+  if(pass.length<6) return toast('كلمة المرور 6 أحرف على الأقل', false);
+  const btn = document.getElementById('btnSignup');
+  btn.disabled = true; btn.innerHTML = '<i class="fa fa-circle-notch fa-spin" style="margin-left:8px;"></i>جاري الإنشاء...';
+  const {error} = await window.supa.auth.signUp({email, password:pass, options:{data:{name}}});
+  btn.disabled = false; btn.innerHTML = '<i class="fa fa-user-plus" style="margin-left:8px;"></i>إنشاء الحساب';
+  if(error){ toast('خطأ: '+error.message, false); }
+  else { toast('تم الإنشاء، تحقق من بريدك للتفعيل'); setTimeout(()=>switchTab('login'), 2000); }
+}
+
+async function forgotPassword(){
+  const email = document.getElementById('email').value.trim();
+  if(!email) return toast('اكتب البريد الإلكتروني أولاً', false);
+  const {error} = await window.supa.auth.resetPasswordForEmail(email,{
+    redirectTo:'https://srmaster2.github.io/Sadek-Cash/reset-password.html'
+  });
+  error ? toast('خطأ: '+error.message, false) : toast('تم إرسال رابط إعادة التعيين');
+}
+
+/* Auto redirect */
+window.supa?.auth.onAuthStateChange((e,s)=>{ if(s&&!window.__r){ window.__r=true; window.location.replace('index.html'); } });
+window.supa?.auth.getUser().then(({data:{user}})=>{ if(user&&!window.__r){ window.__r=true; window.location.replace('index.html'); } });
+
+/* Enter key */
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return;
+  document.getElementById('fLogin').classList.contains('on') ? login() : signup();
+});
+</script>
+</body>
+</html>

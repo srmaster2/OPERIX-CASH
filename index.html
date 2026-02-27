@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+		<html dir="rtl">
+		  <head>
+			<base target="_top">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+			<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+			<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+			<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">  
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+			<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="css/main.css">
+<script src="security.js"></script>
+<script src="config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/accounts.js"></script>
+<script src="js/transactions.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/branches.js"></script>
+<script src="js/members.js"></script>
+<script src="js/app.js"></script>
+</head>
+<body>
+<header class="app-header-main">
+    <div class="header-container">
+<div class="header-right">
+<button class="mobile-menu-btn d-md-none" id="sidebarToggleBtn">
+            <i class="fa-solid fa-bars-staggered"></i>
+    </button>
+
+    <div class="brand-wrapper">
+        <img src="img/operix-logo.png" alt="OPERIX" class="brand-logo">
+    </div>     
+</div>       
+     <div class="header-left">
+                <div class="header-buttons">
+                    <div class="user-info-box d-none d-md-flex">
+                        <span class="welcome-tag">أهلاً بك،</span>
+                        <span id="user-display-name" class="user-name-text">...</span>
+                        <div id="current-branch-badge" class="me-2"></div>
+
+                    </div>
+                    <div class="icon-btn" onclick="showNotifications()"><i class="fa-regular fa-bell"></i></div>
+                    <div class="icon-btn" onclick="toggleTheme()"><i class="fa fa-moon"></i></div>
+                    <div class="icon-btn logout-special" onclick="signOut()"><i class="fa-solid fa-right-from-bracket"></i></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="toastMsg" class="custom-toast"></div>
+    
+    <!-- Sidebar Navigation -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-notch">
+    <button class="sidebar-toggle-floating" onclick="toggleSidebar()">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+  <ul class="sidebar-menu-list">
+    <li class="nav-item" id="nav-dash">
+        <a class="nav-link sidebar-link" onclick="showView('dash')">
+            <i class="fa fa-chart-pie"></i>
+            <span class="link-text">التقرير العام</span>
+        </a>
+    </li>
+
+    <li class="nav-item nav-parent">
+        <a class="nav-link sidebar-link" onclick="toggleSubMenu(this)">
+            <i class="fa fa-calculator"></i>
+            <span class="link-text">العمليات</span>
+            <i class="fa fa-chevron-down submenu-toggle ms-auto"></i>
+        </a>
+        <ul class="nav-submenu">
+            <li><a onclick="showView('op'); switchOpTab('new')" class="submenu-link" data-op-tab="new-op-tab"><i class="fa fa-plus-circle"></i> عملية جديدة</a></li>
+            <li><a onclick="showView('counter')" class="submenu-link"><i class="fa fa-money-bill-1"></i> عد النقدية</a></li>
+        </ul>
+    </li>
+
+    <li class="nav-item" id="nav-manage" style="display:none">
+        <a class="nav-link sidebar-link" onclick="showView('manage')">
+            <i class="fa fa-sliders"></i>
+            <span class="link-text">إدارة النظام</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link sidebar-link" onclick="showView('settings')">
+            <i class="fa fa-cog"></i>
+            <span class="link-text">الإعدادات</span>
+        </a>
+    </li>
+  </ul>
+</nav>
+
+<main class="content-area">
+    <div id="view-dash" class="view-section active">
+        <div id="dashBranchFilter" style="display:none;"></div>
+        <div id="dashContent">
+            <div class="text-center p-5 text-muted"><i class="fa fa-circle-notch fa-spin fa-2x mb-3"></i><br>جاري جلب التقارير...</div>
+        </div>
+    </div>
+
+    <!-- العمليات - العمليات الجديدة وسجل العمليات -->
+    <div id="view-op" class="view-section">
+
+    <!-- تابات: عملية جديدة | سجل العمليات -->
+    <div class="op-tabs-bar mb-3 d-md-none">
+        <div class="btn-group w-100" role="group">
+            <button class="btn btn-primary flex-fill active" id="mob-tab-new" onclick="switchMobileTab('new')">
+                <i class="fa fa-plus-circle me-1"></i> عملية جديدة
+            </button>
+            <button class="btn btn-outline-secondary flex-fill" id="mob-tab-log" onclick="switchMobileTab('log')">
+                <i class="fa fa-history me-1"></i> سجل العمليات
+            </button>
+        </div>
+    </div>
+
+    <!-- العرض المدمج: عمودين على الديسكتوب، تابات على الموبايل -->
+    <div class="row g-3">
+
+        <!-- العمود الأيسر: عملية جديدة -->
+        <div class="col-lg-5" id="col-new-op">
+            <div class="new-op-panel h-100">
+
+                <div class="op-group-title"><i class="fas fa-layer-group text-primary"></i> الخدمات الرئيسية</div>
+                <div class="services-grid services-grid-compact">
+                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('client_withdraw')"><i class="fas fa-arrow-up-from-bracket text-primary"></i><span>سحب من عميل</span></div></div>
+                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('pay_bill')"><i class="fa fa-file-invoice text-success"></i><span>دفع فواتير</span></div></div>
+                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('cash_supply')"><i class="fas fa-money-bill-transfer text-warning"></i><span>تزويد</span></div></div>
+                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('visa_withdraw')"><i class="fas fa-credit-card text-danger"></i><span>سحب فيزا</span></div></div>
+                </div>
+
+                <div class="op-group-title"><i class="fa fa-vault text-secondary"></i> الخزنة والعملاء</div>
+                <div class="services-grid services-grid-compact">
+                    <div class="service-col"><div class="op-card card-safe" onclick="setOp('مصروفات', 'SAFE', this)"><i class="fa fa-coins"></i><span>مصاريف</span></div></div>
+                    <div class="service-col"><div class="op-card card-safe" onclick="setOp('سحب دين', 'SAFE', this)"><i class="fa fa-user-minus"></i><span>سحب دين ( عليه )</span></div></div>
+                    <div class="service-col"><div class="op-card card-safe" onclick="setOp('سداد مديونية', 'SAFE', this)"><i class="fa fa-user-check"></i><span>سداد دين ( له )</span></div></div>
+                </div>
+
+                <div class="op-group-title"><i class="fa fa-mobile-screen text-info"></i> المحافظ الإلكترونية</div>
+                <div class="services-grid services-grid-compact">
+                    <div class="service-col"><div class="op-card card-wallets" onclick="setOp('إيداع لمحفظة', 'WALLET', this)"><i class="fa fa-upload text-primary"></i><span>إيداع لمحفظة</span></div></div>
+                    <div class="service-col"><div class="op-card card-wallets" onclick="setOp('سحب من محفظة', 'WALLET', this)"><i class="fa fa-download text-success"></i><span>سحب من محفظة</span></div></div>
+                </div>
+
+                <input type="hidden" id="type" value="">
+                <div id="pinnedWallets" class="mb-2 d-flex flex-wrap gap-2 justify-content-center"></div>
+
+                <div class="card-box mt-2">
+                    <label class="small fw-bold text-muted mb-1"><i class="fa fa-wallet me-1"></i> المحفظة / الخزنة</label>
+                    <div class="input-group mb-2">
+                        <select id="wallet" class="form-select form-select-sm english-num" onchange="updateLimitDisplay()">
+                            <option>...</option>
+                        </select>
+                        <button class="btn btn-outline-secondary" onclick="loadWallets()"><i class="fa fa-sync"></i></button>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-7">
+                            <label class="small fw-bold text-muted mb-1">المبلغ</label>
+                            <input type="text" id="amount" class="form-control form-control-sm text-center english-num" placeholder="0.00" onkeyup="formatNumberInput(this)">
+                        </div>
+                        <div class="col-5">
+                            <label class="small fw-bold text-muted mb-1">العمولة</label>
+                            <input type="text" id="comm" class="form-control form-control-sm text-center english-num" placeholder="0" value="0" onkeyup="formatNumberInput(this)">
+                        </div>
+                    </div>
+
+                    <div id="commDestinationContainer" class="mb-2" style="display:none;">
+                        <label class="small fw-bold mb-1"><i class="fas fa-hand-holding-usd me-1"></i> وجهة العمولة/الربح</label>
+                        <select id="commDestination" class="form-select form-select-sm">
+                            <option value="CASH" selected>💰 الخزنة (الكاش) - افتراضي</option>
+                            <option value="WALLET">📱 المحفظة المختارة</option>
+                        </select>
+                    </div>
+
+                    <div id="deductCommContainer" class="mb-2 form-check form-switch px-4" style="display:none;">
+                        <input class="form-check-input" type="checkbox" id="deductCommFromAmount">
+                        <label class="form-check-label small fw-bold text-danger" for="deductCommFromAmount">
+                            خصم العمولة من كاش الخزنة
+                        </label>
+                    </div>
+
+                    <div id="clientFieldContainer" class="mb-2" style="display:none;">
+                        <label class="small fw-bold">العميل</label>
+                        <select id="client" class="form-select form-select-sm" onchange="fetchClientBalance()">
+                            <option value="">اختار العميل...</option>
+                        </select>
+                        <div id="clientBalanceStatus" class="small fw-bold mt-1 text-center"></div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="small fw-bold text-muted mb-1">ملاحظات</label>
+                        <input type="text" id="note" class="form-control form-control-sm" placeholder="أي تفاصيل إضافية...">
+                    </div>
+                    <button type="button" id="btnRun" class="btn-main w-100" onclick="runTransaction()">تنفيذ العملية</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- العمود الأيمن: سجل العمليات -->
+        <div class="col-lg-7" id="col-log-op">
+            <div class="log-op-panel h-100">
+
+                <div class="card-box mb-2 p-2 sticky-top" style="z-index: 99; border-bottom: 3px solid #3b82f6;">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <div class="flex-grow-1 position-relative" style="min-width: 150px;">
+                            <input type="text" id="advSearchText" class="form-control form-control-sm ps-4 rounded-pill border-0 search-input" placeholder="بحث سريع..." onkeyup="executeAdvancedSearch()">
+                            <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2"></i>
+                        </div>
+                        <select id="advSearchType" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" onchange="executeAdvancedSearch()" style="width: auto; min-width: 120px; border-radius: 10px;">
+                            <option value="">📂 كل العمليات</option>
+                            <option value="وارد">🟢 وارد</option>
+                            <option value="صادر">🔴 صادر</option>
+                            <option value="مصروفات">🟠 مصروفات</option>
+                            <option value="سحب من عميل">👤 سحب من عميل</option>
+                            <option value="دفع فاتورة">🧾 دفع فواتير</option>
+                            <option value="إيداع لمحفظة">📱 إيداع محفظة</option>
+                            <option value="سحب من محفظة">📲 سحب محفظة</option>
+                        </select>
+                        <button class="btn btn-sm btn-light border-0 rounded-circle text-muted" onclick="toggleDateFilters()" title="بحث بالتاريخ">
+                            <i class="fa-regular fa-calendar-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-light border-0 rounded-circle text-danger" onclick="resetAdvancedSearch()" title="إلغاء الفلاتر">
+                            <i class="fa fa-rotate-right"></i>
+                        </button>
+                    </div>
+                    <div id="dateFilterSection" class="row g-2 mt-2 pt-2 border-top" style="display:none;">
+                        <div class="col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent border-0 text-muted">من</span>
+                                <input type="date" id="advDateFrom" class="form-control border-0 rounded" onchange="executeAdvancedSearch()">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent border-0 text-muted">إلى</span>
+                                <input type="date" id="advDateTo" class="form-control border-0 rounded" onchange="executeAdvancedSearch()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-box p-0 shadow-sm border-0">
+                    <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
+                        <table class="table table-bordered table-sm table-custom text-center small" id="transactionTableModern">
+                            <thead class="bg-light sticky-top" style="top: 0; z-index: 1;">
+                                <tr>
+                                    <th width="30">#</th>
+                                    <th>التاريخ</th>
+                                    <th>العملية / الحساب</th>
+                                    <th>المبلغ / الربح</th>
+                                    <th>الرصيد بعد</th>
+                                    <th>ملاحظات</th>
+                                    <th>بواسطة</th>
+                                    <th width="50">إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timelineContainer"></tbody>
+                        </table>
+                    </div>
+                    <div id="rowsCountDisplay" class="text-center text-muted small py-2 border-top bg-light"></div>
+                </div>
+
+            </div>
+        </div>
+
+    </div><!-- end row -->
+
+</div><!-- end view-op -->
+
+<!-- Modal: اختيار الشركة المنفذة -->
+<div id="providerModal" class="modal-overlay" style="display:none; z-index: 10000;">
+    <div class="modal-box" style="max-width: 320px;">
+        <h6 class="text-center fw-bold mb-4">اختر الشركة المنفذة</h6>
+        <input type="hidden" id="selectedServiceKey">
+        <div id="providerButtonsGrid" class="d-grid gap-2"></div>
+        <button class="btn btn-light w-100 mt-3 border" onclick="closeProviderModal()">إلغاء</button>
+    </div>
+</div>
+
+
+        <div id="txDetailsModal" class="details-modal-overlay" style="display:none;"> ... </div>
+	
+					<div id="view-manage" class="view-section">
+				
+				<ul class="nav nav-pills nav-fill mb-3 bg-card p-2 rounded-3 border">
+					<li class="nav-item"><a class="nav-link active" data-tab="clients-tab" onclick="showManageTab(this)"><i class="fa fa-users"></i> العملاء</a></li>
+					<li class="nav-item"><a class="nav-link" data-tab="accounts-tab" onclick="showManageTab(this)"><i class="fa fa-cogs"></i> الحسابات</a></li>
+					<li class="nav-item master-only"><a class="nav-link" data-tab="users-tab" onclick="showManageTab(this)"><i class="fa fa-user-friends"></i> الأعضاء</a></li>
+					<li class="nav-item"><a class="nav-link" data-tab="logs-tab" onclick="showManageTab(this)"><i class="fa fa-clipboard-list"></i> السجل</a></li>
+                    <li class="nav-item admin-only-section"><a class="nav-link" data-tab="branches-tab" onclick="showManageTab(this)"> <i class="fa fa-building"></i> الفروع </a></li></ul>
+
+<div id="clients-tab" class="manage-tab-content">
+    <div class="card-box mb-3 shadow-sm border-0">
+        <h6 class="text-primary fw-bold mb-3 small"><i class="fa fa-user-plus me-1"></i> إضافة عميل</h6>
+        <div class="row g-2 mb-2">
+            <div class="col-7"><input type="text" id="newClName" class="form-control form-control-sm" placeholder="الاسم"></div>
+            <div class="col-5"><input type="text" id="newClPhone" class="form-control form-control-sm english-num" placeholder="الموبايل"></div>
+        </div>
+        <button id="btnAddClient" class="btn-main w-100" onclick="addClient()">إضافة</button>
+    </div>
+
+    <div class="card-box shadow-sm border-0 p-2">
+        <div class="d-flex text-center mb-2 px-2 pb-2 border-bottom fw-bold text-muted" style="font-size: 10px;">
+            <div style="width: 25%;" class="text-start">الاسم</div>
+            <div style="width: 30%;">رقم الهاتف</div>
+            <div style="width: 30%;">الرصيد الحالي</div>
+            <div style="width: 10%;">الاجراء</div>
+        </div>
+        
+        <div id="manage-clients-body" style="max-height: 400px; overflow-y: auto;">
+            <div class="text-center p-4 text-muted small">جاري التحميل...</div>
+        </div>
+    </div>
+</div>
+<div id="accounts-tab" class="manage-tab-content" style="display:none;">
+    <div class="card-box shadow-sm border-0 mb-3" style="border-top: 4px solid #10b981 !important;">
+        <h6 class="fw-bold mb-3 text-success small"><i class="fa fa-wallet me-2"></i>إضافة محفظة أو شركة</h6>
+        <div class="input-group input-group-sm mb-3">
+            <select id="newAccType" class="form-select fw-bold" style="max-width: 100px;">
+                <option value="محفظة">محفظة</option>
+                <option value="شركة">شركة</option>
+            </select>
+            <input type="text" id="newAccName" class="form-control english-num" placeholder="الاسم أو الرقم">
+        </div>
+        <button id="btnAddWallet" class="btn-main w-100" onclick="addWallet()">
+            <i class="fa fa-plus-circle me-1"></i> حفظ الحساب
+        </button>
+    </div>
+<div class="px-2 mb-3">
+    <div class="search-wrapper d-flex align-items-center border rounded-pill px-3 py-2 bg-light">
+        <i class="fa fa-search text-muted me-2"></i>
+        <input type="text" id="accSearchInput" 
+               class="form-control border-0 shadow-none p-0 small" 
+               style="background:transparent!important;" 
+               placeholder="ابحث بالاسم أو الرقم أو الوسم..." 
+               oninput="filterAccounts()">
+        <span class="badge bg-primary-subtle text-primary rounded-pill px-2" id="countBadge" style="font-size: 10px;">0 حساب</span>
+    </div>
+</div>
+<div id="filterBtnGroup" class="d-flex flex-wrap gap-1 mb-2 px-2">
+    <button type="button" class="btn btn-sm btn-secondary active" onclick="setFilterType('all', this)">الكل</button>
+    
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('pinned', this)">
+        <i class="fa fa-thumbtack me-1 text-warning"></i>المثبت
+    </button>
+    
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('company', this)">
+        <i class="fa fa-building me-1 text-success"></i>الشركات
+    </button>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('wallet', this)">
+        <i class="fa fa-mobile-alt me-1 text-danger"></i>المحافظ
+    </button>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('tagged', this)">
+        <i class="fa fa-tag me-1 text-info"></i>الموشم
+    </button>
+</div>
+<div class="card-box shadow-sm border-0 p-2">
+<div class="d-flex text-center mb-2 px-3 pb-2 border-bottom fw-bold text-muted" style="font-size: 11px; direction: rtl;">
+    <div style="width: 40%;" class="text-start ps-2">اسم الحساب / الوسم</div>
+    <div style="width: 30%;">الرصيد الحالي</div>
+    <div style="width: 30%;" class="text-end pe-4">⚙️ الإجراءات</div>
+</div>
+        <div id="accList" style="max-height: 400px; overflow-y: auto;">
+            <div class="text-center p-4 text-muted small">جاري تحميل الحسابات...</div>
+        </div>
+    </div>
+</div>
+<div id="users-tab" class="manage-tab-content" style="display:none;">
+    <div class="d-flex text-muted fw-bold mb-2 px-3 small" style="direction: rtl; opacity: 0.8;">
+        <div style="width: 50%;">العضو</div>
+        <div style="width: 25%;" class="text-center">الصلاحية</div>
+        <div style="width: 25%;" class="text-end pe-3">الإجراءات</div>
+    </div>
+    
+    <div id="usersList" style="max-height: 450px; overflow-y: auto; padding: 2px;">
+        <div class="text-center p-4 text-muted small">جاري التحميل...</div>
+    </div>
+</div>				<div id="logs-tab" class="manage-tab-content" style="display:none;">
+				  <div class="card-box p-0">
+					<div id="adminLogsDiv" style="max-height: 400px; overflow-y: auto;">
+						<div class="text-center p-5 text-muted"><i class="fa fa-circle-notch fa-spin fa-2x mb-3"></i><br>جاري تحميل السجل...</div>
+					</div>
+				  </div>
+				</div>
+<div id="branches-tab" class="manage-tab-content" style="display:none;">
+
+    <!-- هيدر الفروع -->
+    <div class="d-flex justify-content-between align-items-center mb-3" style="direction:rtl;">
+        <h6 class="fw-bold m-0 small" style="color:var(--card-text);">
+            <i class="fa fa-building text-primary me-1"></i> الفروع المسجلة
+        </h6>
+        <button id="addBranchBtn" class="btn-main px-3"
+                style="width:auto;font-size:12px;padding:6px 14px;border-radius:10px;display:none;"
+                onclick="openAddBranchModal()">
+            <i class="fa fa-plus me-1"></i> فرع جديد
+        </button>
+    </div>
+
+    <!-- قائمة الفروع -->
+    <div id="branchesList" class="mb-3">
+        <div class="text-center p-4 text-muted small">جاري التحميل...</div>
+    </div>
+
+    <!-- تعيين موظف لفرع (مدير عام + مدير فرع) -->
+    <div id="assignSection" class="card-box shadow-sm border-0 mb-3" style="display:none;">
+        <h6 class="fw-bold mb-3 small" style="color:var(--card-text);">
+            <i class="fa fa-user-tag text-primary me-1"></i> تعيين موظف لفرع
+        </h6>
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label small fw-bold text-muted mb-1">اختر الموظف</label>
+                <select id="assignUserSelect" class="form-select form-select-sm">
+                    <option value="">-- اختر موظف --</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label small fw-bold text-muted mb-1">اختر الفرع</label>
+                <select id="assignBranchSelect" class="form-select form-select-sm">
+                    <option value="">-- اختر فرع --</option>
+                </select>
+            </div>
+            <div class="col-12 mt-1">
+                <button class="btn-main" onclick="handleAssignUserToBranch()">
+                    <i class="fa fa-check me-1"></i> تعيين
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ملخص الفروع (مدير عام فقط) -->
+        <div id="branchesSummarySection" class="card-box shadow-sm border-0" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold m-0 small" style="color:var(--card-text);">
+                    <i class="fa fa-chart-bar text-primary me-1"></i> ملخص الفروع
+            </h6>
+            <button class="btn btn-sm btn-light border" onclick="renderBranchesSummary()"
+                    style="font-size:11px;border-radius:8px;">
+                <i class="fa fa-rotate-right me-1"></i> تحديث
+            </button>
+        </div>
+        <div id="branches-summary-container">
+            <div class="text-center p-3 text-muted small">
+                <i class="fa fa-chart-bar me-1 opacity-50"></i>
+                اضغط تحديث لعرض الإحصائيات
+            </div>
+        </div>
+    </div>
+
+</div>
+</div>
+
+<div id="view-counter" class="view-section">
+    
+<div class="d-flex gap-2 mb-3 px-2">
+    <button id="tab-btn-counter" class="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border" onclick="switchInventoryTab('counter')">
+        <i class="fas fa-calculator me-1"></i> حاسبة النقدية
+    </button>
+    <button id="tab-btn-logs" class="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0" onclick="switchInventoryTab('logs')">
+        <i class="fas fa-history me-1"></i> سجل الجرد
+    </button>
+</div>
+
+<div id="inventory-tab-counter">
+    <div class="card-box shadow-sm border-0 mb-3 text-center" 
+         style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 20px; padding: 25px; color: white;">
+        
+        <div class="small opacity-75 fw-bold mb-1">إجمالي النقدية الفعلي</div>
+        <div class="h1 fw-bold m-0 english-num" style="font-size: 45px;">
+            <span id="total-cash">0</span> <small class="fs-6">ج.م</small>
+        </div>
+        
+        <div id="reconciliation-badge" class="mt-3 p-3 rounded-3" style="display:none; background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3);">
+            <div class="d-flex justify-content-between align-items-center">
+                <span id="diff-label" class="small fw-bold">النتيجة:</span>
+                <span id="diff-value" class="fw-bold english-num" style="font-size: 20px;">0</span>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <span class="badge rounded-pill bg-black bg-opacity-25 p-2 px-3 border border-white border-opacity-25">
+                <i class="fa fa-vault me-1 text-info"></i> رصيد الخزنة بالسيستم: 
+                <span id="system-vault-val" class="english-num fw-bold">0</span> ج.م
+                <i class="fas fa-sync-alt ms-2" id="refresh-vault-icon" style="cursor: pointer;" onclick="refreshVaultWithToast()"></i>
+            </span>
+        </div>
+    </div>
+
+    <button id="submit-inventory-btn" class="btn btn-warning w-100 rounded-pill fw-bold py-3 mb-3 shadow-sm border-0 text-dark" onclick="submitInventory()">
+        <i class="fas fa-save me-1"></i> اعتماد وحفظ نتيجة الجرد
+    </button>
+
+    <div class="card-box shadow-sm border-0 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold m-0 text-main small"><i class="fas fa-cash-register me-2 text-primary"></i>توزيع الفئات النقدية</h6>
+            <button class="btn btn-sm btn-light rounded-pill px-3 text-muted" onclick="resetCounter()">تصفير</button>
+        </div>
+        <div id="denominations-container" class="row g-2"></div>
+    </div>
+	    </div>
+<div id="inventory-tab-logs" style="display: none;">
+    <div class="card-box shadow-sm border-0 mb-3 bg-light">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold m-0 text-main"><i class="fas fa-history me-2 text-warning"></i>سجل العمليات</h6>
+            <button class="btn btn-sm btn-white shadow-sm rounded-pill px-3 border" onclick="loadInventoryLogs()">
+                <i class="fas fa-sync-alt text-muted me-1" id="log-refresh-icon"></i> تحديث
+            </button>
+        </div>
+        <div class="row g-0 px-3 mb-2 small fw-bold text-muted text-center border-bottom pb-2">
+            <div class="col-4 text-start">التاريخ</div>
+            <div class="col-5">الحالة</div>
+            <div class="col-3 text-end">إجراءات</div>
+        </div>
+        <div id="inventory-logs-list" style="max-height: 400px; overflow-y: auto;"></div>
+    </div>
+</div>
+	    </div>
+
+<div id="logDetailsModal" class="log-modal-overlay" style="display:none;" onclick="closeLogModalOutside(event)">
+    <div class="log-modal-content">
+        <div class="log-modal-header d-flex justify-content-between border-bottom pb-2 mb-3">
+            <h6 class="m-0 fw-bold text-primary">تفاصيل الجرد</h6>
+            <button class="btn-close" onclick="closeLogModal()" style="border:none; background:none; font-size:22px;">&times;</button>
+        </div>
+        <div class="log-modal-body">
+            <div class="d-flex justify-content-between mb-2 small text-muted"><span>التاريخ:</span> <span id="modal-date-head" class="text-dark fw-bold"></span></div>
+            <div class="d-flex justify-content-between mb-2 small text-muted"><span>المسؤول:</span> <span id="modal-user" class="text-dark fw-bold"></span></div>
+            <hr>
+            <div class="d-flex justify-content-between mb-2"><span>الرصيد الدفتري:</span> <span id="modal-system" class="english-num fw-bold"></span></div>
+            <div class="d-flex justify-content-between mb-2"><span>الرصيد الفعلي:</span> <span id="modal-actual" class="english-num fw-bold"></span></div>
+            <div id="modal-details-list" class="d-flex flex-wrap gap-2 mt-3"></div>
+        </div>
+        <button class="btn btn-primary w-100 rounded-pill mt-4 fw-bold" onclick="closeLogModal()">إغلاق</button>
+    </div>
+</div>
+<div id="view-settings" class="view-section"> 
+    <h6 class="text-muted small fw-bold mb-3"><i class="fa fa-wrench"></i> إعدادات الواجهة</h6>
+    <div class="card-box mb-3 d-flex justify-content-between align-items-center">
+        <label class="fw-bold">الوضع الداكن (Dark Mode)</label>
+        <button class="btn btn-sm btn-light border text-muted" onclick="toggleTheme()"><i class="fa fa-toggle-off" id="darkModeToggleIcon"></i></button>
+    </div>
+
+<h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-user-gear"></i> معلومات الحساب الشخصي</h6>
+<div class="card-box mb-3">
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="small text-muted mb-1">الاسم الحالي</label>
+            <div id="displayProfileName" class="form-control form-control-sm border-0 fw-bold">-</div>
+        </div>
+        <div class="col-6">
+            <label class="small text-muted mb-1">الرتبة/الصلاحية</label>
+            <div id="displayProfileRole" class="form-control form-control-sm border-0 fw-bold text-primary">-</div>
+        </div>
+        <div class="col-12 mt-2">
+            <label class="small text-muted mb-1">البريد الإلكتروني</label>
+            <div id="displayProfileEmail" class="form-control form-control-sm border-0">-</div>
+        </div>
+    </div>
+
+    <div class="pt-3 border-top">
+        <label class="small fw-bold mb-2 text-warning"><i class="fa fa-shield-halved me-1"></i> تغيير كلمة المرور</label>
+        
+        <div id="passwordFieldsSection">
+            <div class="mb-2">
+                <input type="password" id="newPass" class="form-control form-control-sm mb-2" placeholder="كلمة المرور الجديدة">
+                <input type="password" id="confirmPass" class="form-control form-control-sm" placeholder="تأكيد كلمة المرور">
+            </div>
+            <button class="btn btn-sm btn-success w-100 fw-bold" onclick="handleUpdatePassword()">
+                <i class="fa fa-save me-1"></i> حفظ كلمة المرور الجديدة
+            </button>
+        </div>
+    </div>
+</div>
+		<div id="adminSettingsSection" style="display: none;">
+			<h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-chart-bar"></i> إعدادات النظام</h6>
+			<div class="card-box">
+				<div class="mb-3">
+					<label class="fw-bold d-block mb-1">تحديث لوحة التحكم يدوياً</label>
+					<button class="btn-main" id="btnDrawDashboard" onclick="runDrawDashboard()">تحديث رسومات الداشبورد</button>
+				</div>
+				<div class="small text-muted text-center mb-3">يستخدم هذه الخاصية فقط في حالة ظهور رسومات الداشبورد (الرئيسية) في الشيت غير واضحة.</div>
+
+				<div class="mb-3">
+					<label class="fw-bold d-block mb-1">فحص وإصلاح جداول البيانات</label>
+					<button class="btn-main" id="btnCheckSheets" onclick="runCheckSheets()">فحص وإصلاح الشيتات</button>
+				</div>
+				<div class="small text-muted text-center">يقوم بإنشاء أي جدول مفقود أو إصلاح الأعمدة الرئيسية.</div>
+				</div>
+			</div>
+		</div>
+</main>
+		<div id="editModal" class="modal-overlay" style="display:none;">
+			  <div class="modal-box">
+				<h6 class="mb-3 text-center fw-bold">تعديل الحساب</h6>
+				<input type="hidden" id="editRow">
+				
+				<div class="mb-2">
+				  <label class="small">الاسم</label>
+				  <input type="text" id="editName" class="form-control text-center english-num">
+				</div>
+<div class="mb-2">
+    <label class="small fw-bold">لون الوسم</label>
+    <input type="color" id="editColorPicker" class="form-control form-control-color" value="#000000">
+</div>
+  				<div class="row g-2 mb-2">
+				  <div class="col-6"><label class="small">صادر يومي</label><input type="number" id="editLo" class="form-control text-center english-num"></div>
+				  <div class="col-6"><label class="small">وارد يومي</label><input type="number" id="editLi" class="form-control text-center english-num"></div>
+				</div>
+				
+				<div class="mb-2">
+				  <label class="small">حد شهري</label>
+				  <input type="number" id="editLm" class="form-control text-center english-num">
+				</div>
+
+				<div class="mb-3">
+				  <label class="small text-primary fw-bold">تسوية الأرباح (إضافة/خصم)</label>
+				  <input type="text" id="editProfitAdj" class="form-control text-center english-num" placeholder="0" onkeyup="formatNumberInput(this)">
+				  <small class="text-muted" style="font-size: 10px;">ادخل مبلغ لتعديل رصيد أرباح المحفظة</small>
+				</div>
+
+				<div class="d-flex gap-2">
+				  <button id="btnSaveEdit" class="btn btn-primary flex-grow-1" onclick="saveEdit()">حفظ التعديلات</button>
+				  <button class="btn btn-light border text-muted" onclick="closeEdit()">إلغاء</button>
+				</div>
+			  </div>
+			</div>
+				<div id="editClientModal" class="modal-overlay" style="display:none;">
+			  <div class="modal-box">
+				<h6 class="mb-3 text-center fw-bold">تعديل العميل</h6>
+				<input type="hidden" id="editClRow">
+				<div class="mb-2"><label class="small">الاسم</label><input type="text" id="editClName" class="form-control text-center"></div>
+				<div class="mb-2"><label class="small">موبايل</label><input type="text" id="editClPhone" class="form-control text-center english-num"></div>
+				<div class="mb-3"><label class="small">الرصيد (يدوي)</label><input type="number" id="editClBal" class="form-control text-center english-num"></div>
+				<div class="d-flex gap-2">
+				<button id="btnSaveCl" class="btn btn-primary flex-grow-1" onclick="saveEditClient()">حفظ</button>
+				  <button class="btn btn-light border text-muted" onclick="closeEditCl()">إلغاء</button>
+				</div>
+			  </div>
+			</div>
+
+			<!-- Modal: تعديل صلاحية المستخدم -->
+<div id="editRoleModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <h6 class="mb-3 text-center fw-bold">تعديل صلاحية المستخدم</h6>
+        <input type="hidden" id="editRoleEmail">
+        <input type="hidden" id="editRoleName">
+        <div class="mb-3 text-center">
+            <label class="small text-muted">تعديل صلاحية:</label>
+            <h5 class="fw-bold" id="currentUserName"></h5>
+        </div>
+        <div class="mb-3">
+            <label class="small fw-bold">الصلاحية الجديدة</label>
+            <select id="newRoleSelect" class="form-select mb-2">
+                <option value="USER">موظف</option>
+                <option value="ADMIN">Admin Assistant</option>
+            </select>
+        </div>
+        <div class="d-flex gap-2">
+            <button id="btnSaveRole" class="btn btn-primary flex-grow-1" onclick="saveUserRole()">حفظ التعديل</button>
+            <button class="btn btn-light border text-muted" onclick="closeEditRole()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: التنبيهات -->
+<div id="notificationModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; justify-content:center; align-items:center; backdrop-filter:blur(3px);">
+    <div class="modal-box" style="background:var(--bg-card); width:90%; max-width:380px; padding:20px; border-radius:16px; border:1px solid var(--border-color);">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold m-0"><i class="fa fa-bell text-warning me-2"></i>التنبيهات</h6>
+            <button class="btn-close" onclick="closeNotificationModal()"></button>
+        </div>
+        <div id="notificationsList" style="max-height:300px; overflow-y:auto;"></div>
+        <button class="btn-main mt-3" onclick="closeNotificationModal()">إغلاق</button>
+    </div>
+</div>
+
+<!-- Modal: تأكيد العملية -->
+<div id="confirmOpModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="border-top: 5px solid #3b82f6;">
+        <h6 class="fw-bold mb-3 text-center"><i class="fa fa-shield-check text-primary me-2"></i>تأكيد مسار العملية</h6>
+        <div id="opLogicDescription" class="p-3 mb-3" style="background: var(--bg-body); border-radius: 12px; font-size: 13px; line-height: 1.6;"></div>
+        <div class="d-flex gap-2">
+            <button id="btnFinalConfirm" class="btn-main flex-grow-1" onclick="executeFinalTransaction()">تأكيد وتنفيد</button>
+            <button class="btn btn-light border text-muted" onclick="closeConfirmModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: تخصيص المحفظة -->
+<div id="tagModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; justify-content:center; align-items:center;">
+    <div class="modal-box" style="padding:20px; border-radius:10px; width:300px;">
+        <h6 class="fw-bold mb-3">🎨 تخصيص المحفظة</h6>
+        <input type="hidden" id="tagRow">
+        <div class="mb-3">
+            <label class="small fw-bold">الوسم (الاسم المختصر)</label>
+            <input type="text" id="tagInput" class="form-control" placeholder="مثلاً: شخصي">
+        </div>
+        <div class="mb-3">
+            <label class="small fw-bold">اللون</label>
+            <input type="color" id="tagColorInput" class="form-control form-control-color w-100">
+        </div>
+        <div class="d-flex gap-1 flex-wrap">
+            <button onclick="saveTagSettings()" id="btnSaveTag" class="btn btn-warning flex-grow-1 fw-bold">حفظ</button>
+            <button onclick="resetTagSettings()" id="btnResetTag" class="btn btn-outline-danger" title="إعادة ضبط المظهر">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+            <button onclick="document.getElementById('tagModal').style.display='none'" class="btn btn-light border">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: تحليل الأرصدة (Bootstrap Modal) -->
+<div class="modal fade" id="auditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="true" style="z-index: 99999 !important;">
+    <div class="modal-dialog modal-dialog-centered" style="z-index: 100000 !important;">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="fa fa-chart-bar me-2"></i>تحليل الأرصدة</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light" id="auditBody" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+<div id="securePassModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; align-items:center; justify-content:center; direction:rtl; font-family:'Cairo', sans-serif;">
+    <div style="background:var(--card-bg); color:var(--card-text); padding:25px; border-radius:20px; width:85%; max-width:320px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <i class="fa fa-lock" style="font-size:40px; color:#0d6efd; margin-bottom:15px;"></i>
+        <h5 style="font-weight:bold; margin-bottom:20px;">كلمة المرور مطلوبة</h5>
+        <input type="password" id="secureInput" placeholder="أدخل الرقم السري" style="width:100%; padding:12px; border:2px solid var(--input-border); border-radius:10px; text-align:center; font-size:20px; margin-bottom:20px; outline:none; background:var(--input-bg); color:var(--input-text);">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="verifySecurePass()" style="flex:2; padding:12px; background:#0d6efd; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">دخول</button>
+            <button onclick="document.getElementById('securePassModal').style.display='none'" style="flex:1; padding:12px; background:var(--card-hover-bg); color:var(--card-text); border:1px solid var(--card-border); border-radius:10px; cursor:pointer;">إلغاء</button>
+        </div>
+    </div>
+</div>	
+</body>
+</html>
