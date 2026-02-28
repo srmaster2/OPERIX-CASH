@@ -713,7 +713,7 @@ async function forgotPassword(){
   const email = document.getElementById('email').value.trim();
   if(!email) return toast('اكتب البريد الإلكتروني أولاً', false);
   const {error} = await window.supa.auth.resetPasswordForEmail(email,{
-    redirectTo:'https://srmaster2.github.io/Sadek-Cash/reset-password.html'
+    redirectTo:'https://srmaster2.github.io/OPERIX-CASH/reset-password.html'
   });
   error ? toast('خطأ: '+error.message, false) : toast('تم إرسال رابط إعادة التعيين');
 }
