@@ -2,6 +2,17 @@
    OPERATIONS VIEW STYLES
 ======================================== */
 
+/* ── Container width — يتطابق مع باقي الصفحات ── */
+#view-op {
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+
 .op-tabs-container {
   background: var(--bg-secondary);
   border-radius: 12px;
@@ -34,20 +45,84 @@
   border: 1px solid var(--border-color);
 }
 
+/* ── Services Grid: صفوف متساوية دايماً ── */
+.services-grid,
 .services-grid-compact {
-  gap: 6px !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
   margin-bottom: 12px !important;
 }
 
-.services-grid-compact .op-card {
-  padding: 8px 4px !important;
-  min-height: 70px;
-  font-size: 0.7rem;
+/* لو في صف فيه 4 كروت زي الخدمات الرئيسية */
+.services-grid.cols-4,
+.services-grid-compact.cols-4 {
+  grid-template-columns: repeat(4, 1fr) !important;
 }
 
-.services-grid-compact .op-card i { font-size: 1rem !important; margin-bottom: 3px; }
-.services-grid-compact .op-card span { font-size: 0.7rem; }
+/* لو في صف فيه 2 كروت */
+.services-grid.cols-2,
+.services-grid-compact.cols-2 {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+.service-col {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.services-grid-compact .op-card {
+  padding: 10px 4px !important;
+  min-height: 75px;
+  font-size: 0.7rem;
+  width: 100% !important;
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.services-grid-compact .op-card i { font-size: 1.1rem !important; margin-bottom: 4px; }
+.services-grid-compact .op-card span { font-size: 0.68rem; text-align: center; line-height: 1.2; }
 .new-op-panel .card-box { padding: 12px; }
+
+/* ── Mobile Tabs Bar ── */
+.op-tabs-bar {
+  background: var(--bg-secondary, #f1f5f9);
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.op-tabs-bar .btn-group {
+  gap: 4px;
+}
+
+.op-tabs-bar .btn {
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  padding: 10px 12px !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  color: var(--text-muted, #64748b) !important;
+  background: transparent !important;
+}
+
+.op-tabs-bar .btn.active {
+  background: #3b82f6 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.35) !important;
+  transform: none !important;
+}
+
+.op-tabs-bar .btn:not(.active):hover {
+  background: rgba(59,130,246,0.08) !important;
+  color: #3b82f6 !important;
+}
 
 @keyframes tabSwitch {
   from { opacity: 0; transform: translateX(10px); }
@@ -109,20 +184,147 @@
   z-index: 9999;
   justify-content: center;
   align-items: center;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
 }
 
-.log-modal-overlay {
-  display: none;
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.65);
-  z-index: 9999;
-  justify-content: center;
-  align-items: center;
-  backdrop-filter: blur(4px);
+/* ── Modal Box ── */
+.details-modal-box {
+  background: var(--card-bg, #fff);
+  border-radius: 20px;
+  width: 92%;
+  max-width: 380px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.35),
+    0 8px 24px rgba(0,0,0,0.15),
+    0 0 0 1px rgba(255,255,255,0.06);
+  animation: txdSlideUp 0.28s cubic-bezier(0.34,1.56,0.64,1);
 }
+@keyframes txdSlideUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.details-modal-head {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.07));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  font-weight: 800;
+  flex-shrink: 0;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 20px 20px 0 0;
+}
+
+.details-modal-content {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+}
+
+/* Loading */
+.txd-loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; padding: 40px 20px;
+  color: var(--text-muted, #6b7280); font-size: 13px;
+}
+.txd-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border-color, #e5e7eb);
+  border-top-color: #3b82f6; border-radius: 50%;
+  animation: txdSpin 0.7s linear infinite;
+}
+@keyframes txdSpin { to { transform: rotate(360deg); } }
+
+/* Hero */
+.txd-hero {
+  padding: 18px 16px 16px;
+  display: flex; align-items: center; gap: 14px;
+  position: relative;
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.06));
+}
+.txd-hero-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.txd-hero-info { flex: 1; min-width: 0; }
+.txd-hero-type {
+  font-size: 13px; font-weight: 700;
+  color: var(--card-text, #1a2035); margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.txd-hero-amount {
+  font-size: 22px; font-weight: 900;
+  font-family: 'Roboto Mono', monospace; line-height: 1;
+}
+.txd-hero-amount span { font-size: 13px; font-weight: 600; opacity: 0.8; }
+.txd-hero-badge {
+  position: absolute; top: 14px; left: 14px;
+  font-size: 10px; font-weight: 800;
+  padding: 3px 10px; border-radius: 20px;
+}
+
+/* Grid */
+.txd-grid { padding: 6px 0; }
+.txd-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.045));
+  gap: 10px; transition: background 0.15s;
+}
+.txd-row:last-child { border-bottom: none; }
+.txd-row:hover { background: var(--bg-secondary, rgba(0,0,0,0.02)); }
+.txd-highlight { padding-right: 13px !important; }
+
+.txd-row-label {
+  font-size: 12px; color: var(--text-muted, #6b7280);
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0; min-width: 110px;
+}
+.txd-row-label i { width: 14px; text-align: center; font-size: 12px; }
+
+.txd-row-val {
+  font-size: 13px; font-weight: 600;
+  color: var(--card-text, #1a2035);
+  text-align: left; word-break: break-word;
+}
+.txd-comm  { color: #d97706; font-weight: 800; font-family: 'Roboto Mono', monospace; }
+.txd-mono  { font-family: 'Roboto Mono', monospace; font-size: 12px; direction: ltr; }
+.txd-notes { color: var(--text-muted, #6b7280); font-weight: 500; font-size: 12.5px; text-align: right; max-width: 180px; }
+
+.txd-tag {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 20px; font-size: 12px; font-weight: 700;
+}
+
+/* Footer */
+.txd-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color, rgba(0,0,0,0.06));
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 0 0 20px 20px; flex-shrink: 0;
+}
+.txd-id {
+  font-size: 11px; color: var(--text-muted, #9ca3af);
+  font-family: 'Roboto Mono', monospace;
+  display: flex; align-items: center;
+}
+
+/* Error */
+.txd-error {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+  padding: 32px 20px; color: #ef4444; font-size: 13px;
+}
+.txd-error i { font-size: 28px; }
 
 .log-modal-content {
   background: var(--card-bg);
@@ -184,6 +386,7 @@
   #col-new-op, #col-log-op { display: block !important; }
   .op-tabs-bar { display: none !important; }
   #col-log-op .table-responsive { max-height: calc(100vh - 220px) !important; }
+  #view-op { width: 50% !important; }
 }
 
 @media (max-width: 991.98px) {
@@ -191,6 +394,56 @@
   #col-new-op.mob-active, #col-log-op.mob-active { display: block !important; }
   .op-tabs-bar { display: block !important; }
   #col-log-op .table-responsive { max-height: calc(100vh - 220px) !important; }
+
+  /* ── الشبكة على الموبايل: عمودين بدل 3 أو 4 ── */
+  .services-grid,
+  .services-grid-compact {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+  .services-grid.cols-4,
+  .services-grid-compact.cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .services-grid.cols-2,
+  .services-grid-compact.cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── كروت الخدمات على الموبايل ── */
+  .services-grid-compact .op-card {
+    padding: 10px 6px !important;
+    min-height: 70px;
+    font-size: 0.72rem;
+  }
+
+  /* ── الباديل على الموبايل ── */
+  .new-op-panel,
+  .log-op-panel {
+    padding: 12px 10px;
+  }
+
+  /* ── جدول السجل على الموبايل: نخفي الأعمدة الأقل أهمية ── */
+  .log-op-panel .table th:nth-child(4),
+  .log-op-panel .table td:nth-child(4),
+  .log-op-panel .table th:nth-child(6),
+  .log-op-panel .table td:nth-child(6) {
+    display: none;
+  }
+  .log-op-panel .table { font-size: 0.75rem; }
+  .log-op-panel .table th,
+  .log-op-panel .table td { padding: 6px 3px; }
+
+  /* ── المودالات على الموبايل ── */
+  .modal-box {
+    width: 95%;
+    padding: 18px 14px;
+    max-height: 92vh;
+  }
+  .details-modal-box {
+    width: 96%;
+    max-height: 92vh;
+  }
 }
 
 @media (min-width: 992px) {
@@ -203,3 +456,27 @@
   }
 }
 
+/* ── شاشات صغيرة جداً (أقل من 400px) ── */
+@media (max-width: 399px) {
+  .services-grid,
+  .services-grid-compact,
+  .services-grid.cols-4,
+  .services-grid-compact.cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+  }
+  .services-grid-compact .op-card {
+    min-height: 62px;
+    padding: 8px 4px !important;
+  }
+  .services-grid-compact .op-card i { font-size: 1rem !important; }
+  .services-grid-compact .op-card span { font-size: 0.62rem; }
+  .op-tabs-bar .btn {
+    font-size: 0.78rem !important;
+    padding: 8px 6px !important;
+  }
+  .modal-box {
+    width: 98%;
+    padding: 14px 10px;
+  }
+}

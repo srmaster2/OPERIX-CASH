@@ -1,21 +1,143 @@
-async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.supa.auth.getSession();if(!a)return window.__redirecting||(window.__redirecting=!0,window.location.replace("login.html")),!1;return!0}catch(e){return window.__redirecting||(window.__redirecting=!0,window.location.replace("login.html")),!1}}async function initUserAccess(){try{let a=await loadCurrentUserWithBranch();if(!a)throw Error("لم يتم جلب بيانات المستخدم");let e=a.isMaster||!1,s=!e&&"ADMIN"===(a.role||"").toUpperCase()&&!!a.branch_id,t=document.getElementById("user-display-name");t&&a.name&&(t.textContent=a.name),"function"==typeof renderCurrentBranchBadge&&renderCurrentBranchBadge();let l=document.getElementById("nav-dash"),i=document.getElementById("nav-manage");l&&(l.style.display=""),i&&(i.style.display=e||s?"":"none"),document.querySelectorAll(".admin-only-section").forEach(a=>{a.style.display=e||s?"":"none"}),document.querySelectorAll(".master-only").forEach(a=>{a.style.display=e?"":"none"})}catch(d){console.error("Access init error:",d);let n=document.getElementById("nav-manage");n&&(n.style.display="none"),document.querySelectorAll(".admin-only-section, .master-only").forEach(a=>{a.style.display="none"})}}async function initApp(){await checkSessionOrRedirect()&&(initializeViews(),await initUserAccess(),"function"==typeof loadWallets&&loadWallets(),"function"==typeof loadClientsToSelect&&loadClientsToSelect(),"function"==typeof renderPinnedWallets&&renderPinnedWallets(),"function"==typeof fetchVaultBalance&&fetchVaultBalance(),Promise.all([loadDashboard(),loadAccountsList(),getTransactionLogs()]),setupEventListeners())}async function loadDashboard(){let a=document.getElementById("dashContent");if(!a)return;a.innerHTML='<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted fw-bold">جاري تجهيز لوحة القيادة...</p></div>';let[e,s]=await Promise.all([getDashboardStats(),loadAccounts()]);if(!e||!e.success||!s){a.innerHTML='<div class="alert alert-danger text-center">خطأ في جلب البيانات</div>';return}let t=a=>new Intl.NumberFormat("en-US",{minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(a)||0),l=window.currentUserData;window.globalWalletsData=s.filter(a=>{let e=Number(a.daily_out_limit)||0,s=a.name||"",t=s.includes("الخزنة")||s.includes("كاش");return(!t||!!l?.isMaster)&&"الخزنة (الكاش)"!==a.name&&e>0&&e<1e7}).map(a=>({name:a.name,bal:Number(a.balance)||0,limDay:Number(a.daily_out_limit)||0,usedDay:Number(a.daily_out_usage)||0,limMon:Number(a.monthly_limit)||0,usedMon:Number(a.monthly_usage_out)||0}));let i=e.lastFive&&e.lastFive.length>0?e.lastFive.map(a=>{let e=(a.type||"").includes("سحب")||(a.type||"").includes("صادر");return`
+// الدالة الرئيسية للتطبيق
+async function checkSessionOrRedirect() {
+  try {
+    const { data: { session } } = await window.supa.auth.getSession();
+    if (!session) {
+      if (!window.__redirecting) {
+        window.__redirecting = true;
+        window.location.replace('login.html');
+      }
+      return false;
+    }
+    return true;
+  } catch (e) {
+    if (!window.__redirecting) {
+      window.__redirecting = true;
+      window.location.replace('login.html');
+    }
+    return false;
+  }
+}
+
+async function initUserAccess() {
+  try {
+    // تحميل بيانات المستخدم مع الفرع — لازم يكون أول حاجة
+    const userInfo = await loadCurrentUserWithBranch();
+    if (!userInfo) throw new Error('لم يتم جلب بيانات المستخدم');
+
+    const isMaster = userInfo.isMaster || false;
+    const isAdmin  = !isMaster && (userInfo.role || '').toUpperCase() === 'ADMIN' && !!userInfo.branch_id;
+
+    // 1. اسم المستخدم وشارة الفرع
+    const userNameEl = document.getElementById('user-display-name');
+    if (userNameEl && userInfo.name) userNameEl.textContent = userInfo.name;
+    if (typeof renderCurrentBranchBadge === 'function') renderCurrentBranchBadge();
+
+    // 2. الـ Sidebar
+    const navDash   = document.getElementById('nav-dash');
+    const navManage = document.getElementById('nav-manage');
+    if (navDash)   navDash.style.display   = '';
+    if (navManage) navManage.style.display = (isMaster || isAdmin) ? '' : 'none';
+
+    // 3. العناصر حسب الرول
+    document.querySelectorAll('.admin-only-section').forEach(el => {
+      el.style.display = (isMaster || isAdmin) ? '' : 'none';
+    });
+    document.querySelectorAll('.master-only').forEach(el => {
+      el.style.display = isMaster ? '' : 'none';
+    });
+
+  } catch (e) {
+    console.error('Access init error:', e);
+    const navManage = document.getElementById('nav-manage');
+    if (navManage) navManage.style.display = 'none';
+    document.querySelectorAll('.admin-only-section, .master-only').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+}
+async function initApp() {
+  if (!(await checkSessionOrRedirect())) return;
+
+  initializeViews();
+
+  await initUserAccess();
+
+  // currentUserData جاهز — نشغّل كل الدوال اللي بتحتاج فلتر الفرع
+  if (typeof loadWallets          === 'function') loadWallets();
+  if (typeof loadClientsToSelect  === 'function') loadClientsToSelect();
+  if (typeof renderPinnedWallets  === 'function') renderPinnedWallets();
+  if (typeof fetchVaultBalance    === 'function') fetchVaultBalance(); // ← أضف السطر ده
+
+  // تشغيل الباقي بالتوازي
+  Promise.all([
+     loadDashboard(),
+     loadAccountsList(),
+     getTransactionLogs()
+  ]);
+
+  setupEventListeners();
+}// --- دالة تحميل لوحة التحكم المدمجة بالكامل (التصميم الجديد) ---
+async function loadDashboard() {
+  const dash = document.getElementById('dashContent');
+  if (!dash) return;
+  
+  dash.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted fw-bold">جاري تجهيز لوحة القيادة...</p></div>';
+
+  const [s, allAccounts] = await Promise.all([
+    getDashboardStats(),
+    loadAccounts()
+  ]);
+
+  if (!s || !s.success || !allAccounts) {
+    dash.innerHTML = '<div class="alert alert-danger text-center">خطأ في جلب البيانات</div>';
+    return;
+  }
+
+  const f = (n) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(n) || 0);
+
+  const user = window.currentUserData;
+  window.globalWalletsData = allAccounts.filter(acc => {
+    const dLimit  = Number(acc.daily_out_limit) || 0;
+    const name    = acc.name || '';
+    const isVault = name.includes('الخزنة') || name.includes('كاش');
+    // الخزنة تظهر في المراقبة للمدير العام فقط
+    if (isVault && !user?.isMaster) return false;
+    return acc.name !== "الخزنة (الكاش)" && dLimit > 0 && dLimit < 10000000;
+  }).map(acc => ({
+    name: acc.name,
+    bal: Number(acc.balance) || 0,
+    limDay: Number(acc.daily_out_limit) || 0,
+    usedDay: Number(acc.daily_out_usage) || 0,
+    limMon: Number(acc.monthly_limit) || 0,
+    usedMon: Number(acc.monthly_usage_out) || 0
+  }));
+
+  const lastFiveHTML = s.lastFive && s.lastFive.length > 0
+    ? s.lastFive.map(tx => {
+        const isOut = (tx.type || '').includes('سحب') || (tx.type || '').includes('صادر');
+        return `
         <div class="last-tx-row">
             <div class="d-flex align-items-center gap-2">
-                <div class="last-tx-icon ${e?"tx-out":"tx-in"}">
-                    <i class="fas fa-${e?"arrow-up":"arrow-down"}"></i>
+                <div class="last-tx-icon ${isOut ? 'tx-out' : 'tx-in'}">
+                    <i class="fas fa-${isOut ? 'arrow-up' : 'arrow-down'}"></i>
                 </div>
                 <div>
-                    <div class="last-tx-type">${a.type||"-"}</div>
-                    <div class="last-tx-meta">${a.date||""} ${a.time||""} \xb7 ${a.added_by||""}</div>
+                    <div class="last-tx-type">${tx.type || '-'}</div>
+                    <div class="last-tx-meta">${tx.date || ''} ${tx.time || ''} · ${tx.added_by || ''}</div>
                 </div>
             </div>
             <div class="text-end">
-                <div class="last-tx-amount ${e?"text-danger":"text-success"} english-num">
-                    ${e?"-":"+"}${Number(a.amount||0).toLocaleString()}
+                <div class="last-tx-amount ${isOut ? 'text-danger' : 'text-success'} english-num">
+                    ${isOut ? '-' : '+'}${Number(tx.amount || 0).toLocaleString()}
                 </div>
-                <div class="last-tx-note">${a.notes||""}</div>
+                <div class="last-tx-note">${tx.notes || ''}</div>
             </div>
-        </div>`}).join(""):'<div class="text-center text-muted p-4">لا توجد عمليات</div>';a.innerHTML=`
+        </div>`;
+    }).join('')
+    : '<div class="text-center text-muted p-4">لا توجد عمليات</div>';
+
+  dash.innerHTML = `
   <div class="dashboard-header-modern mb-4">
 
     <!-- الكروت الرئيسية -->
@@ -34,28 +156,28 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
         <div class="stat-icon-wrapper"><i class="fas fa-vault"></i></div>
         <div class="stat-info">
           <span class="stat-label">النقدية بالخزنة</span>
-          <span class="stat-value">${t(e.cash)}</span>
+          <span class="stat-value">${f(s.cash)}</span>
         </div>
       </div>
       <div class="stat-card-premium blue">
         <div class="stat-icon-wrapper"><i class="fas fa-sack-dollar"></i></div>
         <div class="stat-info">
           <span class="stat-label">إجمالي السيولة (رأس المال)</span>
-          <span class="stat-value">${t(e.totalAvailable)}</span>
+          <span class="stat-value">${f(s.totalAvailable)}</span>
         </div>
       </div>
       <div class="stat-card-premium orange">
         <div class="stat-icon-wrapper"><i class="fas fa-wallet"></i></div>
         <div class="stat-info">
           <span class="stat-label">أرصدة المحافظ</span>
-          <span class="stat-value">${t(e.walletsTotal)}</span>
+          <span class="stat-value">${f(s.walletsTotal)}</span>
         </div>
       </div>
       <div class="stat-card-premium red">
         <div class="stat-icon-wrapper"><i class="fas fa-building-columns"></i></div>
         <div class="stat-info">
           <span class="stat-label">أرصدة الشركات</span>
-          <span class="stat-value">${t(e.compTotal)}</span>
+          <span class="stat-value">${f(s.compTotal)}</span>
         </div>
       </div>
     </div>
@@ -70,7 +192,7 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
             </div>
             <div>
               <div class="text-muted small">عمليات اليوم</div>
-              <div class="fw-bold fs-5 english-num">${e.todayCount||0} عملية</div>
+              <div class="fw-bold fs-5 english-num">${s.todayCount || 0} عملية</div>
             </div>
           </div>
         </div>
@@ -83,7 +205,7 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
             </div>
             <div>
               <div class="text-muted small">إجمالي وارد اليوم</div>
-              <div class="fw-bold fs-5 english-num text-success">${t(e.todayIn||0)}</div>
+              <div class="fw-bold fs-5 english-num text-success">${f(s.todayIn || 0)}</div>
             </div>
           </div>
         </div>
@@ -96,7 +218,7 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
             </div>
             <div>
               <div class="text-muted small">إجمالي صادر اليوم</div>
-              <div class="fw-bold fs-5 english-num text-danger">${t(e.todayOut||0)}</div>
+              <div class="fw-bold fs-5 english-num text-danger">${f(s.todayOut || 0)}</div>
             </div>
           </div>
         </div>
@@ -116,7 +238,7 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
                 <i class="fas fa-arrow-trend-down text-danger"></i>
                 <small class="fw-bold text-muted">علينا (التزامات)</small>
               </div>
-              <h4 class="fw-bold text-danger m-0 english-num">${t(e.have)}</h4>
+              <h4 class="fw-bold text-danger m-0 english-num">${f(s.have)}</h4>
             </div>
           </div>
           <div class="col-6">
@@ -125,7 +247,7 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
                 <i class="fas fa-arrow-trend-up text-success"></i>
                 <small class="fw-bold text-muted">لنا (خارجية)</small>
               </div>
-              <h4 class="fw-bold text-success m-0 english-num">${t(e.oweMe)}</h4>
+              <h4 class="fw-bold text-success m-0 english-num">${f(s.oweMe)}</h4>
             </div>
           </div>
         </div>
@@ -141,15 +263,15 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
         <div class="profits-container">
           <div class="profit-item">
             <p class="profit-label">اليوم</p>
-            <p class="profit-value blur-v prof text-success">${t(e.dP)}</p>
+            <p class="profit-value blur-v prof text-success">${f(s.dP)}</p>
           </div>
           <div class="profit-item">
             <p class="profit-label">الشهر</p>
-            <p class="profit-value blur-v prof text-primary">${t(e.mP)}</p>
+            <p class="profit-value blur-v prof text-primary">${f(s.mP)}</p>
           </div>
           <div class="profit-item">
             <p class="profit-label">مصروفات</p>
-            <p class="profit-value blur-v prof text-danger">${t(e.ex)}</p>
+            <p class="profit-value blur-v prof text-danger">${f(s.ex)}</p>
           </div>
         </div>
       </div>
@@ -161,32 +283,36 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
         <h6 class="fw-bold mb-3"><i class="fas fa-briefcase text-warning me-2"></i>أرصدة الشركات</h6>
         <div class="dashboard-card-single p-0 overflow-hidden">
           <div class="list-group list-group-flush">
-            ${Object.keys(e.breakdown).length>0?Object.entries(e.breakdown).map(([a,e])=>`
+            ${Object.keys(s.breakdown).length > 0
+              ? Object.entries(s.breakdown).map(([name, info]) => `
                 <div class="list-group-item d-flex justify-content-between align-items-center p-3">
                   <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-circle p-2" style="background:${e.color}20; color:${e.color};">
+                    <div class="rounded-circle p-2" style="background:${info.color}20; color:${info.color};">
                       <i class="fas fa-building"></i>
                     </div>
-                    <span class="fw-bold">${a}</span>
+                    <span class="fw-bold">${name}</span>
                   </div>
-                  <span class="fw-bold english-num">${t(e.balance)}</span>
-                </div>`).join(""):'<div class="p-4 text-center text-muted fw-bold">لا توجد شركات بليميت ≥ 9M</div>'}
+                  <span class="fw-bold english-num">${f(info.balance)}</span>
+                </div>`).join('')
+              : '<div class="p-4 text-center text-muted fw-bold">لا توجد شركات بليميت ≥ 9M</div>'
+            }
           </div>
         </div>
       </div>
       <div class="col-lg-6">
         <h6 class="fw-bold mb-3"><i class="fas fa-users text-purple me-2"></i>حسابات العملاء</h6>
         <div class="dashboard-card-single p-2" style="max-height:200px; overflow-y:auto;">
-          ${e.clientsCards.length?e.clientsCards.map(a=>`
+          ${s.clientsCards.length ? s.clientsCards.map(c => `
             <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded" style="background:var(--card-bg); border:1px solid var(--card-border)!important;">
               <div class="d-flex align-items-center gap-2">
                 <i class="fas fa-user-circle text-muted"></i>
-                <span class="small fw-bold">${a.name}</span>
+                <span class="small fw-bold">${c.name}</span>
               </div>
-              <span class="small fw-bold english-num ${a.balance>0?"text-danger":"text-success"}">
-                ${t(Math.abs(a.balance))}
+              <span class="small fw-bold english-num ${c.balance > 0 ? 'text-danger' : 'text-success'}">
+                ${f(Math.abs(c.balance))}
               </span>
-            </div>`).join(""):'<div class="text-center text-muted small p-3">لا توجد مديونيات</div>'}
+            </div>`).join('')
+          : '<div class="text-center text-muted small p-3">لا توجد مديونيات</div>'}
         </div>
       </div>
     </div>
@@ -211,54 +337,375 @@ async function checkSessionOrRedirect(){try{let{data:{session:a}}=await window.s
 <div class="col-lg-6">
         <h5 class="fw-bold m-0 mb-3"><i class="fas fa-clock-rotate-left text-warning me-2"></i>آخر العمليات</h5>
         <div class="wlt-grid-card">
-          ${i}
+          ${lastFiveHTML}
         </div>
       </div>
     </div>
 
-  </div>`,applyWalletFilters()}function refreshDashboardData(){return loadDashboard()}function initRealtime(){window.supa.channel("schema-db-changes").on("postgres_changes",{event:"*",schema:"public",table:"transactions"},a=>{console.log("تغيير لحظي اكتشفناه!",a),refreshDashboardData()}).subscribe(a=>{console.log("حالة الاتصال اللحظي:",a)})}function applyWalletFilters(){let a=document.getElementById("dashWalletSearch"),e=document.getElementById("sortWalletsSelect");if(!a||!e)return;let s=a.value.toLowerCase(),t=e.value,l=[...window.globalWalletsData];switch(s&&(l=l.filter(a=>a.name.toLowerCase().includes(s))),t){case"max_bal":l.sort((a,e)=>e.bal-a.bal);break;case"max_day":l.sort((a,e)=>e.usedDay-a.usedDay);break;case"min_day":l.sort((a,e)=>a.usedDay-e.usedDay);break;case"max_mon":l.sort((a,e)=>e.usedMon-a.usedMon);break;case"min_mon":l.sort((a,e)=>a.usedMon-e.usedMon)}renderWalletsGrid(l)}function renderWalletsGrid(a){let e=document.getElementById("walletsLiveGrid");if(!e)return;let s=a=>(Number(a)||0).toLocaleString(),t=a&&a.length>0?a.map(a=>{let e=a.limDay>0?Math.min(a.usedDay/a.limDay*100,100):0,t=a.limMon>0?Math.min(a.usedMon/a.limMon*100,100):0,l=e>90?"#f43f5e":e>70?"#f59e0b":"#10b981",i=Math.max(0,a.limDay-a.usedDay),d=Math.max(0,a.limMon-a.usedMon);return`
-        <div class="wlt-item">
+  </div>`;
+
+  applyWalletFilters();
+}
+window.unlock = function() {
+  if (prompt("كلمة السر:") === "1234") {
+    document.querySelectorAll('.prof').forEach(el => el.classList.remove('blur-v'));
+  }
+}
+
+// alias: refreshDashboardData = loadDashboard
+function refreshDashboardData() {
+    return loadDashboard();
+}
+// alias: loadDash = loadDashboard (للتوافق مع transactions.js)
+window.loadDash = loadDashboard;
+
+function initRealtime() {
+    window.supa
+        .channel('schema-db-changes')
+        .on(
+            'postgres_changes', 
+            { 
+                event: '*', // يراقب الإضافة والحذف والتعديل
+                schema: 'public', 
+                table: 'transactions' 
+            }, 
+            (payload) => {
+                console.log("تغيير لحظي اكتشفناه!", payload);
+                // استدعاء الدالة السابقة فوراً لتحديث الأرقام والقائمة
+                refreshDashboardData(); 
+            }
+        )
+        .subscribe((status) => {
+            console.log("حالة الاتصال اللحظي:", status);
+        });
+}
+
+// تشغيل عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    refreshDashboardData(); // جلب البيانات أول مرة
+    initRealtime();        // تشغيل المراقب اللحظي
+});
+
+
+function applyWalletFilters() {
+    const searchInput = document.getElementById('dashWalletSearch');
+    const sortSelect = document.getElementById('sortWalletsSelect');
+    if (!searchInput || !sortSelect) return;
+
+    const searchText = searchInput.value.toLowerCase();
+    const sortMode = sortSelect.value;
+    
+    let filteredData = [...window.globalWalletsData];
+
+    // 1. تصفية البحث
+    if (searchText) {
+      filteredData = filteredData.filter(w => w.name.toLowerCase().includes(searchText));
+    }
+
+    // 2. تطبيق الترتيب المطلوب
+    switch (sortMode) {
+      case 'max_bal': filteredData.sort((a, b) => b.bal - a.bal); break;
+      case 'max_day': filteredData.sort((a, b) => b.usedDay - a.usedDay); break;
+      case 'min_day': filteredData.sort((a, b) => a.usedDay - b.usedDay); break;
+      case 'max_mon': filteredData.sort((a, b) => b.usedMon - a.usedMon); break;
+      case 'min_mon': filteredData.sort((a, b) => a.usedMon - b.usedMon); break;
+    }
+
+    // 3. الرسم
+    renderWalletsGrid(filteredData);
+}
+
+function renderWalletsGrid(walletsList) {
+    const container = document.getElementById('walletsLiveGrid');
+    if (!container) return;
+
+    const f = (n) => (Number(n) || 0).toLocaleString();
+
+    const rows = (walletsList && walletsList.length > 0) ? walletsList.map(w => {
+        const dayPct = w.limDay > 0 ? Math.min((w.usedDay / w.limDay) * 100, 100) : 0;
+        const monPct = w.limMon > 0 ? Math.min((w.usedMon / w.limMon) * 100, 100) : 0;
+
+        // المتبقي الفعلي = min(يومي, شهري)
+        const remDay = Math.max(0, w.limDay - w.usedDay);
+        const remMon = Math.max(0, w.limMon - w.usedMon);
+        const remEff = w.limMon > 0 ? Math.min(remDay, remMon) : remDay;
+
+        // المؤشر اليومي يعكس remEff — لو الشهري هو اللي بيحكم، نحسب نسبته على الشهري
+        // مثال: limDay=60k, remDay=40k, remMon=20k → remEff=20k محكوم بالشهري
+        // نعرض نسبة الشهري (monPct) على شريط اليومي عشان يكون صادق
+        const effDayPct = (w.limMon > 0 && remMon < remDay) ? monPct : dayPct;
+
+        // اللون والـ status بناءً على الأعلى استهلاكاً (يومي أو شهري)
+        const effPct      = Math.max(dayPct, monPct);
+        const dayColor    = effPct > 90 ? '#f43f5e' : effPct > 70 ? '#f59e0b' : '#10b981';
+        const statusLabel = effPct > 90 ? '⚠ حرج' : effPct > 70 ? 'تحذير' : '✓ طبيعي';
+        const statusClass = effPct > 90 ? 'status-critical' : effPct > 70 ? 'status-warn' : 'status-ok';
+
+        return `
+        <div class="wlt-item" style="
+            border-radius:14px;
+            border:1px solid var(--border-color,rgba(0,0,0,0.07));
+            box-shadow:0 2px 10px rgba(0,0,0,0.07),0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom:10px;
+            overflow:hidden;
+            transition:box-shadow 0.2s ease,transform 0.2s ease;
+            background:var(--card-bg,#fff);
+        " onmouseenter="this.style.boxShadow='0 6px 20px rgba(0,0,0,0.12),0 2px 6px rgba(0,0,0,0.07)';this.style.transform='translateY(-1px)'"
+           onmouseleave="this.style.boxShadow='0 2px 10px rgba(0,0,0,0.07),0 1px 3px rgba(0,0,0,0.05)';this.style.transform='translateY(0)'">
             <div class="wlt-item-header">
                 <div class="wlt-left">
-                    <div class="wlt-indicator" style="background:${l}"></div>
+                    <div class="wlt-indicator" style="background:${dayColor}"></div>
                     <div>
-                        <div class="wlt-item-name">${a.name}</div>
-                        <span class="wlt-badge ${e>90?"status-critical":e>70?"status-warn":"status-ok"}">${e>90?"⚠ حرج":e>70?"تحذير":"✓ طبيعي"}</span>
+                        <div class="wlt-item-name">${w.name}</div>
+                        <span class="wlt-badge ${statusClass}">${statusLabel}</span>
                     </div>
                 </div>
-                <div class="wlt-item-bal">${s(a.bal)}<span>ج.م</span></div>
+                <div class="wlt-item-bal">${f(w.bal)}<span>ج.م</span></div>
             </div>
             <div class="wlt-item-tracks">
                 <div class="wlt-track-row">
                     <span>يومي</span>
                     <div class="wlt-track">
-                        <div class="wlt-fill" style="width:${e}%;background:${l}"></div>
+                        <div class="wlt-fill" style="width:${effDayPct}%;background:${dayColor}"></div>
                     </div>
-                    <span style="color:${l};min-width:32px;text-align:left">${Math.round(e)}%</span>
+                    <span style="color:${dayColor};min-width:32px;text-align:left">${Math.round(effDayPct)}%</span>
                 </div>
                 <div class="wlt-rem-row">
                     <small class="text-muted">متبقي:</small>
-                    <small class="fw-bold english-num" style="color:${l}">${s(i)} ج.م</small>
+                    <small class="fw-bold english-num" style="color:${dayColor}">${f(remEff)} ج.م</small>
                 </div>
 
                 <div class="wlt-track-row mt-1">
                     <span>شهري</span>
                     <div class="wlt-track">
-                        <div class="wlt-fill" style="width:${t}%;background:linear-gradient(90deg,#3b82f6,#818cf8)"></div>
+                        <div class="wlt-fill" style="width:${monPct}%;background:linear-gradient(90deg,#3b82f6,#818cf8)"></div>
                     </div>
-                    <span style="color:#6366f1;min-width:32px;text-align:left">${Math.round(t)}%</span>
+                    <span style="color:#6366f1;min-width:32px;text-align:left">${Math.round(monPct)}%</span>
                 </div>
                 <div class="wlt-rem-row">
                     <small class="text-muted">متبقي:</small>
-                    <small class="fw-bold english-num" style="color:#6366f1">${s(d)} ج.م</small>
+                    <small class="fw-bold english-num" style="color:#6366f1">${f(remMon)} ج.م</small>
                 </div>
             </div>
-        </div>`}).join(""):'<div class="text-center text-muted p-4">لا توجد نتائج</div>';e.innerHTML=`
+        </div>`;
+    }).join('') : '<div class="text-center text-muted p-4">لا توجد نتائج</div>';
+
+    container.innerHTML = `
     <div class="wlt-grid-card">
-        <div class="wlt-grid-body">${t}</div>
-    </div>`}async function loadAccountsList(){let a=await loadAccounts(),e=document.getElementById("accountsList");e&&(e.innerHTML=a.map(a=>`
+        <div class="wlt-grid-body">${rows}</div>
+    </div>`;
+}
+// تحميل الحسابات (استخدام للواجهات البسيطة الأخرى إن وجدت)
+async function loadAccountsList() {
+  const accounts = await loadAccounts();
+  const container = document.getElementById('accountsList');
+  if (!container) return; // قد لا تكون موجودة في هذا القالب
+  container.innerHTML = accounts.map(acc => `
     <div class="account-card">
-      <h5>${a.name}</h5>
-      <p>الرصيد: ${Number(a.balance).toLocaleString()}</p>
+      <h5>${acc.name}</h5>
+      <p>الرصيد: ${Number(acc.balance).toLocaleString()}</p>
     </div>
-  `).join(""))}function setupEventListeners(){let a=document.getElementById("addAccountBtn");a&&(a.onclick=async()=>{let a=document.getElementById("accountName")?.value,e=document.getElementById("accountType")?.value,s=document.getElementById("accountBalance")?.value;await addAccount(a,e,"",s)&&loadAccountsList()});let e=document.getElementById("addTransactionBtn");e&&(e.onclick=async()=>{let a=document.getElementById("transactionType")?.value,e=document.getElementById("transactionAmount")?.value;await addTransaction(a,e,0,null,null,"")&&(loadTransactionsList(),loadDashboard())})}function initializeViews(){let a=document.querySelectorAll(".view-section");a.forEach(a=>{a.classList.remove("active"),a.style.display=""});let e=document.getElementById("view-dash");e&&(e.classList.add("active"),e.style.display="")}window.unlock=function(){"1234"===prompt("كلمة السر:")&&document.querySelectorAll(".prof").forEach(a=>a.classList.remove("blur-v"))},window.loadDash=loadDashboard,document.addEventListener("DOMContentLoaded",()=>{refreshDashboardData(),initRealtime()}),window.signOut=async function(){try{await window.supa.auth.signOut()}finally{window.__redirecting||(window.__redirecting=!0,window.location.replace("login.html"))}},window.toggleSidebar=function(){document.body.classList.toggle("sidebar-closed")},document.addEventListener("DOMContentLoaded",()=>{let a=document.getElementById("sidebarToggleBtn");a&&a.addEventListener("click",toggleSidebar),window.innerWidth<768&&document.body.classList.add("sidebar-closed"),document.querySelectorAll(".sidebar-link, .submenu-link").forEach(a=>{a.addEventListener("click",()=>{window.innerWidth<768&&document.body.classList.add("sidebar-closed")})})}),window.addEventListener("DOMContentLoaded",initApp),window.showView=function(a){document.querySelectorAll(".view-section").forEach(a=>{a.classList.remove("active"),a.style.display=""}),document.querySelectorAll(".sidebar-link").forEach(a=>{a.classList.remove("active")});let e=`view-${a}`,s=document.getElementById(e);if(s){s.classList.add("active"),s.style.display="";let t=document.querySelector(`[onclick="showView('${a}')"]`);t&&t.classList.add("active"),"dash"===a?loadDashboard():"op"===a?("function"==typeof loadWalletsToSelect&&loadWalletsToSelect(),"function"==typeof executeAdvancedSearch&&executeAdvancedSearch(),switchMobileTab("new")):"manage"===a?("function"==typeof loadClientsTable&&loadClientsTable(),"function"==typeof loadAccountsTable&&loadAccountsTable()):"reports"===a||("counter"===a?"function"==typeof renderCounter&&renderCounter():"settings"===a&&"function"==typeof loadProfileSettings&&loadProfileSettings())}},window.toggleSidebar=function(){document.body.classList.toggle("sidebar-closed")},window.toggleSubMenu=function(a){let e=a.closest(".nav-parent");e&&e.classList.toggle("open")},window.switchMobileTab=function(a){let e=document.getElementById("col-new-op"),s=document.getElementById("col-log-op"),t=document.getElementById("mob-tab-new"),l=document.getElementById("mob-tab-log");"new"===a?(e?.classList.add("mob-active"),s?.classList.remove("mob-active"),t?.classList.replace("btn-outline-primary","btn-primary"),t?.classList.add("active"),l?.classList.replace("btn-secondary","btn-outline-secondary"),l?.classList.remove("active")):(s?.classList.add("mob-active"),e?.classList.remove("mob-active"),l?.classList.replace("btn-outline-secondary","btn-secondary"),l?.classList.add("active"),t?.classList.replace("btn-primary","btn-outline-primary"),t?.classList.remove("active"),"function"==typeof executeAdvancedSearch&&executeAdvancedSearch())},window.switchOpTab=function(a){"log"===a?switchMobileTab("log"):switchMobileTab("new")},window.switchReportTab=function(a){document.querySelectorAll(".report-content").forEach(a=>{a.style.display="none"}),document.querySelectorAll('[id^="rep-"] + ul .nav-link, .nav-pills .nav-link').forEach(a=>{(a.textContent.includes("يومية")||a.textContent.includes("محافظ")||a.textContent.includes("ذروة")||a.textContent.includes("أرباح"))&&a.classList.remove("active")});let e=document.getElementById(`rep-${a}`);e&&(e.style.display="block")};
+  `).join('');
+}
+
+//// تحميل العمليات من Supabase إلى جدول السجل
+// إعداد الأحداث مع التحقق من وجود العناصر
+function setupEventListeners() {
+  const addAccBtn = document.getElementById('addAccountBtn');
+  if (addAccBtn) {
+    addAccBtn.onclick = async () => {
+      const name = document.getElementById('accountName')?.value;
+      const type = document.getElementById('accountType')?.value;
+      const balance = document.getElementById('accountBalance')?.value;
+      if (await addAccount(name, type, '', balance)) {
+        loadAccountsList();
+      }
+    };
+  }
+
+  const addTxBtn = document.getElementById('addTransactionBtn');
+  if (addTxBtn) {
+    addTxBtn.onclick = async () => {
+      const type = document.getElementById('transactionType')?.value;
+      const amount = document.getElementById('transactionAmount')?.value;
+      if (await addTransaction(type, amount, 0, null, null, '')) {
+        loadTransactionsList();
+        loadDashboard();
+      }
+    };
+  }
+}
+
+// تسجيل الخروج
+window.signOut = async function() {
+  try {
+    await window.supa.auth.signOut();
+  } finally {
+    if (!window.__redirecting) {
+      window.__redirecting = true;
+      window.location.replace('login.html');
+    }
+  }
+};
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-closed');
+};
+
+// إغلاق الـ sidebar تلقائياً لما تختار أي لينك على الموبايل
+document.addEventListener('DOMContentLoaded', () => {
+    // ربط زرار الـ sidebar
+    const sidebarBtn = document.getElementById('sidebarToggleBtn');
+    if (sidebarBtn) sidebarBtn.addEventListener('click', toggleSidebar);
+
+    if (window.innerWidth < 768) {
+        document.body.classList.add('sidebar-closed');
+    }
+
+    document.querySelectorAll('.sidebar-link, .submenu-link').forEach(link => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 768) {
+                document.body.classList.add('sidebar-closed');
+            }
+        });
+    });
+});
+// تشغيل التطبيق عند تحميل الصفحة
+window.addEventListener('DOMContentLoaded', initApp);
+
+// ========== دوال التنقل بين الصفحات ==========
+window.showView = function(viewName) {
+    // إخفاء جميع الصفحات بالـ class فقط
+    document.querySelectorAll('.view-section').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = '';
+    });
+    
+    // إزالة active من جميع الـ links
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.classList.remove('active');
+    });
+    
+    // إظهار الصفحة المختارة بالـ class فقط
+    const viewId = `view-${viewName}`;
+    const viewEl = document.getElementById(viewId);
+    if (viewEl) {
+        viewEl.classList.add('active');
+        viewEl.style.display = '';
+        
+        // إضافة active للـ link المناسب
+        const activeLink = document.querySelector(`[onclick="showView('${viewName}')"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
+        
+        // تحميل البيانات حسب نوع الصفحة
+        if (viewName === 'dash') {
+            loadDashboard();
+        } else if (viewName === 'op') {
+            // تحميل البيانات للعرض المدمج
+          if (typeof loadWalletsToSelect === 'function') loadWalletsToSelect();
+            if (typeof executeAdvancedSearch === 'function') executeAdvancedSearch();            // على الموبايل: إظهار عملية جديدة كـ default
+            switchMobileTab('new');
+        } else if (viewName === 'manage') {
+            if (typeof loadClientsTable === 'function') loadClientsTable();
+            if (typeof loadAccountsTable === 'function') loadAccountsTable();
+        } else if (viewName === 'reports') {
+            // رسم التقارير إذا لزم الأمر
+        } else if (viewName === 'counter') {
+            if (typeof renderCounter === 'function') {
+                renderCounter();
+            }
+        } else if (viewName === 'settings') {
+            if (typeof loadProfileSettings === 'function') {
+                loadProfileSettings();
+            }
+        }
+    }
+};
+
+// ========== SIDEBAR TOGGLE ==========
+window.toggleSidebar = function() {
+    document.body.classList.toggle('sidebar-closed');
+};
+
+// Initialize views - ensure only dashboard is active on load
+function initializeViews() {
+    const views = document.querySelectorAll('.view-section');
+    
+    // إخفاء كل الـ views بإزالة الـ class وتنظيف inline styles
+    views.forEach(view => {
+        view.classList.remove('active');
+        view.style.display = '';
+    });
+    
+    // إظهار الداشبورد فقط
+    const dashView = document.getElementById('view-dash');
+    if (dashView) {
+        dashView.classList.add('active');
+        dashView.style.display = '';
+    }
+}
+
+// ========== SUBMENU TOGGLE ==========
+window.toggleSubMenu = function(element) {
+    const parentLi = element.closest('.nav-parent');
+    if (!parentLi) return;
+    
+    parentLi.classList.toggle('open');
+};
+
+// ========== MOBILE TAB SWITCH للعمليات ==========
+// على الموبايل: عملية جديدة | سجل العمليات
+window.switchMobileTab = function(tabName) {
+    const colNew = document.getElementById('col-new-op');
+    const colLog = document.getElementById('col-log-op');
+    const btnNew = document.getElementById('mob-tab-new');
+    const btnLog = document.getElementById('mob-tab-log');
+
+    if (tabName === 'new') {
+        colNew?.classList.add('mob-active');
+        colLog?.classList.remove('mob-active');
+        btnNew?.classList.replace('btn-outline-primary', 'btn-primary');
+        btnNew?.classList.add('active');
+        btnLog?.classList.replace('btn-secondary', 'btn-outline-secondary');
+        btnLog?.classList.remove('active');
+    } else {
+        colLog?.classList.add('mob-active');
+        colNew?.classList.remove('mob-active');
+        btnLog?.classList.replace('btn-outline-secondary', 'btn-secondary');
+        btnLog?.classList.add('active');
+        btnNew?.classList.replace('btn-primary', 'btn-outline-primary');
+        btnNew?.classList.remove('active');
+        // تحميل السجل عند الانتقال إليه
+if (typeof executeAdvancedSearch === 'function') executeAdvancedSearch();    }
+};
+
+// للتوافق مع الكود القديم
+window.switchOpTab = function(tabName) {
+    if (tabName === 'log') {
+        switchMobileTab('log');
+    } else {
+        switchMobileTab('new');
+    }
+};
+
+// ========== REPORT TABS SWITCH ==========
+window.switchReportTab = function(tabName) {
+    // إخفاء جميع التقارير
+    document.querySelectorAll('.report-content').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // إزالة active من أزرار التقارير
+    document.querySelectorAll('[id^="rep-"] + ul .nav-link, .nav-pills .nav-link').forEach(link => {
+        if (link.textContent.includes('يومية') || link.textContent.includes('محافظ') || link.textContent.includes('ذروة') || link.textContent.includes('أرباح')) {
+            link.classList.remove('active');
+        }
+    });
+    
+    // عرض التقرير المختار
+    const reportEl = document.getElementById(`rep-${tabName}`);
+    if (reportEl) {
+        reportEl.style.display = 'block';
+    }
+};

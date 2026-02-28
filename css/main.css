@@ -34,3 +34,5 @@
 
 /* 08 — الكومبوننتس (كروت، محافظ، provider) */
 @import url('components.css');
+
+@import url('layout.css');

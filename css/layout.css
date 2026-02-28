@@ -1,0 +1,392 @@
+/* ============================================================
+   layout.css — scoped بالكامل على #view-op
+   لا يأثر على أي صفحة تانية
+   ============================================================ */
+
+/* ══════════════════════════════
+   SPLIT — الوضع الافتراضي (مفيش تغيير)
+══════════════════════════════ */
+#view-op.lyt-split .op-tabs-bar { display: none !important; }
+#view-op.lyt-split #col-new-op  { display: block !important; }
+#view-op.lyt-split #col-log-op  { display: block !important; }
+#view-op.lyt-split .lyt-float-btn   { display: none !important; }
+#view-op.lyt-split .lyt-tabs-bar    { display: none !important; }
+
+/* ══════════════════════════════
+   DRAWER
+══════════════════════════════ */
+#view-op.lyt-drawer #col-log-op      { display: none !important; }
+#view-op.lyt-drawer #col-new-op      { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+#view-op.lyt-drawer .op-tabs-bar     { display: none !important; }
+#view-op.lyt-drawer .lyt-tabs-bar    { display: none !important; }
+#view-op.lyt-drawer .lyt-float-btn   { display: flex !important; }
+#view-op.lyt-drawer .lyt-float-sheet { display: none !important; }
+
+/* ══════════════════════════════
+   SHEET
+══════════════════════════════ */
+#view-op.lyt-sheet #col-log-op       { display: none !important; }
+#view-op.lyt-sheet #col-new-op       { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+#view-op.lyt-sheet .op-tabs-bar      { display: none !important; }
+#view-op.lyt-sheet .lyt-tabs-bar     { display: none !important; }
+#view-op.lyt-sheet .lyt-float-sheet  { display: flex !important; }
+#view-op.lyt-sheet .lyt-float-btn    { display: none !important; }
+
+/* ══════════════════════════════
+   TABS
+══════════════════════════════ */
+#view-op.lyt-tabs .op-tabs-bar    { display: none !important; }
+#view-op.lyt-tabs .lyt-float-btn  { display: none !important; }
+#view-op.lyt-tabs .lyt-tabs-bar   { display: block !important; }
+#view-op.lyt-tabs #col-new-op,
+#view-op.lyt-tabs #col-log-op     { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+#view-op.lyt-tabs .lyt-tab-hidden { display: none !important; }
+
+/* ══════════════════════════════
+   FLOAT BUTTON (Drawer & Sheet)
+══════════════════════════════ */
+.lyt-float-btn,
+.lyt-float-sheet {
+  display: none; /* مخبي افتراضياً — الـ layout هو اللي يظهره */
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  padding: 13px 28px;
+  border: none;
+  border-radius: 30px;
+  color: #fff;
+  font-family: 'Cairo', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+  transition: all 0.2s;
+  box-shadow: 0 4px 22px rgba(0,0,0,.25);
+}
+.lyt-float-btn {
+  background: #3b82f6;
+  box-shadow: 0 4px 22px rgba(59,130,246,.5);
+}
+.lyt-float-btn:hover {
+  transform: translateX(-50%) translateY(-3px);
+  box-shadow: 0 8px 28px rgba(59,130,246,.65);
+}
+.lyt-float-sheet {
+  background: #8b5cf6;
+  box-shadow: 0 4px 22px rgba(139,92,246,.5);
+}
+.lyt-float-sheet:hover {
+  transform: translateX(-50%) translateY(-3px);
+  box-shadow: 0 8px 28px rgba(139,92,246,.65);
+}
+.lyt-badge {
+  background: rgba(255,255,255,.25);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 11px;
+}
+
+/* ══════════════════════════════
+   TABS BAR — احترافي مع dark/light
+══════════════════════════════ */
+.lyt-tabs-bar {
+  display: none;
+  padding: 12px 0 4px;
+  margin-bottom: 14px;
+}
+
+.lyt-tabs-inner {
+  display: flex;
+  background: var(--bg-secondary, #f1f5f9);
+  border-radius: 14px;
+  padding: 5px;
+  gap: 5px;
+  border: 1px solid var(--border-color, rgba(0,0,0,0.08));
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.07),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+/* Dark mode */
+[data-theme="dark"] .lyt-tabs-inner,
+.dark .lyt-tabs-inner,
+body.dark-mode .lyt-tabs-inner {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.lyt-tab-btn {
+  flex: 1;
+  padding: 10px 14px;
+  font-family: 'Cairo', sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #6b7280);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  position: relative;
+}
+
+.lyt-tab-btn:not(.active):hover {
+  background: rgba(59,130,246,0.09);
+  color: #3b82f6;
+}
+
+/* Active: عملية جديدة */
+.lyt-tab-btn.active {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow:
+    0 2px 10px rgba(59,130,246,0.22),
+    0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 900;
+}
+
+/* Dark mode active */
+[data-theme="dark"] .lyt-tab-btn.active,
+.dark .lyt-tab-btn.active,
+body.dark-mode .lyt-tab-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+  box-shadow:
+    0 2px 12px rgba(59,130,246,0.45),
+    0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* Active: سجل العمليات — لون مختلف */
+.lyt-tab-btn.lyt-tab-log.active {
+  background: #ffffff;
+  color: #b45309;
+  box-shadow:
+    0 2px 10px rgba(245,158,11,0.22),
+    0 1px 3px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] .lyt-tab-btn.lyt-tab-log.active,
+.dark .lyt-tab-btn.lyt-tab-log.active,
+body.dark-mode .lyt-tab-btn.lyt-tab-log.active {
+  background: #f59e0b;
+  color: #1a1a1a;
+  box-shadow:
+    0 2px 12px rgba(245,158,11,0.45),
+    0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ══════════════════════════════
+   DRAWER OVERLAY & PANEL
+══════════════════════════════ */
+.layout-drawer-overlay {
+  position: fixed;
+  top: 62px; left: 0; right: 0; bottom: 0;
+  z-index: 1050;
+  background: rgba(0,0,0,0);
+  pointer-events: none;
+  transition: background 0.3s;
+}
+.layout-drawer-overlay.open {
+  background: rgba(0,0,0,.6);
+  pointer-events: all;
+}
+.layout-drawer-panel {
+  position: fixed;
+  top: 62px; left: 0; bottom: 0;
+  width: 72%;
+  max-width: 560px;
+  background: var(--bg-card, #fff);
+  border-left: 1px solid rgba(0,0,0,.1);
+  border-top: 1px solid rgba(0,0,0,.08);
+  box-shadow: 6px 0 40px rgba(0,0,0,.28);
+  border-radius: 0 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(-105%);
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  z-index: 1051;
+}
+.layout-drawer-overlay.open .layout-drawer-panel {
+  transform: translateX(0);
+}
+
+/* ══════════════════════════════
+   SHEET OVERLAY & PANEL
+══════════════════════════════ */
+.layout-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(0,0,0,0);
+  pointer-events: none;
+  transition: background 0.3s;
+  display: flex;
+  align-items: flex-end;
+}
+.layout-sheet-overlay.open {
+  background: rgba(0,0,0,.6);
+  pointer-events: all;
+  backdrop-filter: blur(3px);
+}
+.layout-sheet-panel {
+  width: 100%;
+  max-height: 80vh;
+  background: var(--bg-card, #fff);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(0,0,0,.1);
+  box-shadow: 0 -8px 32px rgba(0,0,0,.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
+}
+.layout-sheet-overlay.open .layout-sheet-panel {
+  transform: translateY(0);
+}
+.layout-sheet-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: rgba(0,0,0,.15);
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════
+   PANEL HEAD (shared)
+══════════════════════════════ */
+.layout-panel-head {
+  padding: 12px 16px;
+  background: var(--bg-body, #f8f9fa);
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--card-text, #1a2035);
+}
+.layout-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+}
+.layout-xbtn {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(0,0,0,.1);
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.layout-xbtn:hover { color: #ef4444; border-color: #ef4444; }
+.text-purple { color: #8b5cf6; }
+
+/* ══════════════════════════════
+   SETTINGS CARDS
+══════════════════════════════ */
+.layout-opts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.layout-opt-card {
+  border: 2px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-card, #fff);
+}
+.layout-opt-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(59,130,246,.15);
+}
+.layout-opt-card.active {
+  border-color: #3b82f6;
+  background: rgba(59,130,246,.06);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+/* preview box */
+.layout-opt-preview {
+  height: 52px;
+  border-radius: 8px;
+  background: var(--bg-body, #f3f4f6);
+  border: 1px solid var(--border-color, #e5e7eb);
+  overflow: hidden;
+  display: flex;
+  gap: 3px;
+  padding: 5px;
+  margin-bottom: 9px;
+  position: relative;
+}
+.layout-opt-preview .lop-form,
+.layout-opt-preview .lop-log  { border-radius: 4px; }
+
+/* split preview */
+.lop-split .lop-form { width: 42%; background: rgba(59,130,246,.3); }
+.lop-split .lop-log  { flex: 1;  background: rgba(16,185,129,.25); }
+
+/* drawer preview */
+.lop-drawer .lop-form { width: 100%; background: rgba(59,130,246,.15); }
+.lop-drawer .lop-log  {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 38%;
+  background: rgba(16,185,129,.45);
+  border-radius: 0 4px 4px 0;
+}
+
+/* sheet preview */
+.lop-sheet .lop-form  { width: 100%; height: 55%; background: rgba(59,130,246,.15); align-self: flex-start; }
+.lop-sheet .lop-log   {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 40%;
+  background: rgba(139,92,246,.4);
+  border-radius: 6px 6px 0 0;
+}
+
+/* tabs preview */
+.lop-tabs {
+  flex-direction: column !important;
+  padding: 4px !important;
+  gap: 3px !important;
+}
+.lop-tabs .lop-form {
+  height: 14px; width: 100%;
+  background: linear-gradient(90deg, rgba(59,130,246,.5) 50%, rgba(245,158,11,.4) 50%);
+}
+.lop-tabs .lop-log { flex: 1; width: 100%; background: rgba(59,130,246,.15); }
+
+/* card text */
+.layout-opt-label {
+  font-size: 12px; font-weight: 800;
+  color: var(--card-text, #1a2035);
+  display: flex; align-items: center; gap: 5px;
+  margin-bottom: 3px;
+}
+.layout-opt-label i { color: #3b82f6; font-size: 11px; }
+.lop-curr {
+  margin-right: auto;
+  background: #3b82f6; color: #fff;
+  border-radius: 20px; padding: 0 7px;
+  font-size: 9.5px;
+}
+.layout-opt-desc { font-size: 10.5px; color: var(--text-muted, #6b7280); }

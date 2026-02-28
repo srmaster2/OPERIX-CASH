@@ -1,13 +1,119 @@
-var searchTimeout,_toastTimer=null;function showToast(t,e){void 0===e&&(e=!0);let a=document.getElementById("toastMsg");a&&(a.textContent=t,a.className="custom-toast show "+(e?"toast-success":"toast-error"),clearTimeout(_toastTimer),_toastTimer=setTimeout(()=>{a.className="custom-toast"},3500))}function setLoading(t,e){let a=document.getElementById(t);a&&(a.disabled=e,e?(a._originalText=a.innerHTML,a.innerHTML='<i class="fa fa-circle-notch fa-spin me-1"></i> جاري التنفيذ...'):a.innerHTML=a._originalText||a.innerHTML)}function formatNumberInput(t){let e=t.value.replace(/[^0-9.]/g,""),a=e.split(".");a[0]=a[0].replace(/\B(?=(\d{3})+(?!\d))/g,","),t.value=a.join(".")}async function loadWallets(){let t=document.getElementById("wallet");if(t){t.innerHTML="<option>جاري التحميل...</option>";try{let e=window.currentUserData,a=window.supa.from("accounts").select("id, name, balance, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out").order("name");"function"==typeof applyBranchFilter&&(a=applyBranchFilter(a,e));let{data:n,error:l}=await a;if(l)throw l;t.innerHTML='<option value="">اختر الحساب...</option>',n?.forEach(e=>{let a=Number(e.balance||0).toLocaleString();t.innerHTML+=`<option value="${e.id}"
-                data-bal="${e.balance||0}"
-                data-lo="${e.daily_out_limit||0}"
-                data-li="${e.daily_in_limit||0}"
-                data-lm="${e.monthly_limit||0}"
-                data-uo="${e.daily_out_usage||0}"
-                data-ui="${e.daily_in_usage||0}"
-                data-um="${e.monthly_usage_out||0}">
-                ${e.name} (${a} ج.م)
-            </option>`})}catch(i){t.innerHTML="<option>خطأ في التحميل</option>",console.error("loadWallets error:",i)}}}function updateLimitDisplay(){let t=document.getElementById("wallet"),e=document.getElementById("limitStatus");if(!t||!e)return;let a=t.options[t.selectedIndex],n=document.getElementById("type")?.value||"";if(!a||!a.value||n.includes("مصروف")){e.style.display="none";return}let l=Number(a.dataset.bal)||0,i=Number(a.dataset.lo)||0,s=Number(a.dataset.li)||0,o=Number(a.dataset.lm)||0,d=Number(a.dataset.uo)||0,r=Number(a.dataset.ui)||0,c=Number(a.dataset.um)||0;if(!i&&!s&&!o){e.style.display="none";return}let u=Math.max(0,Math.min(i-d,o-c)),m=Math.max(0,s-r);e.style.display="block",e.innerHTML=`
+// ================================================
+// UTILS.JS - الدوال المساعدة العامة
+// ================================================
+
+// ---- Toast Notification ----
+var _toastTimer = null;
+function showToast(msg, success) {
+    if (success === undefined) success = true;
+    const el = document.getElementById('toastMsg');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'custom-toast show ' + (success ? 'toast-success' : 'toast-error');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { el.className = 'custom-toast'; }, 3500);
+}
+
+// ---- Loading State ----
+function setLoading(btnId, isLoading) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled = isLoading;
+    if (isLoading) {
+        btn._originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa fa-circle-notch fa-spin me-1"></i> جاري التنفيذ...';
+    } else {
+        btn.innerHTML = btn._originalText || btn.innerHTML;
+    }
+}
+
+// ---- تنسيق أرقام المدخلات ----
+function formatNumberInput(input) {
+    let val = input.value.replace(/[^0-9.]/g, '');
+    const parts = val.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    input.value = parts.join('.');
+}
+
+// ---- تحميل المحافظ ----
+async function loadWallets() {
+    const select = document.getElementById('wallet');
+    if (!select) return;
+    select.innerHTML = '<option>جاري التحميل...</option>';
+    try {
+        const user = window.currentUserData;
+        let query = window.supa
+            .from('accounts')
+            .select('id, name, balance, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out')
+            .order('name');
+        if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
+        const { data: accounts, error } = await query;
+
+        if (error) throw error;
+
+        select.innerHTML = '<option value="">اختر الحساب...</option>';
+        accounts?.forEach(acc => {
+            const bal = Number(acc.balance || 0).toLocaleString();
+            select.innerHTML += `<option value="${acc.id}"
+                data-bal="${acc.balance             || 0}"
+                data-lo="${acc.daily_out_limit      || 0}"
+                data-li="${acc.daily_in_limit       || 0}"
+                data-lm="${acc.monthly_limit        || 0}"
+                data-uo="${acc.daily_out_usage      || 0}"
+                data-ui="${acc.daily_in_usage       || 0}"
+                data-um="${acc.monthly_usage_out    || 0}">
+                ${acc.name} (${bal} ج.م)
+            </option>`;
+        });
+    } catch (err) {
+        select.innerHTML = '<option>خطأ في التحميل</option>';
+        console.error('loadWallets error:', err);
+    }
+}
+
+// ---- عرض حالة الليميت (متاح فعلي = limit - usage) ----
+function updateLimitDisplay() {
+    const select   = document.getElementById('wallet');
+    const limitDiv = document.getElementById('limitStatus');
+    if (!select || !limitDiv) return;
+
+    const opt  = select.options[select.selectedIndex];
+    const type = document.getElementById('type')?.value || '';
+
+    if (!opt || !opt.value || type.includes("مصروف")) {
+        limitDiv.style.display = 'none';
+        return;
+    }
+
+    const bal = Number(opt.dataset.bal) || 0;
+    const lo  = Number(opt.dataset.lo)  || 0;  // daily_out_limit
+    const li  = Number(opt.dataset.li)  || 0;  // daily_in_limit
+    const lm  = Number(opt.dataset.lm)  || 0;  // monthly_limit
+    const uo  = Number(opt.dataset.uo)  || 0;  // daily_out_usage
+    const ui  = Number(opt.dataset.ui)  || 0;  // daily_in_usage
+    const um  = Number(opt.dataset.um)  || 0;  // monthly_usage_out
+
+    // لو مفيش أي ليميت (زي الخزنة) اخفي الكارت
+    if (!lo && !li && !lm) { limitDiv.style.display = 'none'; return; }
+
+    // المتاح الفعلي
+    const availOut = Math.max(0, Math.min(lo - uo, lm - um)); // أقل قيمة بين اليومي والشهري
+    const availIn  = Math.max(0, li - ui);
+    const isMonthRestricted = lm > 0 && (lm - um) < (lo - uo);
+
+    // ألوان ديناميكية
+    const balClass = bal < 300  ? 'text-danger fw-bold'
+                   : bal < 1000 ? 'text-warning fw-bold'
+                   : 'text-success fw-bold';
+    const outClass = availOut < 500  ? 'text-danger fw-bold'
+                   : availOut < 2000 ? 'text-warning fw-bold'
+                   : 'text-success fw-bold';
+    const incClass = availIn  < 500  ? 'text-danger fw-bold'
+                   : availIn  < 2000 ? 'text-warning fw-bold'
+                   : 'text-success fw-bold';
+
+    limitDiv.style.display = 'block';
+    limitDiv.innerHTML = `
         <div class="wallet-info-card shadow-sm" style="
             background: var(--bg-card, #1e293b);
             border: 1px solid rgba(255,255,255,0.08);
@@ -19,7 +125,7 @@ var searchTimeout,_toastTimer=null;function showToast(t,e){void 0===e&&(e=!0);le
             <!-- الرصيد الحالي -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:10px; border-bottom:1px dashed rgba(255,255,255,0.1);">
                 <span style="font-size:12px; color:var(--text-muted, #94a3b8);">الرصيد الحالي</span>
-                <span class="${l<300?"text-danger fw-bold":l<1e3?"text-warning fw-bold":"text-success fw-bold"}" style="font-size:15px;">${l.toLocaleString()} <small style="font-size:11px">ج.م</small></span>
+                <span class="${balClass}" style="font-size:15px;">${bal.toLocaleString()} <small style="font-size:11px">ج.م</small></span>
             </div>
             <!-- متاح دخول / خروج -->
             <div style="display:flex; gap:8px;">
@@ -27,44 +133,401 @@ var searchTimeout,_toastTimer=null;function showToast(t,e){void 0===e&&(e=!0);le
                     <div style="font-size:10px; color:var(--text-muted,#94a3b8); margin-bottom:4px;">
                         <i class="fa fa-arrow-down" style="color:#10b981;"></i> متاح دخول
                     </div>
-                    <div class="${m<500?"text-danger fw-bold":m<2e3?"text-warning fw-bold":"text-success fw-bold"}" style="font-size:14px;">${m.toLocaleString()}</div>
+                    <div class="${incClass}" style="font-size:14px;">${availIn.toLocaleString()}</div>
                 </div>
                 <div style="flex:1; text-align:center; background:rgba(239,68,68,0.08); border-radius:10px; padding:8px 6px;">
                     <div style="font-size:10px; color:var(--text-muted,#94a3b8); margin-bottom:4px;">
                         <i class="fa fa-arrow-up" style="color:#ef4444;"></i> متاح خروج
                     </div>
-                    <div class="${u<500?"text-danger fw-bold":u<2e3?"text-warning fw-bold":"text-success fw-bold"}" style="font-size:14px;">${u.toLocaleString()}</div>
+                    <div class="${outClass}" style="font-size:14px;">${availOut.toLocaleString()}</div>
                 </div>
             </div>
-            ${o>0&&o-c<i-d?`
+            ${isMonthRestricted ? `
             <div style="margin-top:8px; font-size:10px; color:#ef4444; font-weight:bold; text-align:center;">
                 ⚠️ المحفظة مقيدة بالحد الشهري
-            </div>`:""}
-        </div>`}function updateLimitDisplayBoth(){let t=document.getElementById("wallet-both");if(!t)return}async function fetchClientBalance(){let t=document.getElementById("client")?.value,e=document.getElementById("clientBalanceStatus");if(!e)return;if(!t){e.textContent="";return}let{data:a,error:n}=await window.supa.from("clients").select("balance, name").eq("id",t).single();if(!n&&a){let l=Number(a.balance||0);e.className=`small fw-bold mt-1 text-center ${l>0?"text-danger":"text-success"}`,e.textContent=`رصيد ${a.name}: ${Math.abs(l).toLocaleString()} ج.م ${l>0?"(عليه)":"(له)"}`}}async function loadClientsToSelect(){let t=document.getElementById("client");if(!t)return;let e=window.currentUserData,a=window.supa.from("clients").select("id, name, balance").order("name");"function"==typeof applyBranchFilter&&(a=applyBranchFilter(a,e));let{data:n}=await a;n&&(t.innerHTML='<option value="">اختر العميل...</option>',n.forEach(e=>{let a=Number(e.balance)||0,n=a<0?` | عليه: ${Math.abs(a).toLocaleString()}`:a>0?` | له: ${a.toLocaleString()}`:"";t.innerHTML+=`<option value="${e.id}">${e.name}${n}</option>`}))}async function loadClientsTable(){let t=document.getElementById("manage-clients-body");if(!t)return;t.innerHTML='<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';let e=window.currentUserData,a=window.supa.from("clients").select("*").order("name");"function"==typeof applyBranchFilter&&(a=applyBranchFilter(a,e));let{data:n,error:l}=await a;if(l||!n){t.innerHTML='<div class="text-center text-danger small p-3">خطأ في التحميل</div>';return}if(!n.length){t.innerHTML='<div class="text-center text-muted small p-3">لا يوجد عملاء</div>';return}t.innerHTML=n.map(t=>{let e=Number(t.balance||0);return`
+            </div>` : ''}
+        </div>`;
+}
+
+function updateLimitDisplayBoth() {
+    const select = document.getElementById('wallet-both');
+    if (!select) return;
+}
+
+// ---- جلب رصيد العميل ----
+async function fetchClientBalance() {
+    const clientId = document.getElementById('client')?.value;
+    const statusEl = document.getElementById('clientBalanceStatus');
+    if (!statusEl) return;
+    if (!clientId) { statusEl.textContent = ''; return; }
+
+    const { data, error } = await window.supa
+        .from('clients').select('balance, name').eq('id', clientId).single();
+
+    if (!error && data) {
+        const bal = Number(data.balance || 0);
+        statusEl.className = `small fw-bold mt-1 text-center ${bal > 0 ? 'text-danger' : 'text-success'}`;
+        statusEl.textContent = `رصيد ${data.name}: ${Math.abs(bal).toLocaleString()} ج.م ${bal > 0 ? '(عليه)' : '(له)'}`;
+    }
+}
+
+// ---- جلب العملاء لقائمة الاختيار ----
+// ✅ دالة واحدة بس — اتشالت من transactions.js
+async function loadClientsToSelect() {
+    const select = document.getElementById('client');
+    if (!select) return;
+    const user = window.currentUserData;
+    let qc = window.supa.from('clients').select('id, name, balance').order('name');
+    if (typeof applyBranchFilter === 'function') qc = applyBranchFilter(qc, user);
+    const { data: clients } = await qc;
+    if (!clients) return;
+    select.innerHTML = '<option value="">اختر العميل...</option>';
+    clients.forEach(c => {
+        const bal  = Number(c.balance) || 0;
+        const info = bal < 0 ? ` | عليه: ${Math.abs(bal).toLocaleString()}`
+                   : bal > 0 ? ` | له: ${bal.toLocaleString()}` : '';
+        select.innerHTML += `<option value="${c.id}">${c.name}${info}</option>`;
+    });
+}
+
+// ---- تحميل جدول العملاء ----
+async function loadClientsTable() {
+    const container = document.getElementById('manage-clients-body');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
+
+    const user = window.currentUserData;
+    let qt = window.supa.from('clients').select('*').order('name');
+    if (typeof applyBranchFilter === 'function') qt = applyBranchFilter(qt, user);
+    const { data: clients, error } = await qt;
+
+    if (error || !clients) {
+        container.innerHTML = '<div class="text-center text-danger small p-3">خطأ في التحميل</div>';
+        return;
+    }
+    if (!clients.length) {
+        container.innerHTML = '<div class="text-center text-muted small p-3">لا يوجد عملاء</div>';
+        return;
+    }
+
+    container.innerHTML = clients.map(c => {
+        const bal = Number(c.balance || 0);
+        return `
         <div class="d-flex align-items-center p-2 border-bottom" style="font-size:13px;">
-            <div style="width:25%;" class="fw-bold text-start text-truncate">${t.name}</div>
-            <div style="width:30%;" class="text-center english-num text-muted">${t.number||"-"}</div>
-            <div style="width:30%;" class="text-center english-num fw-bold ${e>0?"text-danger":"text-success"}">${Math.abs(e).toLocaleString()}</div>
+            <div style="width:25%;" class="fw-bold text-start text-truncate">${c.name}</div>
+            <div style="width:30%;" class="text-center english-num text-muted">${c.number || '-'}</div>
+            <div style="width:30%;" class="text-center english-num fw-bold ${bal > 0 ? 'text-danger' : 'text-success'}">${Math.abs(bal).toLocaleString()}</div>
             <div style="width:10%;" class="text-center">
-                <button class="btn btn-sm p-1" onclick="openEditCl('${t.id}','${t.name}','${t.number||""}',${e})">
+                <button class="btn btn-sm p-1" onclick="openEditCl('${c.id}','${c.name}','${c.number||''}',${bal})">
                     <i class="fa fa-edit text-primary"></i>
                 </button>
-                <button class="btn btn-sm btn-light border text-danger p-1" onclick="deleteClient(${t.id},'${t.name}')">
+                <button class="btn btn-sm btn-light border text-danger p-1" onclick="deleteClient(${c.id},'${c.name}')">
                     <i class="fa fa-trash"></i>
                 </button>
             </div>
-        </div>`}).join("")}async function deleteClient(t,e){let{isConfirmed:a}=await Swal.fire({title:"حذف العميل؟",text:`هل أنت متأكد من حذف "${e}"؟`,icon:"warning",showCancelButton:!0,confirmButtonText:"حذف",cancelButtonText:"إلغاء"});if(!a)return;let n=parseInt(t);if(isNaN(n)){showToast("❌ خطأ في معرف العميل",!1);return}let{error:l}=await window.supa.from("clients").delete().eq("id",n);l?showToast("❌ فشل الحذف: "+l.message,!1):(showToast("✅ تم حذف العميل بنجاح",!0),loadClientsTable())}async function addClient(){let t=document.getElementById("newClientName")||document.getElementById("newClName"),e=document.getElementById("newClientPhone")||document.getElementById("newClPhone"),a=t?.value?.trim(),n=e?.value?.trim()||"";if(!a)return showToast("⚠️ أدخل اسم العميل",!1);setLoading("btnAddClient",!0);try{let{error:l}=await window.supa.from("clients").insert([{name:a,number:n,balance:0,branch_id:window.currentUserData?.branch_id||null}]);if(l)throw l;showToast("✅ تم إضافة العميل",!0),t&&(t.value=""),e&&(e.value=""),loadClientsTable(),loadClientsToSelect()}catch(i){showToast("❌ "+i.message,!1)}finally{setLoading("btnAddClient",!1)}}async function loadUsersList(){let t=document.getElementById("usersList");if(!t)return;t.innerHTML='<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';let{data:e,error:a}=await window.supa.from("users").select("*").order("name");if(a||!e){t.innerHTML='<div class="text-center text-danger p-3">خطأ في التحميل</div>';return}t.innerHTML=e.map(t=>`
+        </div>`;
+    }).join('');
+}
+
+async function deleteClient(clientId, name) {
+    const { isConfirmed } = await Swal.fire({
+        title: 'حذف العميل؟',
+        text: `هل أنت متأكد من حذف "${name}"؟`,
+        icon: 'warning', showCancelButton: true,
+        confirmButtonText: 'حذف', cancelButtonText: 'إلغاء'
+    });
+    if (!isConfirmed) return;
+    const numericId = parseInt(clientId);
+    if (isNaN(numericId)) { showToast("❌ خطأ في معرف العميل", false); return; }
+    const { error } = await window.supa.from('clients').delete().eq('id', numericId);
+    if (!error) {
+        showToast("✅ تم حذف العميل بنجاح", true);
+        loadClientsTable();
+    } else {
+        showToast("❌ فشل الحذف: " + error.message, false);
+    }
+}
+
+async function addClient() {
+    // يدعم الـ id القديم (newClName/newClPhone) والجديد (newClientName/newClientPhone)
+    const nameEl  = document.getElementById('newClientName')  || document.getElementById('newClName');
+    const phoneEl = document.getElementById('newClientPhone') || document.getElementById('newClPhone');
+    const name    = nameEl?.value?.trim();
+    const phone   = phoneEl?.value?.trim() || '';
+    if (!name) return showToast("⚠️ أدخل اسم العميل", false);
+    setLoading('btnAddClient', true);
+    try {
+        const { error } = await window.supa.from('clients').insert([{ name, number: phone, balance: 0, branch_id: window.currentUserData?.branch_id || null }]);
+        if (error) throw error;
+        showToast("✅ تم إضافة العميل", true);
+        if (nameEl)  nameEl.value  = '';
+        if (phoneEl) phoneEl.value = '';
+        loadClientsTable();
+        loadClientsToSelect();
+    } catch(err) {
+        showToast("❌ " + err.message, false);
+    } finally {
+        setLoading('btnAddClient', false);
+    }
+}
+
+// ---- تحميل قائمة المستخدمين ----
+async function loadUsersList() {
+    const container = document.getElementById('usersList');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
+
+    const { data: users, error } = await window.supa.from('users').select('*').order('name');
+
+    if (error || !users) {
+        container.innerHTML = '<div class="text-center text-danger p-3">خطأ في التحميل</div>';
+        return;
+    }
+    container.innerHTML = users.map(u => `
         <div class="d-flex align-items-center p-2 mb-2 border rounded-3" style="direction:rtl;">
             <div style="width:50%;">
-                <div class="fw-bold small">${t.name||t.email}</div>
-                <div class="text-muted" style="font-size:11px;">${t.email}</div>
+                <div class="fw-bold small">${u.name || u.email}</div>
+                <div class="text-muted" style="font-size:11px;">${u.email}</div>
             </div>
             <div style="width:25%;" class="text-center">
-                <span class="badge ${"ADMIN"===t.role?"bg-danger":"bg-secondary"}">${"ADMIN"===t.role?"أدمن":"موظف"}</span>
+                <span class="badge ${u.role==='ADMIN'?'bg-danger':'bg-secondary'}">${u.role==='ADMIN'?'أدمن':'موظف'}</span>
             </div>
             <div style="width:25%;" class="text-end pe-2">
-                <button class="btn btn-sm btn-light border" onclick="openEditRole('${t.email}','${t.name||t.email}')">
+                <button class="btn btn-sm btn-light border" onclick="openEditRole('${u.email}','${u.name||u.email}')">
                     <i class="fa fa-user-shield text-primary"></i>
                 </button>
             </div>
-        </div>`).join("")}function toggleDateFilters(){let t=document.getElementById("dateFilterSection");t&&(t.style.display="none"!==t.style.display&&t.style.display?"none":"flex")}function resetAdvancedSearch(){["advSearchText","advSearchType","advDateFrom","advDateTo"].forEach(t=>{let e=document.getElementById(t);e&&(e.value="")});let t=document.getElementById("dateFilterSection");t&&(t.style.display="none"),"function"==typeof executeAdvancedSearch&&executeAdvancedSearch()}function showManageTab(t){let e=t.dataset.tab;document.querySelectorAll(".manage-tab-content").forEach(t=>t.style.display="none"),document.querySelectorAll(".nav-pills .nav-link").forEach(t=>t.classList.remove("active"));let a=document.getElementById(e);a&&(a.style.display="block"),t.classList.add("active"),"clients-tab"===e?loadClientsTable():"accounts-tab"===e?"function"==typeof loadAccountsTable&&loadAccountsTable():"users-tab"===e?loadUsersList():"logs-tab"===e?"function"==typeof loadAdminLogs&&loadAdminLogs():"branches-tab"===e&&("function"==typeof loadBranchesTable&&loadBranchesTable(),"function"==typeof populateBranchSelect&&populateBranchSelect("assignBranchSelect"),"function"==typeof loadUsersForAssign&&loadUsersForAssign())}var _accountsLiveSub=null;function setupAccountsLive(){_accountsLiveSub||(_accountsLiveSub=window.supa.channel("live:accounts").on("postgres_changes",{event:"UPDATE",schema:"public",table:"accounts"},function(t){let e=t.new;if(!e)return;_patchWalletOption(e);let a=document.getElementById("wallet"),n=a?.options[a.selectedIndex];n&&String(n.value)===String(e.id)&&(_patchOptionDataset(n,e),updateLimitDisplay()),"function"==typeof renderPinnedWallets&&renderPinnedWallets()}).subscribe())}function _patchOptionDataset(t,e){t.dataset.bal=null!=e.balance?e.balance:t.dataset.bal,t.dataset.lo=null!=e.daily_out_limit?e.daily_out_limit:t.dataset.lo,t.dataset.li=null!=e.daily_in_limit?e.daily_in_limit:t.dataset.li,t.dataset.lm=null!=e.monthly_limit?e.monthly_limit:t.dataset.lm,t.dataset.uo=null!=e.daily_out_usage?e.daily_out_usage:t.dataset.uo,t.dataset.ui=null!=e.daily_in_usage?e.daily_in_usage:t.dataset.ui,t.dataset.um=null!=e.monthly_usage_out?e.monthly_usage_out:t.dataset.um;var a=t.text.replace(/\s*\(.*\)/,"").trim();t.text=a+" ("+Number(e.balance||0).toLocaleString()+" ج.م)"}function _patchWalletOption(t){var e=document.getElementById("wallet");if(e){for(var a=0;a<e.options.length;a++)if(String(e.options[a].value)===String(t.id)){_patchOptionDataset(e.options[a],t);break}}}function toggleTheme(){document.body.classList.toggle("light-mode");let t=document.body.classList.contains("light-mode");document.querySelectorAll(".icon-btn .fa-moon, .icon-btn .fa-sun").forEach(e=>{t?e.classList.replace("fa-moon","fa-sun"):e.classList.replace("fa-sun","fa-moon")});let e=document.getElementById("darkModeToggleIcon");e&&(e.className=t?"fa fa-toggle-on text-primary":"fa fa-toggle-off"),localStorage.setItem("theme",t?"light":"dark")}async function loadProfileSettings(){try{let{data:{user:t}}=await window.supa.auth.getUser();if(!t)return;let{data:e}=await window.supa.from("users").select("*").eq("email",t.email).maybeSingle(),a=document.getElementById("displayProfileName"),n=document.getElementById("displayProfileEmail"),l=document.getElementById("displayProfileRole");a&&(a.textContent=e?.name||t.user_metadata?.name||"غير محدد"),n&&(n.textContent=t.email),l&&(l.textContent=e?.is_master?"⭐ المدير العام":({ADMIN:"\uD83D\uDD34 أدمن",USER:"\uD83D\uDFE2 موظف"})[e?.role]||"موظف")}catch(i){console.error("loadProfileSettings error:",i)}}function switchInventoryTab(t){let e=document.getElementById("inventory-tab-counter"),a=document.getElementById("inventory-tab-logs"),n=document.getElementById("tab-btn-counter"),l=document.getElementById("tab-btn-logs");"counter"===t?(e&&(e.style.display="block"),a&&(a.style.display="none"),n&&(n.classList.add("bg-white","text-primary"),n.classList.remove("bg-light","text-muted")),l&&(l.classList.remove("bg-white","text-primary"),l.classList.add("bg-light","text-muted")),"function"==typeof renderCounter&&renderCounter()):(e&&(e.style.display="none"),a&&(a.style.display="block"),l&&(l.classList.add("bg-white","text-primary"),l.classList.remove("bg-light","text-muted")),n&&(n.classList.remove("bg-white","text-primary"),n.classList.add("bg-light","text-muted")),"function"==typeof loadInventoryLogs&&loadInventoryLogs())}async function refreshVaultWithToast(){let t=document.getElementById("refresh-vault-icon");t&&t.classList.add("fa-spin");try{let{data:e}=await window.supa.from("accounts").select("balance").eq("name","الخزنة (الكاش)").single(),a=document.getElementById("system-vault-val");a&&e&&(a.textContent=Number(e.balance).toLocaleString()),showToast("✅ تم تحديث رصيد الخزنة")}catch(n){showToast("❌ خطأ في التحديث",!1)}finally{t&&t.classList.remove("fa-spin")}}async function getTransactionLogs(t){t=t||{};try{let e=window.currentUserData,a=window.supa.from("transactions").select("id, date, time, type, amount, commission, wallet_name, provider, balance_after, notes, added_by").order("id",{ascending:!1});"function"==typeof applyBranchFilter&&(a=applyBranchFilter(a,e)),t.type&&!t.type.includes("كل العمليات")&&(a=a.ilike("type",`%${t.type}%`)),t.dateFrom&&(a=a.gte("date",t.dateFrom)),t.dateTo&&(a=a.lte("date",t.dateTo));let n=t.type||t.dateFrom||t.dateTo?1e3:50;a=a.limit(n);let{data:l,error:i}=await a;if(i)throw i;return l}catch(s){return console.error("getTransactionLogs error:",s),null}}document.addEventListener("DOMContentLoaded",function(){let t=localStorage.getItem("theme");if("light"===t){document.body.classList.add("light-mode"),document.querySelectorAll(".icon-btn .fa-moon").forEach(t=>t.classList.replace("fa-moon","fa-sun"));let e=document.getElementById("darkModeToggleIcon");e&&(e.className="fa fa-toggle-on text-primary")}var a=0,n=setInterval(function(){a++,window.supa?(clearInterval(n),setupAccountsLive()):a>20&&clearInterval(n)},500)});
+        </div>`).join('');
+}
+
+// ---- تبديل فلتر التاريخ ----
+function toggleDateFilters() {
+    const sec = document.getElementById('dateFilterSection');
+    if (!sec) return;
+    sec.style.display = (sec.style.display === 'none' || !sec.style.display) ? 'flex' : 'none';
+}
+
+// ---- إعادة ضبط البحث ----
+function resetAdvancedSearch() {
+    ['advSearchText','advSearchType','advDateFrom','advDateTo'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const ds = document.getElementById('dateFilterSection');
+    if (ds) ds.style.display = 'none';
+    if (typeof executeAdvancedSearch === 'function') executeAdvancedSearch();
+}
+
+// ---- إعداد تبويبات إدارة النظام ----
+function showManageTab(el) {
+    const tabId = el.dataset.tab;
+    document.querySelectorAll('.manage-tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.nav-pills .nav-link').forEach(l => l.classList.remove('active'));
+    const tab = document.getElementById(tabId);
+    if (tab) tab.style.display = 'block';
+    el.classList.add('active');
+    if      (tabId === 'clients-tab')  loadClientsTable();
+    else if (tabId === 'accounts-tab') { if (typeof loadAccountsTable  === 'function') loadAccountsTable(); }
+    else if (tabId === 'users-tab')    loadUsersList();
+    else if (tabId === 'logs-tab')     { if (typeof loadAdminLogs      === 'function') loadAdminLogs(); }
+    else if (tabId === 'branches-tab') {
+        if (typeof loadBranchesTable    === 'function') loadBranchesTable();
+        if (typeof populateBranchSelect === 'function') populateBranchSelect('assignBranchSelect');
+        if (typeof loadUsersForAssign   === 'function') loadUsersForAssign();
+    }
+}
+
+// ✅ searchTimeout معرّف هنا بس — اتشال من transactions.js
+var searchTimeout;
+
+// ============================================================
+// LIVE — اشتراك لحظي على جدول accounts
+// بيحدث loadWallets + updateLimitDisplay + renderPinnedWallets
+// تلقائياً عند أي تغيير في الأرصدة بدون ريفريش
+// ============================================================
+var _accountsLiveSub = null;
+
+function setupAccountsLive() {
+    // منع تكرار الاشتراك
+    if (_accountsLiveSub) return;
+
+    _accountsLiveSub = window.supa
+        .channel('live:accounts')
+        .on('postgres_changes', {
+            event:  'UPDATE',
+            schema: 'public',
+            table:  'accounts'
+        }, function(payload) {
+            const updated = payload.new;
+            if (!updated) return;
+
+            // 1. تحديث data-* على الـ option المطابق في select#wallet
+            _patchWalletOption(updated);
+
+            // 2. لو الحساب ده هو المختار حالياً → حدّث limitDisplay فوراً
+            const select = document.getElementById('wallet');
+            const opt    = select?.options[select.selectedIndex];
+            if (opt && String(opt.value) === String(updated.id)) {
+                _patchOptionDataset(opt, updated);
+                if (typeof updateLimitDisplay === 'function') updateLimitDisplay();
+            }
+
+            // 3. حدّث كروت المحافظ المثبتة
+            if (typeof renderPinnedWallets === 'function') renderPinnedWallets();
+        })
+        .subscribe();
+}
+
+// تحديث data-* attributes على option معين
+function _patchOptionDataset(opt, acc) {
+    opt.dataset.bal = acc.balance           != null ? acc.balance           : opt.dataset.bal;
+    opt.dataset.lo  = acc.daily_out_limit   != null ? acc.daily_out_limit   : opt.dataset.lo;
+    opt.dataset.li  = acc.daily_in_limit    != null ? acc.daily_in_limit    : opt.dataset.li;
+    opt.dataset.lm  = acc.monthly_limit     != null ? acc.monthly_limit     : opt.dataset.lm;
+    opt.dataset.uo  = acc.daily_out_usage   != null ? acc.daily_out_usage   : opt.dataset.uo;
+    opt.dataset.ui  = acc.daily_in_usage    != null ? acc.daily_in_usage    : opt.dataset.ui;
+    opt.dataset.um  = acc.monthly_usage_out != null ? acc.monthly_usage_out : opt.dataset.um;
+    // تحديث نص الرصيد في الـ option
+    var name = opt.text.replace(/\s*\(.*\)/, '').trim();
+    opt.text = name + ' (' + Number(acc.balance || 0).toLocaleString() + ' ج.م)';
+}
+
+// البحث عن الـ option المطابق وتحديثه
+function _patchWalletOption(acc) {
+    var select = document.getElementById('wallet');
+    if (!select) return;
+    for (var i = 0; i < select.options.length; i++) {
+        if (String(select.options[i].value) === String(acc.id)) {
+            _patchOptionDataset(select.options[i], acc);
+            break;
+        }
+    }
+}
+
+// ---- Theme Toggle ----
+function toggleTheme() {
+    document.body.classList.toggle('light-mode');
+    const isLight = document.body.classList.contains('light-mode');
+    document.querySelectorAll('.icon-btn .fa-moon, .icon-btn .fa-sun').forEach(icon => {
+        if (isLight) icon.classList.replace('fa-moon','fa-sun');
+        else         icon.classList.replace('fa-sun','fa-moon');
+    });
+    const settingsToggle = document.getElementById('darkModeToggleIcon');
+    if (settingsToggle) settingsToggle.className = isLight ? 'fa fa-toggle-on text-primary' : 'fa fa-toggle-off';
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+
+// ---- بيانات الإعدادات الشخصية ----
+async function loadProfileSettings() {
+    try {
+        const { data: { user } } = await window.supa.auth.getUser();
+        if (!user) return;
+        const { data: dbUser } = await window.supa
+            .from('users').select('*').eq('email', user.email).maybeSingle();
+
+        const nameEl  = document.getElementById('displayProfileName');
+        const emailEl = document.getElementById('displayProfileEmail');
+        const roleEl  = document.getElementById('displayProfileRole');
+
+        if (nameEl)  nameEl.textContent  = dbUser?.name || user.user_metadata?.name || 'غير محدد';
+        if (emailEl) emailEl.textContent = user.email;
+        if (roleEl) {
+            const roleMap = { 'ADMIN':'🔴 أدمن', 'USER':'🟢 موظف' };
+            roleEl.textContent = dbUser?.is_master ? '⭐ المدير العام' : (roleMap[dbUser?.role] || 'موظف');
+        }
+    } catch(err) {
+        console.error('loadProfileSettings error:', err);
+    }
+}
+
+// ---- تبديل تبويبات الجرد ----
+function switchInventoryTab(tabName) {
+    const counter    = document.getElementById('inventory-tab-counter');
+    const logs       = document.getElementById('inventory-tab-logs');
+    const btnCounter = document.getElementById('tab-btn-counter');
+    const btnLogs    = document.getElementById('tab-btn-logs');
+
+    if (tabName === 'counter') {
+        if (counter) counter.style.display = 'block';
+        if (logs)    logs.style.display    = 'none';
+        if (btnCounter) { btnCounter.classList.add('bg-white','text-primary');    btnCounter.classList.remove('bg-light','text-muted'); }
+        if (btnLogs)    { btnLogs.classList.remove('bg-white','text-primary');    btnLogs.classList.add('bg-light','text-muted'); }
+        if (typeof renderCounter === 'function') renderCounter();
+    } else {
+        if (counter) counter.style.display = 'none';
+        if (logs)    logs.style.display    = 'block';
+        if (btnLogs)    { btnLogs.classList.add('bg-white','text-primary');       btnLogs.classList.remove('bg-light','text-muted'); }
+        if (btnCounter) { btnCounter.classList.remove('bg-white','text-primary'); btnCounter.classList.add('bg-light','text-muted'); }
+        if (typeof loadInventoryLogs === 'function') loadInventoryLogs();
+    }
+}
+
+// ---- رفرش الخزنة ----
+async function refreshVaultWithToast() {
+    const icon = document.getElementById('refresh-vault-icon');
+    if (icon) icon.classList.add('fa-spin');
+    try {
+        const { data } = await window.supa.from('accounts')
+            .select('balance').eq('name','الخزنة (الكاش)').single();
+        const val = document.getElementById('system-vault-val');
+        if (val && data) val.textContent = Number(data.balance).toLocaleString();
+        showToast('✅ تم تحديث رصيد الخزنة');
+    } catch(e) {
+        showToast('❌ خطأ في التحديث', false);
+    } finally {
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+
+// ---- getTransactionLogs — دالة واحدة بس هنا ----
+// ✅ اتشالت من transactions.js — هنا النسخة الوحيدة
+async function getTransactionLogs(filters) {
+    filters = filters || {};
+    try {
+        const user = window.currentUserData;
+        let query = window.supa
+            .from('transactions')
+            .select('id, date, time, type, amount, commission, wallet_name, provider, balance_after, notes, added_by, branch_id')
+            .order('id', { ascending: false });
+        if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
+
+        // فلتر النوع والتاريخ server-side فقط — البحث النصي والأرقام client-side
+        if (filters.type && !filters.type.includes('كل العمليات'))
+            query = query.ilike('type', `%${filters.type}%`);
+        if (filters.dateFrom) query = query.gte('date', filters.dateFrom);
+        if (filters.dateTo)   query = query.lte('date', filters.dateTo);
+
+        // دايماً 500 عشان البحث client-side يلاقي بيانات كافية
+        query = query.limit(500);
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    } catch(e) {
+        console.error('getTransactionLogs error:', e);
+        return null;
+    }
+}
+
+// ---- تطبيق الثيم عند التحميل ----
+document.addEventListener('DOMContentLoaded', function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'light') {
+        document.body.classList.add('light-mode');
+        document.querySelectorAll('.icon-btn .fa-moon').forEach(i => i.classList.replace('fa-moon','fa-sun'));
+        const t = document.getElementById('darkModeToggleIcon');
+        if (t) t.className = 'fa fa-toggle-on text-primary';
+    }
+
+    // ✅ تفعيل Live updates للأرصدة — بعد ما supa يكون جاهز
+    // setupAccountsLive بيتأخر شوية عشان window.supa ياخد وقت للتهيئة
+    var _liveInitAttempts = 0;
+    var _liveInitTimer = setInterval(function() {
+        _liveInitAttempts++;
+        if (window.supa) {
+            clearInterval(_liveInitTimer);
+            setupAccountsLive();
+        } else if (_liveInitAttempts > 20) {
+            clearInterval(_liveInitTimer); // وقف بعد 10 ثواني
+        }
+    }, 500);
+});

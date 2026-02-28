@@ -24,6 +24,7 @@
 <script src="js/branches.js"></script>
 <script src="js/members.js"></script>
 <script src="js/app.js"></script>
+<script src="js/layout.js"></script>
 </head>
 <body>
 <header class="app-header-main">
@@ -34,7 +35,17 @@
     </button>
 
     <div class="brand-wrapper">
-        <img src="img/operix-logo.png" alt="OPERIX" class="brand-logo">
+        <div class="brand-wrapper-inner">
+            <div class="brand-wordmark">
+                <span class="letter letter-x">X</span>
+                <span class="letter">I</span>
+                <span class="letter">R</span>
+                <span class="letter">E</span>
+                <span class="letter">P</span>
+                <span class="letter">O</span>
+            </div>
+            <div class="brand-tagline">Financial Operations</div>
+        </div>
     </div>     
 </div>       
      <div class="header-left">
@@ -109,13 +120,25 @@
     <!-- العمليات - العمليات الجديدة وسجل العمليات -->
     <div id="view-op" class="view-section">
 
-    <!-- تابات: عملية جديدة | سجل العمليات -->
+    <!-- Tabs bar (layout: tabs) -->
+    <div class="lyt-tabs-bar">
+        <div class="lyt-tabs-inner">
+            <button class="lyt-tab-btn active" id="lyt-tab-new-btn" onclick="switchLayoutTab('new')">
+                <i class="fa fa-plus-circle"></i> عملية جديدة
+            </button>
+            <button class="lyt-tab-btn lyt-tab-log" id="lyt-tab-log-btn" onclick="switchLayoutTab('log')">
+                <i class="fa fa-history"></i> سجل العمليات
+            </button>
+        </div>
+    </div>
+
+    <!-- تابات موبايل: عملية جديدة | سجل العمليات -->
     <div class="op-tabs-bar mb-3 d-md-none">
         <div class="btn-group w-100" role="group">
-            <button class="btn btn-primary flex-fill active" id="mob-tab-new" onclick="switchMobileTab('new')">
+            <button class="btn flex-fill active" id="mob-tab-new" onclick="switchMobileTab('new')">
                 <i class="fa fa-plus-circle me-1"></i> عملية جديدة
             </button>
-            <button class="btn btn-outline-secondary flex-fill" id="mob-tab-log" onclick="switchMobileTab('log')">
+            <button class="btn flex-fill" id="mob-tab-log" onclick="switchMobileTab('log')">
                 <i class="fa fa-history me-1"></i> سجل العمليات
             </button>
         </div>
@@ -129,7 +152,7 @@
             <div class="new-op-panel h-100">
 
                 <div class="op-group-title"><i class="fas fa-layer-group text-primary"></i> الخدمات الرئيسية</div>
-                <div class="services-grid services-grid-compact">
+                <div class="services-grid services-grid-compact cols-4">
                     <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('client_withdraw')"><i class="fas fa-arrow-up-from-bracket text-primary"></i><span>سحب من عميل</span></div></div>
                     <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('pay_bill')"><i class="fa fa-file-invoice text-success"></i><span>دفع فواتير</span></div></div>
                     <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('cash_supply')"><i class="fas fa-money-bill-transfer text-warning"></i><span>تزويد</span></div></div>
@@ -144,7 +167,7 @@
                 </div>
 
                 <div class="op-group-title"><i class="fa fa-mobile-screen text-info"></i> المحافظ الإلكترونية</div>
-                <div class="services-grid services-grid-compact">
+                <div class="services-grid services-grid-compact cols-2">
                     <div class="service-col"><div class="op-card card-wallets" onclick="setOp('إيداع لمحفظة', 'WALLET', this)"><i class="fa fa-upload text-primary"></i><span>إيداع لمحفظة</span></div></div>
                     <div class="service-col"><div class="op-card card-wallets" onclick="setOp('سحب من محفظة', 'WALLET', this)"><i class="fa fa-download text-success"></i><span>سحب من محفظة</span></div></div>
                 </div>
@@ -200,6 +223,18 @@
                         <input type="text" id="note" class="form-control form-control-sm" placeholder="أي تفاصيل إضافية...">
                     </div>
                     <button type="button" id="btnRun" class="btn-main w-100" onclick="runTransaction()">تنفيذ العملية</button>
+
+                    <!-- زرار سجل العمليات (drawer) -->
+                    <button class="lyt-float-btn" onclick="openLayoutDrawer()">
+                        <i class="fa fa-history"></i> سجل العمليات
+                        <span class="lyt-badge">←</span>
+                    </button>
+
+                    <!-- زرار سجل العمليات (sheet) -->
+                    <button class="lyt-float-sheet" onclick="openLayoutSheet()">
+                        <i class="fa fa-table-list"></i> عرض السجل
+                        <span class="lyt-badge">↑</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -274,6 +309,85 @@
     </div><!-- end row -->
 
 </div><!-- end view-op -->
+
+<!-- Drawer overlay (layout) -->
+<div id="layoutDrawerOverlay" class="layout-drawer-overlay" onclick="closeLayoutDrawer()">
+    <div id="layoutDrawerPanel" class="layout-drawer-panel" onclick="event.stopPropagation()">
+        <div class="layout-panel-head">
+            <span><i class="fa fa-history text-success me-2"></i> سجل العمليات</span>
+            <button class="layout-xbtn" onclick="closeLayoutDrawer()"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="layout-panel-body">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                <div class="flex-grow-1 position-relative" style="min-width: 130px;">
+                    <input type="text" id="advSearchText2" class="form-control form-control-sm ps-4 rounded-pill border-0 search-input" placeholder="بحث سريع..." onkeyup="syncSearch(this,'advSearchText')">
+                    <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2"></i>
+                </div>
+                <select id="advSearchType2" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" onchange="syncSearch(this,'advSearchType')" style="width:auto;min-width:120px;border-radius:10px;">
+                    <option value="">📂 كل العمليات</option>
+                    <option value="وارد">🟢 وارد</option>
+                    <option value="صادر">🔴 صادر</option>
+                    <option value="مصروفات">🟠 مصروفات</option>
+                    <option value="سحب من عميل">👤 سحب من عميل</option>
+                    <option value="دفع فاتورة">🧾 دفع فواتير</option>
+                    <option value="إيداع لمحفظة">📱 إيداع محفظة</option>
+                    <option value="سحب من محفظة">📲 سحب محفظة</option>
+                </select>
+            </div>
+            <div class="card-box p-0 shadow-sm border-0">
+                <div class="table-responsive" style="max-height: calc(80vh - 140px); overflow-y: auto;">
+                    <table class="table table-bordered table-sm table-custom text-center small" id="transactionTableDrawer">
+                        <thead class="bg-light sticky-top" style="top:0;z-index:1;">
+                            <tr><th>#</th><th>التاريخ</th><th>العملية / الحساب</th><th>المبلغ</th><th>الرصيد بعد</th><th>ملاحظات</th><th>بواسطة</th><th width="50">إجراء</th></tr>
+                        </thead>
+                        <tbody id="timelineContainerDrawer"></tbody>
+                    </table>
+                </div>
+                <div id="rowsCountDrawer" class="text-center text-muted small py-2 border-top bg-light"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sheet overlay (layout) -->
+<div id="layoutSheetOverlay" class="layout-sheet-overlay" onclick="closeLayoutSheet()">
+    <div id="layoutSheetPanel" class="layout-sheet-panel" onclick="event.stopPropagation()">
+        <div class="layout-sheet-handle"></div>
+        <div class="layout-panel-head">
+            <span><i class="fa fa-table-list text-purple me-2"></i> سجل العمليات</span>
+            <button class="layout-xbtn" onclick="closeLayoutSheet()"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="layout-panel-body">
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                <div class="flex-grow-1 position-relative" style="min-width: 130px;">
+                    <input type="text" id="advSearchText3" class="form-control form-control-sm ps-4 rounded-pill border-0 search-input" placeholder="بحث سريع..." onkeyup="syncSearch(this,'advSearchText')">
+                    <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2"></i>
+                </div>
+                <select id="advSearchType3" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" onchange="syncSearch(this,'advSearchType')" style="width:auto;min-width:120px;border-radius:10px;">
+                    <option value="">📂 كل العمليات</option>
+                    <option value="وارد">🟢 وارد</option>
+                    <option value="صادر">🔴 صادر</option>
+                    <option value="مصروفات">🟠 مصروفات</option>
+                    <option value="سحب من عميل">👤 سحب من عميل</option>
+                    <option value="دفع فاتورة">🧾 دفع فواتير</option>
+                    <option value="إيداع لمحفظة">📱 إيداع محفظة</option>
+                    <option value="سحب من محفظة">📲 سحب محفظة</option>
+                </select>
+            </div>
+            <div class="card-box p-0 shadow-sm border-0">
+                <div class="table-responsive" style="max-height: calc(68vh - 120px); overflow-y: auto;">
+                    <table class="table table-bordered table-sm table-custom text-center small" id="transactionTableSheet">
+                        <thead class="bg-light sticky-top" style="top:0;z-index:1;">
+                            <tr><th>#</th><th>التاريخ</th><th>العملية / الحساب</th><th>المبلغ</th><th>الرصيد بعد</th><th>ملاحظات</th><th>بواسطة</th><th width="50">إجراء</th></tr>
+                        </thead>
+                        <tbody id="timelineContainerSheet"></tbody>
+                    </table>
+                </div>
+                <div id="rowsCountSheet" class="text-center text-muted small py-2 border-top bg-light"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal: اختيار الشركة المنفذة -->
 <div id="providerModal" class="modal-overlay" style="display:none; z-index: 10000;">
@@ -548,6 +662,12 @@
         <label class="fw-bold">الوضع الداكن (Dark Mode)</label>
         <button class="btn btn-sm btn-light border text-muted" onclick="toggleTheme()"><i class="fa fa-toggle-off" id="darkModeToggleIcon"></i></button>
     </div>
+
+<h6 class="text-muted small fw-bold mb-2 mt-4"><i class="fa fa-table-columns me-1"></i> طريقة عرض صفحة العمليات</h6>
+<div class="card-box mb-3">
+    <p class="small text-muted mb-3">اختار الطريقة الأريحلك — بيتحفظ تلقائياً في المتصفح</p>
+    <div class="layout-opts-grid" id="layoutSettingsContainer"></div>
+</div>
 
 <h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-user-gear"></i> معلومات الحساب الشخصي</h6>
 <div class="card-box mb-3">

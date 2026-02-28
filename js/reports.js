@@ -1,53 +1,828 @@
-async function calculateStats(){let e=await loadAccounts(),t=await loadTransactions(1e3),n={totalBalance:0,totalTransactions:t.length,totalProfit:0};return e.forEach(e=>{n.totalBalance+=Number(e.balance)||0}),t.forEach(e=>{n.totalProfit+=Number(e.commission)||0}),n}async function getDailyReport(e){let{data:t,error:n}=await supabase.from(TABLES.transactions).select("*").gte("date",e).lt("date",new Date(new Date(e).getTime()+864e5).toISOString().split("T")[0]);return n?[]:t}async function getMonthlyReport(e,t){let n=`${t}-${e.toString().padStart(2,"0")}-01`,a=new Date(t,e,0).toISOString().split("T")[0],{data:l,error:o}=await supabase.from(TABLES.transactions).select("*").gte("date",n).lte("date",a);return o?[]:l}async function getDashboardStats(){try{let e=new Date,t=String(e.getMonth()+1).padStart(2,"0"),n=e.getFullYear(),a=String(e.getDate()).padStart(2,"0"),l=`/${t}/${n}`,o=`${a}/${t}/${n}`,s=window.currentUserData,i=e=>"function"==typeof applyBranchFilter?applyBranchFilter(e,s):e,[{data:r,error:d},{data:c},{data:u},{data:m}]=await Promise.all([i(window.supa.from("accounts").select("*")),i(window.supa.from("clients").select("name, balance")),i(window.supa.from("transactions").select("commission, amount, type, date").ilike("date",`%${l}`).limit(1e3)),i(window.supa.from("transactions").select("type, amount, date, time, added_by, notes").order("id",{ascending:!1}).limit(5))]);if(d)throw d;let b=0,y=0,g=0,p={};(r||[]).forEach(e=>{let t=(e.name||"").trim(),n=Number(e.balance)||0,a=Number(e.daily_out_limit)||0;t.includes("الخزنة")||t.includes("كاش")?b+=n:a>=9e6?(g+=n,p[t]={balance:n,color:e.color||"#4f46e5"}):y+=n});let f=0,$=0,h=[];(c||[]).forEach(e=>{let t=Number(e.balance)||0;t>0?f+=t:t<0&&($+=Math.abs(t)),0!==t&&h.push({name:e.name,balance:t})});let x=0,v=0,w=0,T=0,I=0,L=0;return(u||[]).forEach(e=>{let t=(e.date||"").trim(),n=(e.type||"").toLowerCase().trim(),a=parseFloat(e.commission)||0,l=parseFloat(e.amount)||0;if(0!==a&&(t===o&&(x+=a),v+=a),(n.includes("مصروف")||n.includes("مصاريف")||n.includes("خارج")||n.includes("عجز"))&&(w+=l),t===o){T++;let s=n.includes("سحب")||n.includes("صادر")||n.includes("مصروف");s?L+=l:I+=l}}),{success:!0,cash:b,walletsTotal:y,compTotal:g,totalAvailable:b+y+g,grandTotal:b+y+g+f-$,oweMe:f,have:$,dP:x,mP:v,ex:w,breakdown:p,clientsCards:h,todayCount:T,todayIn:I,todayOut:L,lastFive:m||[]}}catch(E){return console.error("Dashboard Error:",E),{success:!1}}}const STORAGE_KEY="sadek_cash_temp_data";async function fetchVaultBalance(){let e=document.getElementById("system-vault-val"),t=document.querySelector(".fa-sync-alt");t&&t.classList.add("fa-spin");try{let n=window.currentUserData,a=window.supa.from("accounts").select("balance, branch_id").ilike("name","%الخزنة%");!n?.isMaster&&n?.branch_id&&(a=a.eq("branch_id",n.branch_id));let{data:l,error:o}=await a;if(o)throw o;vaultBalanceFromSystem=(l||[]).reduce((e,t)=>e+(parseFloat(t.balance)||0),0),e&&(e.innerText=vaultBalanceFromSystem.toLocaleString("en-US")+" ج.م"),calculateTotalCash()}catch(s){e&&(e.innerText="خطأ في الجلب"),showToast("خطأ في جلب رصيد الخزنة",!1)}finally{t&&t.classList.remove("fa-spin")}}function renderCounter(){let e=document.getElementById("denominations-container");e&&(e.innerHTML=window.denominations.map(e=>`
+// التقارير والإحصائيات
+// حساب الإحصائيات الأساسية (مستخدم في أماكن بسيطة)
+async function calculateStats() {
+  const accounts = await loadAccounts();
+  const transactions = await loadTransactions(1000);
+
+  let stats = {
+    totalBalance: 0,
+    totalTransactions: transactions.length,
+    totalProfit: 0
+  };
+
+  accounts.forEach(acc => {
+    stats.totalBalance += Number(acc.balance) || 0;
+  });
+
+  transactions.forEach(tx => {
+    stats.totalProfit += Number(tx.commission) || 0;
+  });
+
+  return stats;
+}
+
+// تقرير يومي
+async function getDailyReport(date) {
+  const { data, error } = await supabase
+    .from(TABLES.transactions)
+    .select('*')
+    .gte('date', date)
+    .lt('date', new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  if (error) return [];
+  return data;
+}
+
+// تقرير شهري
+async function getMonthlyReport(month, year) {
+  const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+  
+  const { data, error } = await supabase
+    .from(TABLES.transactions)
+    .select('*')
+    .gte('date', startDate)
+    .lte('date', endDate);
+  if (error) return [];
+  return data;
+}
+
+// Dashboard Stats — تجميع شامل لأرقام الداشبورد من Supabase
+async function getDashboardStats() {
+  try {
+    const now = new Date();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const y = now.getFullYear();
+    const d = String(now.getDate()).padStart(2, '0');
+    const monthStr = `/${m}/${y}`;
+    const todayStr = `${d}/${m}/${y}`;
+
+    const u  = window.currentUserData;
+    const bf = (q) => (typeof applyBranchFilter === 'function') ? applyBranchFilter(q, u) : q;
+
+    const [
+      { data: accountsRaw, error: accErr },
+      { data: clients },
+      { data: monthTxs },
+      { data: lastFive }
+    ] = await Promise.all([
+      bf(window.supa.from('accounts').select('*')),
+      bf(window.supa.from('clients').select('name, balance')),
+      bf(window.supa.from('transactions')
+        .select('commission, amount, type, date')
+        .ilike('date', `%${monthStr}`)
+        .limit(1000)),
+      bf(window.supa.from('transactions')
+        .select('type, amount, date, time, added_by, notes')
+        .order('id', { ascending: false })
+        .limit(5))
+    ]);
+
+    if (accErr) throw accErr;
+
+    const accounts = (accountsRaw || []);
+    let cashBal = 0, walletBal = 0, compBal = 0, breakdown = {};
+
+    accounts.forEach(acc => {
+      const name = (acc.name || '').trim();
+      const bal = Number(acc.balance) || 0;
+      const limit = Number(acc.daily_out_limit) || 0;
+      const isCompany = limit >= 9000000;
+
+      if (name.includes('الخزنة') || name.includes('كاش')) {
+        cashBal += bal;
+      } else if (isCompany) {
+        compBal += bal;
+        breakdown[name] = { balance: bal, color: acc.color || '#4f46e5' };
+      } else {
+        walletBal += bal;
+      }
+    });
+
+    let oweMe = 0, have = 0, clientsCards = [];
+    (clients || []).forEach(c => {
+      const b = Number(c.balance) || 0;
+      if (b > 0) oweMe += b;
+      else if (b < 0) have += Math.abs(b);
+      if (b !== 0) clientsCards.push({ name: c.name, balance: b });
+    });
+
+    let dP = 0, mP = 0, ex = 0;
+    let todayCount = 0, todayIn = 0, todayOut = 0;
+
+    (monthTxs || []).forEach(tx => {
+      const txDate = (tx.date || '').trim();
+      const type = (tx.type || '').toLowerCase().trim();
+      const comm = parseFloat(tx.commission) || 0;
+      const amt = parseFloat(tx.amount) || 0;
+
+      if (comm !== 0) {
+        if (txDate === todayStr) dP += comm;
+        mP += comm;
+      }
+
+      if (type.includes('مصروف') || type.includes('مصاريف') ||
+          type.includes('خارج') || type.includes('عجز')) {
+        ex += amt;
+      }
+
+      if (txDate === todayStr) {
+        todayCount++;
+        const isOut = type.includes('سحب') || type.includes('صادر') || type.includes('مصروف');
+        if (isOut) todayOut += amt;
+        else todayIn += amt;
+      }
+    });
+
+    return {
+      success: true,
+      cash: cashBal, walletsTotal: walletBal, compTotal: compBal,
+      totalAvailable: cashBal + walletBal + compBal,
+      grandTotal: (cashBal + walletBal + compBal + oweMe) - have,
+      oweMe, have, dP, mP, ex, breakdown, clientsCards,
+      todayCount, todayIn, todayOut,
+      lastFive: lastFive || []
+    };
+
+  } catch (err) {
+    console.error("Dashboard Error:", err);
+    return { success: false };
+  }
+}// أضف هذا في أعلى ملف reports.js و app.js
+const STORAGE_KEY = 'sadek_cash_temp_data';
+if (typeof window.denominations === 'undefined') {
+    window.denominations = [200, 100, 50, 20, 10, 5, 1]; // الفئات الافتراضية
+}
+// تعديل دالة fetchVaultBalance لتجنب الأخطاء
+async function fetchVaultBalance() {
+    const valSpan = document.getElementById('system-vault-val');
+    const refreshBtn = document.querySelector('.fa-sync-alt');
+    
+    if (refreshBtn) refreshBtn.classList.add('fa-spin');
+
+    try {
+        const user = window.currentUserData;
+
+        // بناء الـ query حسب الفرع
+        let query = window.supa
+            .from('accounts')
+            .select('balance, branch_id')
+            .ilike('name', '%الخزنة%');
+
+        // مدير عام: يجيب كل الخزن ويجمعها
+        // موظف/مدير فرع: يجيب خزنة فرعه بس
+        if (!user?.isMaster && user?.branch_id) {
+            query = query.eq('branch_id', user.branch_id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        // جمع أرصدة الخزن
+        vaultBalanceFromSystem = (data || []).reduce((sum, row) => {
+            return sum + (parseFloat(row.balance) || 0);
+        }, 0);
+
+        if (valSpan) {
+            valSpan.innerText = vaultBalanceFromSystem.toLocaleString('en-US') + " ج.م";
+        }
+
+        calculateTotalCash();
+
+    } catch (err) {
+        if (valSpan) valSpan.innerText = "خطأ في الجلب";
+        showToast('خطأ في جلب رصيد الخزنة', false);
+    } finally {
+        if (refreshBtn) refreshBtn.classList.remove('fa-spin');
+    }
+}/**
+ * 3. رسم واجهة الفئات (Inputs)
+ */
+function renderCounter() {
+    const container = document.getElementById('denominations-container');
+    if (!container) return;
+
+    container.innerHTML = window.denominations.map(unit => `
         <div class="col-6 col-md-4">
             <div class="p-2 border rounded-4 bg-white shadow-sm mb-2">
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                    <span class="fw-bold text-dark small" style="white-space: nowrap;">فئة ${e}</span>
+                    <span class="fw-bold text-dark small" style="white-space: nowrap;">فئة ${unit}</span>
                     <span class="badge rounded-pill bg-primary-subtle text-primary border-primary-subtle english-num" 
-                          id="subtotal-${e}" style="font-size: 10px;">0</span>
+                          id="subtotal-${unit}" style="font-size: 10px;">0</span>
                 </div>
                 <input type="number" 
                        inputmode="numeric"
                        class="form-control form-control-sm text-center fw-bold english-num denom-input" 
                        placeholder="عدد الورق" 
-                       data-unit="${e}" 
+                       data-unit="${unit}" 
                        oninput="updateSubtotal(this)"
                        style="border-radius: 10px; background: #f8fafc;">
             </div>
         </div>
-    `).join(""))}function updateSubtotal(e){let t=parseFloat(e.dataset.unit),n=parseFloat(e.value)||0,a=document.getElementById(`subtotal-${t}`),l=t*n;a&&(a.innerText=l.toLocaleString(),l>0?(a.classList.replace("bg-primary-subtle","bg-primary"),a.classList.replace("text-primary","text-white")):(a.classList.replace("bg-primary","bg-primary-subtle"),a.classList.replace("text-white","text-primary"))),calculateTotalCash()}async function calculateTotalCash(){let e=0,t=document.querySelectorAll(".denom-input"),n=[];t.forEach(t=>{let a=parseFloat(t.dataset.unit),l=parseFloat(t.value)||0,o=a*l;e+=o,l>0&&n.push(`${a}x${l}=${o}`)}),document.getElementById("total-cash").innerText=e.toLocaleString();let a=document.getElementById("system-vault-val").innerText,l=parseFloat(a.replace(/,/g,"").replace(" ج.م",""))||0,o=e-l,s=document.getElementById("reconciliation-badge");if(e>0){s.style.display="block";let i=document.getElementById("diff-value"),r=document.getElementById("diff-label");1>Math.abs(o)?(s.style.background="#10b981",r.innerText="الحالة: مطابق ✨",i.innerText="0"):o<0?(s.style.background="#ef4444",r.innerText="عجز بقيمة:",i.innerText=Math.abs(o).toLocaleString()+" -"):(s.style.background="#3b82f6",r.innerText="زيادة بقيمة:",i.innerText=o.toLocaleString()+" +")}else s.style.display="none";window.lastInventoryData={grandTotal:e,systemBalance:l,diff:o,details:n.join(" - ")}}function switchInventoryTab(e){let t=document.getElementById("inventory-tab-counter"),n=document.getElementById("inventory-tab-logs"),a=document.getElementById("tab-btn-counter"),l=document.getElementById("tab-btn-logs");"counter"===e?(t.style.display="block",n.style.display="none",a.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border",l.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0"):(t.style.display="none",n.style.display="block",l.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border",a.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0",loadInventoryLogs())}function showSystemToast(e,t="success"){let n=Swal.mixin({toast:!0,position:"top-end",showConfirmButton:!1,timer:3e3,timerProgressBar:!0,didOpen(e){e.addEventListener("mouseenter",Swal.stopTimer),e.addEventListener("mouseleave",Swal.resumeTimer)}});n.fire({icon:t,title:e})}async function submitInventory(){if(!window.lastInventoryData||window.lastInventoryData.grandTotal<=0){Swal.fire({title:"تنبيه",text:"لا يمكن تسجيل جرد فارغ، يرجى إدخال الفئات أولاً",icon:"warning",confirmButtonText:"موافق",customClass:{confirmButton:"btn btn-warning rounded-pill px-4"}});return}let{grandTotal:e,systemBalance:t,diff:n,details:a}=window.lastInventoryData;Swal.fire({title:"تأكيد عملية الحفظ",html:`
+    `).join('');
+}
+
+// --- 1. دالة التحديث الفوري للعداد والمجموع ---
+function updateSubtotal(input) {
+    const unit = parseFloat(input.dataset.unit);
+    const count = parseFloat(input.value) || 0;
+    const subtotalElement = document.getElementById(`subtotal-${unit}`);
+
+    const total = unit * count;
+
+    if (subtotalElement) {
+        subtotalElement.innerText = total.toLocaleString();
+        if (total > 0) {
+            subtotalElement.classList.replace('bg-primary-subtle', 'bg-primary');
+            subtotalElement.classList.replace('text-primary', 'text-white');
+        } else {
+            subtotalElement.classList.replace('bg-primary', 'bg-primary-subtle');
+            subtotalElement.classList.replace('text-white', 'text-primary');
+        }
+    }
+    calculateTotalCash(); // استدعاء الجمع الإجمالي والمقارنة
+}
+
+// --- 2. دالة حساب الإجمالي والمقارنة بالسيستم ---
+async function calculateTotalCash() {
+    let grandTotal = 0;
+    const inputs = document.querySelectorAll('.denom-input');
+    let detailsArr = [];
+
+    inputs.forEach(input => {
+        const unit = parseFloat(input.dataset.unit);
+        const count = parseFloat(input.value) || 0;
+        const sub = unit * count;
+        grandTotal += sub;
+        if (count > 0) detailsArr.push(`${unit}x${count}=${sub}`);
+    });
+
+    // تحديث الرقم الكبير
+    document.getElementById('total-cash').innerText = grandTotal.toLocaleString();
+
+    // جلب رصيد السيستم من الشاشة
+    const systemBalText = document.getElementById('system-vault-val').innerText;
+    const systemBalance = parseFloat(systemBalText.replace(/,/g, '').replace(' ج.م', '')) || 0;
+
+    const diff = grandTotal - systemBalance;
+    const badge = document.getElementById('reconciliation-badge');
+    
+    if (grandTotal > 0) {
+        badge.style.display = 'block';
+        const diffValueLabel = document.getElementById('diff-value');
+        const diffTextLabel = document.getElementById('diff-label');
+
+        if (Math.abs(diff) < 1) {
+            badge.style.background = "#10b981"; // أخضر
+            diffTextLabel.innerText = "الحالة: مطابق ✨";
+            diffValueLabel.innerText = "0";
+        } else if (diff < 0) {
+            badge.style.background = "#ef4444"; // أحمر
+            diffTextLabel.innerText = "عجز بقيمة:";
+            diffValueLabel.innerText = Math.abs(diff).toLocaleString() + " -";
+        } else {
+            badge.style.background = "#3b82f6"; // أزرق
+            diffTextLabel.innerText = "زيادة بقيمة:";
+            diffValueLabel.innerText = diff.toLocaleString() + " +";
+        }
+    } else {
+        badge.style.display = 'none';
+    }
+
+    // حفظ للارسال
+    window.lastInventoryData = { grandTotal, systemBalance, diff, details: detailsArr.join(' - ') };
+}
+// --- 3. دالة تبديل التبويبات (إصلاح مشكلة عدم الفتح) ---
+function switchInventoryTab(tabName) {
+    const counterTab = document.getElementById('inventory-tab-counter');
+    const logsTab = document.getElementById('inventory-tab-logs');
+    const btnCounter = document.getElementById('tab-btn-counter');
+    const btnLogs = document.getElementById('tab-btn-logs');
+
+    if (tabName === 'counter') {
+        counterTab.style.display = 'block';
+        logsTab.style.display = 'none';
+        btnCounter.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border";
+        btnLogs.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0";
+    } else {
+        counterTab.style.display = 'none';
+        logsTab.style.display = 'block';
+        btnLogs.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border";
+        btnCounter.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0";
+        loadInventoryLogs(); 
+    }
+}
+// --- 4. دالة اعتماد وحفظ الجرد في القاعدة ---
+// دالة مساعدة لإظهار رسائل النظام (بدلاً من المتصفح)
+ 
+function showSystemToast(title, icon = 'success') {
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    Toast.fire({
+        icon: icon,
+        title: title
+    });
+}
+// دالة تسجيل الجرد المحدثة
+async function submitInventory() {
+    // التأكد من وجود بيانات
+    if (!window.lastInventoryData || window.lastInventoryData.grandTotal <= 0) {
+        Swal.fire({
+            title: 'تنبيه',
+            text: 'لا يمكن تسجيل جرد فارغ، يرجى إدخال الفئات أولاً',
+            icon: 'warning',
+            confirmButtonText: 'موافق',
+            customClass: { confirmButton: 'btn btn-warning rounded-pill px-4' }
+        });
+        return;
+    }
+
+    const { grandTotal, systemBalance, diff, details } = window.lastInventoryData;
+
+    // رسالة التأكيد من السيستم
+    Swal.fire({
+        title: 'تأكيد عملية الحفظ',
+        html: `
             <div style="text-align: right; direction: rtl;">
-                <p><b>إجمالي الجرد:</b> ${e.toLocaleString()} ج.م</p>
-                <p><b>رصيد السيستم:</b> ${t.toLocaleString()} ج.م</p>
-                <p><b>الفارق:</b> <span style="color: ${n<0?"red":"green"}">${n.toLocaleString()} ج.م</span></p>
+                <p><b>إجمالي الجرد:</b> ${grandTotal.toLocaleString()} ج.م</p>
+                <p><b>رصيد السيستم:</b> ${systemBalance.toLocaleString()} ج.م</p>
+                <p><b>الفارق:</b> <span style="color: ${diff < 0 ? 'red' : 'green'}">${diff.toLocaleString()} ج.م</span></p>
             </div>
-        `,icon:"question",showCancelButton:!0,confirmButtonText:"تأكيد الحفظ",cancelButtonText:"إلغاء",customClass:{confirmButton:"btn btn-primary rounded-pill px-4 me-2",cancelButton:"btn btn-light rounded-pill px-4"},buttonsStyling:!1}).then(async l=>{if(l.isConfirmed)try{Swal.showLoading();let{data:{user:o}}=await window.supa.auth.getUser(),s=o?.user_metadata?.full_name||o?.user_metadata?.name||o?.email||"موظف غير معروف",{error:i}=await window.supa.from("inventory_logs").insert([{system_balance:t,actual_balance:e,diff:n,details:a,user_name:s}]);if(i)throw i;showSystemToast("تم تسجيل الجرد بنجاح"),resetCounter(),loadInventoryLogs(),switchInventoryTab("logs")}catch(r){Swal.fire("خطأ!",r.message,"error")}})}async function calculateTotalCash(){let e=0,t=document.querySelectorAll(".denom-input"),n=[];t.forEach(t=>{let a=parseFloat(t.dataset.unit),l=parseFloat(t.value)||0,o=a*l;e+=o,l>0&&n.push(`${a}x${l}=${o}`)}),document.getElementById("total-cash").innerText=e.toLocaleString();let a=document.getElementById("system-vault-val"),l=parseArabicNumber(a.innerText),o=e-l,s=document.getElementById("reconciliation-badge"),i=document.getElementById("diff-value"),r=document.getElementById("diff-label");e>0||t.length>0?(s.style.display="block",.1>Math.abs(o)?(s.style.background="#10b981",r.innerText="الحالة: مطابق للسيستم ✨",i.innerText="0"):o<0?(s.style.background="#ef4444",r.innerText="النتيجة: عجز بقيمة",i.innerText=Math.abs(o).toLocaleString()+" -"):(s.style.background="#3b82f6",r.innerText="النتيجة: زيادة بقيمة",i.innerText=o.toLocaleString()+" +")):s.style.display="none",window.lastInventoryData={grandTotal:e,systemBalance:l,diff:o,details:n.join(" - ")}}function updateReconciliationUI(e,t){let n=document.getElementById("reconciliation-badge"),a=document.getElementById("diff-label"),l=document.getElementById("diff-value");if(!n)return;if(0===e&&0===vaultBalanceFromSystem){n.style.display="none";return}n.style.display="block";let o=e-vaultBalanceFromSystem,s=t.join(" - "),i=`
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'تأكيد الحفظ',
+        cancelButtonText: 'إلغاء',
+        customClass: {
+            confirmButton: 'btn btn-primary rounded-pill px-4 me-2',
+            cancelButton: 'btn btn-light rounded-pill px-4'
+        },
+        buttonsStyling: false
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                // إظهار علامة تحميل (Loading)
+                Swal.showLoading();
+
+                // جلب اسم المستخدم
+const { data: { user } } = await window.supa.auth.getUser();
+
+// تعديل هذا السطر بدقة:
+const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "موظف غير معروف";
+                // الحفظ في قاعدة البيانات
+                const { error } = await window.supa.from('inventory_logs').insert([{
+                    system_balance: systemBalance,
+                    actual_balance: grandTotal,
+                    diff: diff,
+                    details: details,
+                    user_name: userName
+                }]);
+
+                if (error) throw error;
+
+                // رسالة نجاح (Toast)
+                showSystemToast("تم تسجيل الجرد بنجاح");
+                
+                resetCounter();
+                loadInventoryLogs();
+                switchInventoryTab('logs');
+
+            } catch (e) {
+                Swal.fire('خطأ!', e.message, 'error');
+            }
+        }
+    });
+}
+
+async function calculateTotalCash() {
+    let grandTotal = 0;
+    const inputs = document.querySelectorAll('.denom-input');
+    let detailsArr = [];
+
+    inputs.forEach(input => {
+        const unit = parseFloat(input.dataset.unit);
+        const count = parseFloat(input.value) || 0;
+        const sub = unit * count;
+        grandTotal += sub;
+        if (count > 0) detailsArr.push(`${unit}x${count}=${sub}`);
+    });
+
+    // تحديث الرقم الكبير في الواجهة
+    document.getElementById('total-cash').innerText = grandTotal.toLocaleString();
+
+    // جلب رصيد السيستم وتنظيفه من أي نصوص
+    const systemBalElement = document.getElementById('system-vault-val');
+    const systemBalance = parseArabicNumber(systemBalElement.innerText);
+
+    const diff = grandTotal - systemBalance;
+    const badge = document.getElementById('reconciliation-badge');
+    const diffValueLabel = document.getElementById('diff-value');
+    const diffTextLabel = document.getElementById('diff-label');
+
+    // إظهار المقارنة فقط إذا بدأ المستخدم في العد
+    if (grandTotal > 0 || inputs.length > 0) {
+        badge.style.display = 'block';
+        
+        if (Math.abs(diff) < 0.1) {
+            badge.style.background = "#10b981"; // أخضر للمطابق
+            diffTextLabel.innerText = "الحالة: مطابق للسيستم ✨";
+            diffValueLabel.innerText = "0";
+        } else if (diff < 0) {
+            badge.style.background = "#ef4444"; // أحمر للعجز
+            diffTextLabel.innerText = "النتيجة: عجز بقيمة";
+            diffValueLabel.innerText = Math.abs(diff).toLocaleString() + " -";
+        } else {
+            badge.style.background = "#3b82f6"; // أزرق للزيادة
+            diffTextLabel.innerText = "النتيجة: زيادة بقيمة";
+            diffValueLabel.innerText = diff.toLocaleString() + " +";
+        }
+    } else {
+        badge.style.display = 'none';
+    }
+
+    // تخزين البيانات المسجلة للإرسال
+    window.lastInventoryData = { 
+        grandTotal, 
+        systemBalance, 
+        diff, 
+        details: detailsArr.join(' - ') 
+    };
+}/**
+ * 5. تحديث واجهة المقارنة (Badge)
+ */
+function updateReconciliationUI(grandTotal, denomDetails) {
+    const badge = document.getElementById('reconciliation-badge');
+    const label = document.getElementById('diff-label');
+    const value = document.getElementById('diff-value');
+    
+    if (!badge) return;
+
+    if (grandTotal === 0 && vaultBalanceFromSystem === 0) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    badge.style.display = 'block';
+    const diff = grandTotal - vaultBalanceFromSystem; 
+    const detailsString = denomDetails.join(' - ');
+
+    const saveBtnHtml = `
         <div class="mt-3 pt-3" style="border-top: 1px dashed rgba(255,255,255,0.4)">
             <button id="btnSaveInventory" class="btn w-100 fw-bold shadow-sm" 
                     style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 12px; padding: 10px; font-size: 13px;"
-                    onclick="saveInventoryToSupabase(${vaultBalanceFromSystem}, ${e}, ${o}, '${s}')">
+                    onclick="saveInventoryToSupabase(${vaultBalanceFromSystem}, ${grandTotal}, ${diff}, '${detailsString}')">
                 <i class="fas fa-check-circle me-1"></i> اعتماد وتسجيل الجرد في السجل
             </button>
-        </div>`;1>Math.abs(o)?(n.style.background="linear-gradient(135deg, #059669, #10b981)",a.innerHTML="✨ جرد مطابق",l.innerHTML="0"+i):o<0?(n.style.background="linear-gradient(135deg, #dc2626, #ef4444)",a.innerHTML="⚠️ عجز:",l.innerHTML=Math.abs(o).toLocaleString()+" ج.م"+i):(n.style.background="linear-gradient(135deg, #2563eb, #3b82f6)",a.innerHTML="\uD83D\uDCB0 زيادة:",l.innerHTML=o.toLocaleString()+" ج.م"+i)}function restoreInventoryData(){let e=sessionStorage.getItem(STORAGE_KEY);if(!e)return;let t=JSON.parse(e);document.querySelectorAll(".denom-input").forEach(e=>{let n=e.getAttribute("data-unit");t[n]&&(e.value=t[n])}),calculateTotalCash()}function resetCounter(){Swal.fire({title:"تصفير الحاسبة؟",text:"سيتم مسح جميع الأرقام المدخلة في الفئات حالاً",icon:"warning",showCancelButton:!0,confirmButtonText:"نعم، تصفير",cancelButtonText:"إلغاء",customClass:{confirmButton:"btn btn-danger rounded-pill px-4 me-2",cancelButton:"btn btn-light rounded-pill px-4"},buttonsStyling:!1}).then(e=>{if(e.isConfirmed){let t=document.querySelectorAll(".denom-input");t.forEach(e=>e.value="");let n=document.querySelectorAll(".sub-total");n.forEach(e=>{e.innerText="0",e.classList.replace("bg-primary","bg-primary-subtle"),e.classList.replace("text-white","text-primary")}),calculateTotalCash();let a=Swal.mixin({toast:!0,position:"top-end",showConfirmButton:!1,timer:2e3,timerProgressBar:!0});a.fire({icon:"success",title:"تم تصفير الحاسبة بنجاح"})}})}async function saveInventoryToSupabase(e,t,n,a){if(confirm("تأكيد حفظ الجرد في السجل؟")){setLoading("btnSaveInventory",!0);try{let{data:{user:l}}=await window.supa.auth.getUser(),{error:o}=await window.supa.from("inventory_logs").insert([{system_balance:e,actual_balance:t,diff:n,details:a,user_name:l?.user_metadata?.name||l?.email}]);if(o)throw o;showToast("تم تسجيل الجرد بنجاح"),sessionStorage.removeItem(STORAGE_KEY),resetCounter()}catch(s){showToast("خطأ: "+s.message,!1)}finally{setLoading("btnSaveInventory",!1)}}}void 0===window.denominations&&(window.denominations=[200,100,50,20,10,5,1]);const oldShowView=window.showView;async function loadDenominations(){renderCounter()}function switchInventoryTab(e){let t=document.getElementById("inventory-tab-counter"),n=document.getElementById("inventory-tab-logs"),a=document.getElementById("tab-btn-counter"),l=document.getElementById("tab-btn-logs");"counter"===e?(t.style.display="block",n.style.display="none",a.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border",l.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0"):(t.style.display="none",n.style.display="block",l.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border",a.className="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0",loadInventoryLogs())}async function loadInventoryLogs(){let e=document.getElementById("inventory-logs-list"),t=document.getElementById("log-refresh-icon");window._logsData=[],t&&t.classList.add("fa-spin"),e.innerHTML||(e.innerHTML='<div class="text-center py-4 text-muted small">جاري جلب البيانات...</div>');try{let{data:n,error:a}=await window.supa.from("inventory_logs").select("*").order("created_at",{ascending:!1}).limit(20);if(a)throw a;let l="";n&&0!==n.length?n.forEach(e=>{let t=new Date(e.created_at),n=parseFloat(e.diff)||0;window._logsData.push(e);let a=window._logsData.length-1,o="";o=1>Math.abs(n)?'<span class="badge bg-success-subtle text-success border-0 rounded-pill px-3">مطابق ✨</span>':n<0?`<span class="badge bg-danger-subtle text-danger border-0 rounded-pill px-2">عجز: ${Math.abs(n).toLocaleString()}</span>`:`<span class="badge bg-primary-subtle text-primary border-0 rounded-pill px-2">زيادة: ${n.toLocaleString()}</span>`,l+=`
+        </div>`;
+
+    if (Math.abs(diff) < 1) { 
+        badge.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        label.innerHTML = '✨ جرد مطابق';
+        value.innerHTML = '0' + saveBtnHtml;
+    } else if (diff < 0) { 
+        badge.style.background = 'linear-gradient(135deg, #dc2626, #ef4444)';
+        label.innerHTML = '⚠️ عجز:';
+        value.innerHTML = Math.abs(diff).toLocaleString() + ' ج.م' + saveBtnHtml;
+    } else { 
+        badge.style.background = 'linear-gradient(135deg, #2563eb, #3b82f6)';
+        label.innerHTML = '💰 زيادة:';
+        value.innerHTML = diff.toLocaleString() + ' ج.م' + saveBtnHtml;
+    }
+}
+
+/**
+ * 6. استعادة البيانات وتصفيرها
+ */
+function restoreInventoryData() {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const data = JSON.parse(saved);
+    document.querySelectorAll('.denom-input').forEach(input => {
+        const unit = input.getAttribute('data-unit');
+        if (data[unit]) input.value = data[unit];
+    });
+    calculateTotalCash();
+}
+
+function resetCounter() {
+    // إظهار نافذة تأكيد من السيستم
+    Swal.fire({
+        title: 'تصفير الحاسبة؟',
+        text: "سيتم مسح جميع الأرقام المدخلة في الفئات حالاً",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'نعم، تصفير',
+        cancelButtonText: 'إلغاء',
+        customClass: {
+            confirmButton: 'btn btn-danger rounded-pill px-4 me-2',
+            cancelButton: 'btn btn-light rounded-pill px-4'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // 1. مسح جميع خانات الإدخال
+            const inputs = document.querySelectorAll('.denom-input');
+            inputs.forEach(input => input.value = '');
+
+            // 2. تصفير العدادات الصغيرة (Badges)
+            const subtotals = document.querySelectorAll('.sub-total');
+            subtotals.forEach(span => {
+                span.innerText = '0';
+                // إعادة اللون الأصلي للبادج
+                span.classList.replace('bg-primary', 'bg-primary-subtle');
+                span.classList.replace('text-white', 'text-primary');
+            });
+
+            // 3. تحديث الإجمالي الكبير والمقارنة
+            calculateTotalCash();
+
+            // 4. إظهار رسالة نجاح خفيفة (Toast)
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+            Toast.fire({
+                icon: 'success',
+                title: 'تم تصفير الحاسبة بنجاح'
+            });
+        }
+    });
+}
+/**
+ * 7. حفظ الجرد في السجل (Supabase)
+ */
+async function saveInventoryToSupabase(sys, act, diff, details) {
+    if (!confirm("تأكيد حفظ الجرد في السجل؟")) return;
+
+    setLoading('btnSaveInventory', true);
+    try {
+        const { data: { user } } = await window.supa.auth.getUser();
+        
+        const { error } = await window.supa
+            .from('inventory_logs')
+            .insert([{
+                system_balance: sys,
+                actual_balance: act,
+                diff: diff,
+                details: details,
+                user_name: user?.user_metadata?.name || user?.email
+            }]);
+
+        if (error) throw error;
+
+        showToast("تم تسجيل الجرد بنجاح");
+        sessionStorage.removeItem(STORAGE_KEY);
+        resetCounter();
+    } catch (err) {
+        showToast("خطأ: " + err.message, false);
+    } finally {
+        setLoading('btnSaveInventory', false);
+    }
+}
+
+// تعديل دالة التنقل showView (تأكد من وجودها في app.js)
+const oldShowView = window.showView;
+window.showView = function(v) {
+    if (typeof oldShowView === 'function') oldShowView(v);
+    if (v === 'counter') {
+        renderCounter();
+        fetchVaultBalance();
+    }
+};
+// تعريف الدالة التي يطلبها النظام لتجنب توقف الكود
+async function loadDenominations() {
+    // إذا لم يكن لديك جدول فئات، سنستخدم الفئات الثابتة مباشرة
+    if (typeof renderCounter === 'function') {
+        renderCounter();
+    }
+}
+function switchInventoryTab(tabName) {
+    const counterTab = document.getElementById('inventory-tab-counter');
+    const logsTab = document.getElementById('inventory-tab-logs');
+    const btnCounter = document.getElementById('tab-btn-counter');
+    const btnLogs = document.getElementById('tab-btn-logs');
+
+    if (tabName === 'counter') {
+        counterTab.style.display = 'block';
+        logsTab.style.display = 'none';
+        
+        // تحديث استايل الأزرار
+        btnCounter.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border";
+        btnLogs.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0";
+    } else {
+        counterTab.style.display = 'none';
+        logsTab.style.display = 'block';
+        
+        // تحديث استايل الأزرار
+        btnLogs.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border";
+        btnCounter.className = "btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0";
+        
+        // جلب البيانات من السيستم فور فتح التبويب
+        loadInventoryLogs();
+    }
+}
+
+async function loadInventoryLogs() {
+    const listContainer = document.getElementById('inventory-logs-list');
+    const icon = document.getElementById('log-refresh-icon');
+    
+    window._logsData = []; // reset عند كل تحميل
+    
+    if (icon) icon.classList.add('fa-spin');
+    if (!listContainer.innerHTML) {
+        listContainer.innerHTML = '<div class="text-center py-4 text-muted small">جاري جلب البيانات...</div>';
+    }
+
+    try {
+        const { data, error } = await window.supa
+            .from('inventory_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
+
+        if (error) throw error;
+
+        let html = '';
+        if (!data || data.length === 0) {
+            html = '<div class="text-center py-5 text-muted">لا يوجد سجلات حالياً</div>';
+        } else {
+            data.forEach(log => {
+                const date = new Date(log.created_at);
+                const diff = parseFloat(log.diff) || 0;
+                
+                window._logsData.push(log);
+                const index = window._logsData.length - 1;
+
+                let statusBadge = '';
+                if (Math.abs(diff) < 1) {
+                    statusBadge = '<span class="badge bg-success-subtle text-success border-0 rounded-pill px-3">مطابق ✨</span>';
+                } else if (diff < 0) {
+                    statusBadge = `<span class="badge bg-danger-subtle text-danger border-0 rounded-pill px-2">عجز: ${Math.abs(diff).toLocaleString()}</span>`;
+                } else {
+                    statusBadge = `<span class="badge bg-primary-subtle text-primary border-0 rounded-pill px-2">زيادة: ${diff.toLocaleString()}</span>`;
+                }
+
+                html += `
                 <div class="log-card shadow-sm border rounded-4 p-3 mb-2 bg-white d-flex align-items-center">
                     <div class="col-4 text-start">
-                        <div class="fw-bold text-dark small">${t.toLocaleDateString("ar-EG")}</div>
-                        <div class="text-muted" style="font-size: 10px;">${t.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"})}</div>
+                        <div class="fw-bold text-dark small">${date.toLocaleDateString('ar-EG')}</div>
+                        <div class="text-muted" style="font-size: 10px;">${date.toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}</div>
                     </div>
-                    <div class="col-5 text-center">${o}</div>
+                    <div class="col-5 text-center">${statusBadge}</div>
                     <div class="col-3 text-end d-flex justify-content-end gap-1">
-                        <button class="btn btn-action view" onclick="openLogModal(window._logsData[${a}])" title="التفاصيل">
+                        <button class="btn btn-action view" onclick="openLogModal(window._logsData[${index}])" title="التفاصيل">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="btn btn-action delete" onclick="deleteInventoryLog('${e.id}')" title="حذف">
+                        <button class="btn btn-action delete" onclick="deleteInventoryLog('${log.id}')" title="حذف">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
-                </div>`}):l='<div class="text-center py-5 text-muted">لا يوجد سجلات حالياً</div>',e.innerHTML=l}catch(o){console.error("Error loading logs:",o),e.innerHTML='<div class="alert alert-danger m-2 small text-center">خطأ في الاتصال بالقاعدة</div>'}finally{t&&t.classList.remove("fa-spin")}}function openLogModal(e){let t=document.getElementById("modal-date-head"),n=document.getElementById("modal-user"),a=document.getElementById("modal-system"),l=document.getElementById("modal-actual"),o=document.getElementById("modal-details-list");if(t){let s=new Date(e.created_at);t.innerText=isNaN(s)?"تاريخ غير صحيح":s.toLocaleString("ar-EG")}if(n&&(n.innerText=e.user_name||"غير معروف"),a&&(a.innerText=Number(e.system_balance||0).toLocaleString()+" ج.م"),l&&(l.innerText=Number(e.actual_balance||0).toLocaleString()+" ج.م"),o){if(e.details){let i=e.details.split(" - ");o.innerHTML=i.map(e=>`<div class="denom-tag border p-1 rounded bg-light small px-2">${e}</div>`).join("")}else o.innerHTML='<span class="text-muted small">لا توجد تفاصيل</span>'}let r=document.getElementById("logDetailsModal");r?r.style.display="flex":console.error("عنصر logDetailsModal غير موجود في الـ HTML")}function closeLogModal(){let e=document.getElementById("logDetailsModal");e&&(e.style.display="none")}function closeLogModalOutside(e){let t=document.getElementById("logDetailsModal");e.target===t&&(t.style.display="none")}function viewLogDetails(e,t){let n=`المسؤول: ${e}
+                </div>`;
+            });
+        }
+        listContainer.innerHTML = html;
+    } catch (e) {
+        console.error("Error loading logs:", e);
+        listContainer.innerHTML = '<div class="alert alert-danger m-2 small text-center">خطأ في الاتصال بالقاعدة</div>';
+    } finally {
+        if (icon) icon.classList.remove('fa-spin');
+    }
+}
+function openLogModal(log) {
+    const dateHead = document.getElementById('modal-date-head');
+    const user = document.getElementById('modal-user');
+    const system = document.getElementById('modal-system');
+    const actual = document.getElementById('modal-actual');
+    const detailsList = document.getElementById('modal-details-list');
 
-التفاصيل:
-${t}`;window.Swal?Swal.fire({title:"تفاصيل عملية الجرد",html:`<div style="text-align: right; font-size: 14px;"><b>المسؤول:</b> ${e}<br><hr>${t.replace(/-/g,"<br>")}</div>`,icon:"info",confirmButtonText:"إغلاق"}):alert(n)}function renderAdminDenomsList(){let e=document.getElementById("delete-denoms-list");if(!e)return;let t="";window.denominations.forEach(e=>{t+=`
+    if (dateHead) {
+        const date = new Date(log.created_at);
+        dateHead.innerText = isNaN(date) ? 'تاريخ غير صحيح' : date.toLocaleString('ar-EG');
+    }
+    if (user) user.innerText = log.user_name || 'غير معروف';
+    if (system) system.innerText = Number(log.system_balance || 0).toLocaleString() + ' ج.م';
+    if (actual) actual.innerText = Number(log.actual_balance || 0).toLocaleString() + ' ج.م';
+
+    if (detailsList) {
+        if (log.details) {
+            const items = log.details.split(' - ');
+            detailsList.innerHTML = items.map(item => `<div class="denom-tag border p-1 rounded bg-light small px-2">${item}</div>`).join('');
+        } else {
+            detailsList.innerHTML = '<span class="text-muted small">لا توجد تفاصيل</span>';
+        }
+    }
+
+    const modal = document.getElementById('logDetailsModal');
+    if (modal) modal.style.display = 'flex';
+    else console.error("عنصر logDetailsModal غير موجود في الـ HTML");
+}
+
+function closeLogModal() {
+    const modal = document.getElementById('logDetailsModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function closeLogModalOutside(event) {
+    const modal = document.getElementById('logDetailsModal');
+    if (event.target === modal) modal.style.display = 'none';
+}
+// دالة إظهار التفاصيل (زر الفارق)
+function viewLogDetails(user, details) {
+    const content = `المسؤول: ${user}\n\nالتفاصيل:\n${details}`;
+    if (window.Swal) {
+        Swal.fire({
+            title: 'تفاصيل عملية الجرد',
+            html: `<div style="text-align: right; font-size: 14px;"><b>المسؤول:</b> ${user}<br><hr>${details.replace(/-/g, '<br>')}</div>`,
+            icon: 'info',
+            confirmButtonText: 'إغلاق'
+        });
+    } else {
+        alert(content);
+    }
+}// دالة مساعدة لعرض التفاصيل
+
+// تأكد من تعريف هذا المتغير في أعلى الملف
+function renderAdminDenomsList() {
+    const listContainer = document.getElementById('delete-denoms-list');
+    if (!listContainer) return;
+
+    let html = '';
+    // denominations هي المصفوفة التي نستخدمها في حاسبة العد
+    window.denominations.forEach(unit => {
+        html += `
         <div class="badge bg-white text-dark border p-2 d-flex align-items-center gap-2 shadow-sm" style="border-radius: 10px;">
-            <span class="fw-bold">${e} ج.م</span>
-            <i class="fas fa-times-circle text-danger" style="cursor: pointer;" onclick="deleteDenomination(${e})" title="حذف الفئة"></i>
-        </div>`}),e.innerHTML=t||'<span class="text-muted small">لا توجد فئات مضافة</span>'}async function deleteInventoryLog(e){let t=confirm("هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع.");if(t)try{let{error:n}=await window.supa.from("inventory_logs").delete().eq("id",e);if(n)throw n;loadInventoryLogs(),window.showToast?showToast("تم حذف السجل بنجاح"):alert("تم حذف السجل بنجاح")}catch(a){console.error("Delete error:",a),alert("فشل الحذف: تأكد من صلاحيات قاعدة البيانات")}}async function refreshVaultWithToast(){let e=document.getElementById("refresh-vault-icon");e&&e.classList.add("fa-spin");try{await fetchVaultBalance(),setTimeout(calculateTotalCash,500),window.showToast&&showToast("تم تحديث رصيد السيستم",!0)}finally{e&&setTimeout(()=>e.classList.remove("fa-spin"),800)}}function parseArabicNumber(e){return e&&parseFloat(e.toString().replace(/[^\d.]/g,""))||0}window.showView=function(e){"function"==typeof oldShowView&&oldShowView(e),"counter"===e&&(renderCounter(),fetchVaultBalance())},setInterval(()=>{let e=document.getElementById("inventory-tab-logs");e&&"none"!==e.style.display&&loadInventoryLogs()},3e4);
+            <span class="fw-bold">${unit} ج.م</span>
+            <i class="fas fa-times-circle text-danger" style="cursor: pointer;" onclick="deleteDenomination(${unit})" title="حذف الفئة"></i>
+        </div>`;
+    });
+    listContainer.innerHTML = html || '<span class="text-muted small">لا توجد فئات مضافة</span>';
+}
+async function deleteInventoryLog(logId) {
+    // استخدام Swal إذا كان متاحاً لشكل احترافي
+    const confirmDelete = confirm("هل أنت متأكد من حذف هذا السجل؟ لا يمكن التراجع.");
+    if (!confirmDelete) return;
+
+    try {
+        const { error } = await window.supa
+            .from('inventory_logs')
+            .delete()
+            .eq('id', logId);
+
+        if (error) throw error;
+
+        // تحديث القائمة فوراً بعد الحذف (تحديث تلقائي)
+        loadInventoryLogs();
+        
+        if (window.showToast) showToast("تم حذف السجل بنجاح");
+        else alert("تم حذف السجل بنجاح");
+
+    } catch (e) {
+        console.error("Delete error:", e);
+        alert("فشل الحذف: تأكد من صلاحيات قاعدة البيانات");
+    }
+}
+
+// التحديث التلقائي كل 30 ثانية عند فتح تبويب السجل
+setInterval(() => {
+    const logsTab = document.getElementById('inventory-tab-logs');
+    if (logsTab && logsTab.style.display !== 'none') {
+        loadInventoryLogs();
+    }
+}, 30000);
+
+/**
+ * تحديث رصيد السيستم مع إظهار توست
+ */
+async function refreshVaultWithToast() {
+    const icon = document.getElementById('refresh-vault-icon');
+    if (icon) icon.classList.add('fa-spin');
+
+    try {
+        if (typeof fetchVaultBalance === "function") {
+            await fetchVaultBalance();
+            // بعد جلب الرصيد، نعيد حساب المقارنة فوراً
+            setTimeout(calculateTotalCash, 500); 
+            if (window.showToast) showToast("تم تحديث رصيد السيستم", true);
+        }
+    } finally {
+        if (icon) setTimeout(() => icon.classList.remove('fa-spin'), 800);
+    }
+}
+function parseArabicNumber(text) {
+    if (!text) return 0;
+    // حذف أي شيء ليس رقماً أو علامة عشرية (مثل ج.م، الفواصل، المسافات)
+    let clean = text.toString().replace(/[^\d.]/g, '');
+    return parseFloat(clean) || 0;
+}

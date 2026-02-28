@@ -1,99 +1,441 @@
-async function loadCurrentUserWithBranch(){try{let{data:{user:e}}=await window.supa.auth.getUser();if(!e)return null;let{data:t}=await window.supa.from("users").select("*, branches(name, location)").eq("email",e.email).maybeSingle();if(t){let a=t.is_master||!1,n=(t.role||"").toUpperCase();window.currentUserData={...t,email:e.email,isMaster:a,isAdmin:!a&&"ADMIN"===n&&!!t.branch_id,isUser:!a&&"USER"===n,branchName:t.branches?.name||""}}return window.currentUserData}catch(i){return null}}function renderCurrentBranchBadge(){let e=document.getElementById("current-branch-badge");if(!e||!window.currentUserData)return;let t=window.currentUserData;t.isMaster?e.innerHTML='<span class="badge bg-warning text-dark ms-2"><i class="fa fa-crown me-1"></i>MASTER</span>':t.isAdmin?e.innerHTML=`<span class="badge bg-primary ms-2"><i class="fa fa-building me-1"></i>مدير ${t.branchName}</span>`:e.innerHTML=t.branchName?`<span class="badge bg-secondary ms-2"><i class="fa fa-building me-1"></i>${t.branchName}</span>`:""}function applyBranchFilter(e,t){return!t||t.isMaster?e:t.branch_id?e.eq("branch_id",t.branch_id):e.eq("branch_id","00000000-0000-0000-0000-000000000000")}function applyBranchPermissions(){let e=window.currentUserData;e&&(document.querySelectorAll(".master-only").forEach(t=>{t.style.display=e.isMaster?"":"none"}),document.querySelectorAll(".admin-or-master").forEach(t=>{t.style.display=e.isMaster||e.isAdmin?"":"none"}),document.querySelectorAll(".user-only").forEach(t=>{t.style.display=e.isUser?"":"none"}))}async function getAllBranches(){let{data:e,error:t}=await window.supa.from("branches").select("*").order("created_at",{ascending:!0});return t?[]:e||[]}async function addBranch(e,t=""){if(!e?.trim())return showToast("يرجى إدخال اسم الفرع",!1),!1;let{error:a}=await window.supa.from("branches").insert({name:e.trim(),location:t.trim()});return a?(showToast("خطأ: "+a.message,!1),!1):(showToast("✅ تم إضافة الفرع"),!0)}async function updateBranch(e,t,a=""){if(!t?.trim())return showToast("يرجى إدخال اسم الفرع",!1),!1;let{error:n}=await window.supa.from("branches").update({name:t.trim(),location:a.trim()}).eq("id",e);return n?(showToast("خطأ: "+n.message,!1),!1):(showToast("✅ تم التعديل"),!0)}async function deleteBranch(e){let t=await Swal.fire({title:"حذف الفرع؟",icon:"warning",text:"البيانات المرتبطة بالفرع لن تُحذف.",showCancelButton:!0,confirmButtonColor:"#d33",confirmButtonText:"احذف",cancelButtonText:"إلغاء",width:"340px"});if(!t.isConfirmed)return;let{error:a}=await window.supa.from("branches").delete().eq("id",e);if(a){showToast("خطأ: "+a.message,!1);return}showToast("✅ تم الحذف"),loadBranchesTable()}async function assignUserToBranch(e,t){let{error:a}=await window.supa.from("users").update({branch_id:t}).eq("id",e);return a?(showToast("خطأ: "+a.message,!1),!1):(showToast("✅ تم تعيين الفرع"),!0)}async function handleAssignUserToBranch(){let e=document.getElementById("assignUserSelect")?.value,t=document.getElementById("assignBranchSelect")?.value;if(!e||!t){showToast("اختر الموظف والفرع",!1);return}await assignUserToBranch(e,t)&&(await loadUsersForAssign(),"function"==typeof loadUsersTable&&loadUsersTable())}async function populateBranchSelect(e,t=!1){let a=document.getElementById(e);if(!a)return;let n=await getAllBranches();a.innerHTML=t?'<option value="">كل الفروع</option>':'<option value="">-- اختر فرع --</option>',n.forEach(e=>{a.innerHTML+=`<option value="${esc(e.id)}">${esc(e.name)}</option>`})}async function loadUsersForAssign(){let e=document.getElementById("assignUserSelect");if(!e)return;let t=window.currentUserData;e.innerHTML='<option value="">جاري التحميل...</option>';try{let a=window.supa.from("users").select("id, name, email, branch_id, branches(name)").order("name");t?.isAdmin&&t?.branch_id&&(a=a.eq("branch_id",t.branch_id));let{data:n,error:i}=await a;if(i)throw i;if(!n?.length){e.innerHTML='<option value="">لا يوجد موظفين</option>';return}e.innerHTML='<option value="">-- اختر موظف --</option>',n.forEach(t=>{let a=t.branches?.name?` — ${t.branches.name}`:" — بدون فرع",n=t.is_master?"\uD83D\uDC51":"ADMIN"===t.role?"\uD83D\uDD11":"\uD83D\uDC64";e.innerHTML+=`<option value="${t.id}">${n} ${t.name||t.email}${a}</option>`})}catch(r){e.innerHTML='<option value="">خطأ في التحميل</option>'}}async function renderDashBranchFilter(){let e=document.getElementById("dashBranchFilter");if(!e)return;let t=window.currentUserData;if(!t||!0!==t.isMaster&&1!==t.isMaster){e.style.display="none";return}e.style.display="block",e.innerHTML='<span class="text-muted small">جاري تحميل الفروع...</span>';try{let a=await getAllBranches();if(!a||0===a.length){e.innerHTML='<span class="text-danger small">لا توجد فروع متاحة</span>';return}e.innerHTML=`
-            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap" style="direction:rtl;">
-                <span class="small fw-bold text-muted"><i class="fa fa-building me-1"></i>عرض:</span>
-                <button class="btn btn-sm btn-primary rounded-pill px-3 dash-branch-btn active"
-                        data-branch="" onclick="filterDashboardByBranch(this)">
-                    كل الفروع
-                </button>
-                ${a.map(e=>`
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 dash-branch-btn"
-                            data-branch="${esc(e.id)}" onclick="filterDashboardByBranch(this)">
-                        ${esc(e.name)}
-                    </button>`).join("")}
-            </div>`}catch(n){e.innerHTML='<span class="text-danger small">فشل تحميل فلتر الفروع</span>'}}async function filterDashboardByBranch(e){document.querySelectorAll(".dash-branch-btn").forEach(e=>{e.className=e.className.replace("btn-primary","btn-outline-primary").replace(" active","")}),e.className=e.className.replace("btn-outline-primary","btn-primary")+" active",window._currentDashBranch=e.dataset.branch||null,"function"==typeof loadDashboard&&loadDashboard()}function initBranchFilterWithRetry(){window.currentUserData?renderDashBranchFilter():setTimeout(initBranchFilterWithRetry,100)}window.currentUserData=null,window.toggleBranchMembers=function(e,t){let a=document.getElementById(e);if(!a)return;let n="none"!==a.style.display;a.style.display=n?"none":"block";let i=t.querySelector(".fa-chevron-down");i&&(i.style.transform=n?"":"rotate(180deg)")},window.loadBranchesTable=async function(){let e=document.getElementById("branchesList");if(!e)return;e.innerHTML=`
+// ============================================================
+// branches.js — النسخة النهائية
+//
+// منطق الرولات (بدون رول جديد في DB):
+//   is_master = true              → مدير عام  (يشوف كل الفروع)
+//   role = ADMIN + branch_id      → مدير فرع  (يشوف فرعه بس)
+//   role = USER  + branch_id      → موظف      (يشوف فرعه بس)
+//
+// الفرق بين مدير الفرع والمدير العام:
+//   isMaster = true  → لا branch_id
+//   isAdmin  = true  → branch_id موجود → مدير فرع
+// ============================================================
+
+
+// ══════════════════════════════════════════════════════════
+// 1. تحميل بيانات المستخدم الحالي مع الفرع
+// ══════════════════════════════════════════════════════════
+window.currentUserData = null;
+
+async function loadCurrentUserWithBranch() {
+    try {
+        const { data: { user } } = await window.supa.auth.getUser();
+        if (!user) return null;
+
+        const { data } = await window.supa
+            .from('users')
+            .select('*, branches(name, location)')
+            .eq('email', user.email)
+            .maybeSingle();
+
+        if (data) {
+            const isMaster = data.is_master || false;
+            const role     = (data.role || '').toUpperCase();
+            window.currentUserData = {
+                ...data,
+                email:      user.email,
+                isMaster,
+                // مدير فرع = ADMIN + مش master + عنده branch_id
+                isAdmin:    !isMaster && role === 'ADMIN' && !!data.branch_id,
+                // موظف = USER أو ADMIN بدون branch_id
+                isUser:     !isMaster && role === 'USER',
+                branchName: data.branches?.name || ''
+            };
+        }
+        return window.currentUserData;
+    } catch (e) {
+        return null;
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 2. شارة الفرع في الهيدر
+// ══════════════════════════════════════════════════════════
+function renderCurrentBranchBadge() {
+    const el = document.getElementById('current-branch-badge');
+    if (!el || !window.currentUserData) return;
+    const u = window.currentUserData;
+    if (u.isMaster) {
+        el.innerHTML = '<span class="badge bg-warning text-dark ms-2"><i class="fa fa-crown me-1"></i>MASTER</span>';
+    } else if (u.isAdmin) {
+        el.innerHTML = `<span class="badge bg-primary ms-2"><i class="fa fa-building me-1"></i>مدير ${u.branchName}</span>`;
+    } else {
+        el.innerHTML = u.branchName
+            ? `<span class="badge bg-secondary ms-2"><i class="fa fa-building me-1"></i>${u.branchName}</span>`
+            : '';
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 3. فلتر الفرع التلقائي على أي Supabase query
+// ══════════════════════════════════════════════════════════
+function applyBranchFilter(query, user) {
+    // مدير عام → بلا فلتر
+    if (!user || user.isMaster) return query;
+    // مدير فرع أو موظف → فرعهم فقط
+    if (user.branch_id) return query.eq('branch_id', user.branch_id);
+    // مش معينله فرع → لا يشوف أي بيانات
+    return query.eq('branch_id', '00000000-0000-0000-0000-000000000000');
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 4. صلاحيات الواجهة — يُستدعى في initUserAccess
+// ══════════════════════════════════════════════════════════
+function applyBranchPermissions() {
+    const u = window.currentUserData;
+    if (!u) return;
+
+    // عناصر المدير العام فقط
+    document.querySelectorAll('.master-only').forEach(el => {
+        el.style.display = u.isMaster ? '' : 'none';
+    });
+
+    // عناصر مدير الفرع + المدير العام
+    document.querySelectorAll('.admin-or-master').forEach(el => {
+        el.style.display = (u.isMaster || u.isAdmin) ? '' : 'none';
+    });
+
+    // عناصر الموظف فقط (user)
+    document.querySelectorAll('.user-only').forEach(el => {
+        el.style.display = u.isUser ? '' : 'none';
+    });
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 5. CRUD الفروع
+// ══════════════════════════════════════════════════════════
+async function getAllBranches() {
+    const { data, error } = await window.supa
+        .from('branches').select('*').order('created_at', { ascending: true });
+    if (error) { return []; }
+    return data || [];
+}
+
+async function addBranch(name, location = '') {
+    if (!name?.trim()) { showToast('يرجى إدخال اسم الفرع', false); return false; }
+    const { error } = await window.supa.from('branches')
+        .insert({ name: name.trim(), location: location.trim() });
+    if (error) { showToast('خطأ: ' + error.message, false); return false; }
+    showToast('✅ تم إضافة الفرع');
+    return true;
+}
+
+async function updateBranch(id, name, location = '') {
+    if (!name?.trim()) { showToast('يرجى إدخال اسم الفرع', false); return false; }
+    const { error } = await window.supa.from('branches')
+        .update({ name: name.trim(), location: location.trim() }).eq('id', id);
+    if (error) { showToast('خطأ: ' + error.message, false); return false; }
+    showToast('✅ تم التعديل');
+    return true;
+}
+
+async function deleteBranch(id) {
+    const r = await Swal.fire({
+        title: 'حذف الفرع؟', icon: 'warning',
+        text: 'البيانات المرتبطة بالفرع لن تُحذف.',
+        showCancelButton: true, confirmButtonColor: '#d33',
+        confirmButtonText: 'احذف', cancelButtonText: 'إلغاء', width: '340px'
+    });
+    if (!r.isConfirmed) return;
+    const { error } = await window.supa.from('branches').delete().eq('id', id);
+    if (error) { showToast('خطأ: ' + error.message, false); return; }
+    showToast('✅ تم الحذف');
+    loadBranchesTable();
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 6. تعيين موظف لفرع
+// ══════════════════════════════════════════════════════════
+async function assignUserToBranch(userId, branchId) {
+    const { error } = await window.supa.from('users')
+        .update({ branch_id: branchId }).eq('id', userId);
+    if (error) { showToast('خطأ: ' + error.message, false); return false; }
+    showToast('✅ تم تعيين الفرع');
+    return true;
+}
+
+async function handleAssignUserToBranch() {
+    const userId   = document.getElementById('assignUserSelect')?.value;
+    const branchId = document.getElementById('assignBranchSelect')?.value;
+    if (!userId || !branchId) { showToast('اختر الموظف والفرع', false); return; }
+    if (await assignUserToBranch(userId, branchId)) {
+        await loadUsersForAssign();
+        if (typeof loadUsersTable === 'function') loadUsersTable();
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 7. ملء قوائم الاختيار
+// ══════════════════════════════════════════════════════════
+async function populateBranchSelect(selectId, withAll = false) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    const branches = await getAllBranches();
+    el.innerHTML = withAll
+        ? '<option value="">كل الفروع</option>'
+        : '<option value="">-- اختر فرع --</option>';
+    branches.forEach(b => {
+        el.innerHTML += `<option value="${esc(b.id)}">${esc(b.name)}</option>`;
+    });
+}
+
+async function loadUsersForAssign() {
+    const sel = document.getElementById('assignUserSelect');
+    if (!sel) return;
+
+    const u = window.currentUserData;
+    sel.innerHTML = '<option value="">جاري التحميل...</option>';
+
+    try {
+        let query = window.supa
+            .from('users')
+            .select('id, name, email, branch_id, branches(name)')
+            .order('name');
+
+        // مدير الفرع يشوف موظفي فرعه بس
+        if (u?.isAdmin && u?.branch_id) {
+            query = query.eq('branch_id', u.branch_id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        if (!data?.length) {
+            sel.innerHTML = '<option value="">لا يوجد موظفين</option>';
+            return;
+        }
+
+        sel.innerHTML = '<option value="">-- اختر موظف --</option>';
+        data.forEach(user => {
+            const branch = user.branches?.name ? ` — ${user.branches.name}` : ' — بدون فرع';
+            const roleLabel = user.is_master ? '👑' : user.role === 'ADMIN' ? '🔑' : '👤';
+            sel.innerHTML += `<option value="${user.id}">${roleLabel} ${user.name || user.email}${branch}</option>`;
+        });
+    } catch (e) {
+        sel.innerHTML = '<option value="">خطأ في التحميل</option>';
+    }
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 8. واجهة إدارة الفروع (بتنسيق متطابق مع باقي الأقسام)
+// ══════════════════════════════════════════════════════════
+
+// فتح/إغلاق قائمة أعضاء الفرع
+window.toggleBranchMembers = function(divId, headerEl) {
+    const div = document.getElementById(divId);
+    if (!div) return;
+    const isOpen = div.style.display !== 'none';
+    div.style.display = isOpen ? 'none' : 'block';
+    // تدوير السهم
+    const arrow = headerEl.querySelector('.fa-chevron-down');
+    if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+};
+
+window.loadBranchesTable = async function () {
+    const container = document.getElementById('branchesList');
+    if (!container) return;
+
+    container.innerHTML = `
         <div class="text-center p-4 text-muted small">
             <i class="fa fa-circle-notch fa-spin me-1"></i> جاري التحميل...
-        </div>`;let t=window.currentUserData,a=t?.isMaster===!0,n=t?.isAdmin===!0,i=document.getElementById("addBranchBtn"),r=document.getElementById("assignSection"),s=document.getElementById("branchesSummarySection");i&&(i.style.display=a?"":"none"),r&&(r.style.display=a?"":"none"),s&&(s.style.display=a?"":"none");let l=await getAllBranches();if(!a&&n&&t?.branch_id&&(l=l.filter(e=>e.id===t.branch_id)),!l.length){e.innerHTML=`
+        </div>`;
+
+    const u        = window.currentUserData;
+    const isMaster = u?.isMaster === true;
+    const isAdmin  = u?.isAdmin  === true;
+
+    // إظهار/إخفاء الأقسام حسب الصلاحية
+    const addBtn         = document.getElementById('addBranchBtn');
+    const assignSection  = document.getElementById('assignSection');
+    const summarySection = document.getElementById('branchesSummarySection');
+
+    if (addBtn)         addBtn.style.display         = isMaster ? '' : 'none';
+    if (assignSection)  assignSection.style.display  = isMaster ? '' : 'none';
+    if (summarySection) summarySection.style.display = isMaster ? '' : 'none';
+
+    // مدير الفرع يشوف فرعه بس
+    let branches = await getAllBranches();
+    if (!isMaster && isAdmin && u?.branch_id) {
+        branches = branches.filter(b => b.id === u.branch_id);
+    }
+
+    if (!branches.length) {
+        container.innerHTML = `
             <div class="text-center py-4 text-muted">
                 <i class="fa fa-building fa-2x mb-2 opacity-25 d-block"></i>
                 <span class="small">لا توجد فروع بعد</span>
-            </div>`;return}let{data:c}=await window.supa.from("users").select("id, name, email, branch_id"),o={};(c||[]).forEach(e=>{e.branch_id&&(o[e.branch_id]=(o[e.branch_id]||0)+1)});let d=["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4"];e.innerHTML=l.map((e,t)=>{let i=d[t%d.length],r=o[e.id]||0,s=a?`
+            </div>`;
+        return;
+    }
+
+    // جلب أعضاء الفرع
+    const { data: usersData } = await window.supa.from('users').select('id, name, email, branch_id');
+    const countMap = {};
+    (usersData || []).forEach(row => {
+        if (row.branch_id) countMap[row.branch_id] = (countMap[row.branch_id] || 0) + 1;
+    });
+
+    const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
+
+    container.innerHTML = branches.map((b, i) => {
+        const color = palette[i % palette.length];
+        const count = countMap[b.id] || 0;
+
+        // أزرار الفرع: مدير عام = تعديل + حذف، مدير فرع = لا شيء
+        const actionBtns = isMaster ? `
             <div class="d-flex gap-1 flex-shrink-0">
                 <button class="btn btn-sm btn-light border p-1"
-                    onclick="openEditBranchModal('${esc(e.id)}','${safeAttr(e.name)}','${safeAttr(e.location||"")}')" title="تعديل">
-                    <i class="fa fa-pen" style="color:${i};font-size:11px;"></i>
+                    onclick="openEditBranchModal('${esc(b.id)}','${safeAttr(b.name)}','${safeAttr(b.location||'')}')" title="تعديل">
+                    <i class="fa fa-pen" style="color:${color};font-size:11px;"></i>
                 </button>
                 <button class="btn btn-sm btn-light border p-1"
-                    onclick="deleteBranch('${esc(e.id)}')" title="حذف">
+                    onclick="deleteBranch('${esc(b.id)}')" title="حذف">
                     <i class="fa fa-trash-alt text-danger" style="font-size:11px;"></i>
                 </button>
-            </div>`:"",l=(c||[]).filter(t=>t.branch_id===e.id),u=a||n&&!a,m=u?`
+            </div>` : '';
+
+        // أعضاء الفرع — مدير الفرع: إزالة | مدير عام: إزالة + حذف نهائي
+        const branchMembers = (usersData || []).filter(u => u.branch_id === b.id);
+        const showMembers = isMaster || (isAdmin && !isMaster);
+        const membersHTML = showMembers ? `
             <div class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.08);">
                 <div style="font-size:10px;color:#94a3b8;margin-bottom:6px;">
-                    <i class="fa fa-users me-1" style="color:${i};"></i> الأعضاء (${l.length})
+                    <i class="fa fa-users me-1" style="color:${color};"></i> الأعضاء (${branchMembers.length})
                 </div>
-                ${0===l.length?'<div style="font-size:11px;color:#64748b;text-align:center;padding:6px;">لا يوجد أعضاء</div>':l.map(e=>`
+                ${branchMembers.length === 0
+                    ? '<div style="font-size:11px;color:#64748b;text-align:center;padding:6px;">لا يوجد أعضاء</div>'
+                    : branchMembers.map(m => `
                         <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-1 rounded-2"
                              style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);">
                             <div class="d-flex align-items-center gap-2">
                                 <div class="rounded-circle d-flex align-items-center justify-content-center"
-                                     style="width:24px;height:24px;min-width:24px;background:${i}20;color:${i};font-size:10px;">
+                                     style="width:24px;height:24px;min-width:24px;background:${color}20;color:${color};font-size:10px;">
                                     <i class="fa fa-user"></i>
                                 </div>
-                                <span style="font-size:12px;color:var(--card-text, #1e293b);">${esc(e.name||e.email)}</span>
+                                <span style="font-size:12px;color:var(--card-text, #1e293b);">${esc(m.name || m.email)}</span>
                             </div>
                             <div class="d-flex gap-1">
                                 <button style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:3px 7px;cursor:pointer;"
-                                    title="إزالة من الفرع" onclick="removeMemberFromBranch('${esc(e.id)}','${safeAttr(e.name||e.email)}')">
+                                    title="إزالة من الفرع" onclick="removeMemberFromBranch('${esc(m.id)}','${safeAttr(m.name || m.email)}')">
                                     <i class="fa fa-user-minus" style="color:#f59e0b;font-size:10px;"></i>
                                 </button>
-                                ${a?`
+                                ${isMaster ? `
                                 <button style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 7px;cursor:pointer;"
-                                    title="حذف نهائي" onclick="deleteMemberPermanently('${esc(e.id)}','${safeAttr(e.name||e.email)}')">
+                                    title="حذف نهائي" onclick="deleteMemberPermanently('${esc(m.id)}','${safeAttr(m.name || m.email)}')">
                                     <i class="fa fa-trash-alt" style="color:#ef4444;font-size:10px;"></i>
-                                </button>`:""}
+                                </button>` : ''}
                             </div>
-                        </div>`).join("")}
-            </div>`:"";return`
+                        </div>`).join('')
+                }
+            </div>` : '';
+
+        return `
         <div class="mb-2 rounded-3 shadow-sm"
-             style="background:var(--card-bg);border:1px solid var(--card-border);border-right:4px solid ${i} !important;direction:rtl;overflow:hidden;">
+             style="background:var(--card-bg);border:1px solid var(--card-border);border-right:4px solid ${color} !important;direction:rtl;overflow:hidden;">
 
             <!-- هيدر الكارت -->
             <div class="d-flex align-items-center p-2" style="cursor:pointer;"
-                 onclick="toggleBranchMembers('branch-members-${e.id}', this)">
+                 onclick="toggleBranchMembers('branch-members-${b.id}', this)">
 
                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:38px;height:38px;min-width:38px;background:${i}15;color:${i};">
+                     style="width:38px;height:38px;min-width:38px;background:${color}15;color:${color};">
                     <i class="fa fa-building" style="font-size:15px;"></i>
                 </div>
 
                 <div class="flex-grow-1 px-2">
-                    <div class="fw-bold" style="font-size:13px;color:var(--card-text);">${esc(e.name)}</div>
+                    <div class="fw-bold" style="font-size:13px;color:var(--card-text);">${esc(b.name)}</div>
                     <div class="d-flex align-items-center gap-2 mt-1">
                         <small class="text-muted" style="font-size:10px;">
-                            <i class="fa fa-location-dot me-1"></i>${esc(e.location)||"لم يُحدد الموقع"}
+                            <i class="fa fa-location-dot me-1"></i>${esc(b.location) || 'لم يُحدد الموقع'}
                         </small>
-                        <span class="badge rounded-pill" style="background:${i}15;color:${i};border:1px solid ${i}35;font-size:9px;">
-                            <i class="fa fa-users me-1"></i>${r}
+                        <span class="badge rounded-pill" style="background:${color}15;color:${color};border:1px solid ${color}35;font-size:9px;">
+                            <i class="fa fa-users me-1"></i>${count}
                         </span>
                     </div>
                 </div>
 
                 <div class="d-flex align-items-center gap-1">
-                    ${s}
-                    ${u?`
-                    <div style="width:28px;height:28px;border-radius:50%;background:${i}15;border:1px solid ${i}30;
+                    ${actionBtns}
+                    ${showMembers ? `
+                    <div style="width:28px;height:28px;border-radius:50%;background:${color}15;border:1px solid ${color}30;
                                 display:flex;align-items:center;justify-content:center;margin-right:4px;transition:transform 0.3s;">
-                        <i class="fa fa-chevron-down" style="color:${i};font-size:10px;transition:transform 0.3s;"></i>
-                    </div>`:""}
+                        <i class="fa fa-chevron-down" style="color:${color};font-size:10px;transition:transform 0.3s;"></i>
+                    </div>` : ''}
                 </div>
             </div>
 
             <!-- قائمة الأعضاء (مخفية افتراضياً) -->
-            <div id="branch-members-${e.id}" style="display:none; padding:0 8px 8px 8px;">
-                ${m}
+            <div id="branch-members-${b.id}" style="display:none; padding:0 8px 8px 8px;">
+                ${membersHTML}
             </div>
-        </div>`}).join("")},window.removeMemberFromBranch=async function(e,t){let a=await Swal.fire({title:"إزالة من الفرع؟",text:`سيتم إزالة "${t}" من الفرع`,icon:"warning",showCancelButton:!0,confirmButtonText:"نعم، أزل",cancelButtonText:"إلغاء",confirmButtonColor:"#f59e0b",width:"340px"});if(a.isConfirmed){let{error:n}=await window.supa.from("users").update({branch_id:null}).eq("id",e);n?showToast("❌ خطأ: "+n.message,!1):(showToast("✅ تم الإزالة بنجاح"),loadBranchesTable())}},window.deleteMemberPermanently=async function(e,t){let a=await Swal.fire({title:"حذف نهائي؟",text:`سيتم حذف "${t}" نهائياً من النظام`,icon:"warning",showCancelButton:!0,confirmButtonText:"نعم، احذف",cancelButtonText:"إلغاء",confirmButtonColor:"#d33",width:"340px"});if(a.isConfirmed){let{error:n}=await window.supa.from("users").delete().eq("id",e);n?showToast("❌ خطأ: "+n.message,!1):(showToast("✅ تم الحذف نهائياً"),loadBranchesTable())}},window.openAddBranchModal=async function(){let{value:e,isConfirmed:t}=await Swal.fire({title:"إضافة فرع جديد",html:`
+        </div>`;
+    }).join('');
+};
+
+// إزالة عضو من الفرع
+window.removeMemberFromBranch = async function(userId, userName) {
+    const res = await Swal.fire({
+        title: 'إزالة من الفرع؟',
+        text: `سيتم إزالة "${userName}" من الفرع`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'نعم، أزل',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#f59e0b',
+        width: '340px'
+    });
+
+    if (res.isConfirmed) {
+        const { error } = await window.supa.from('users').update({ branch_id: null }).eq('id', userId);
+        if (error) {
+            showToast('❌ خطأ: ' + error.message, false);
+        } else {
+            showToast('✅ تم الإزالة بنجاح');
+            loadBranchesTable();
+        }
+    }
+};
+
+// حذف عضو نهائياً (للمدير العام فقط)
+window.deleteMemberPermanently = async function(userId, userName) {
+    const res = await Swal.fire({
+        title: 'حذف نهائي؟',
+        text: `سيتم حذف "${userName}" نهائياً من النظام`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'نعم، احذف',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#d33',
+        width: '340px'
+    });
+
+    if (res.isConfirmed) {
+        const { error } = await window.supa.from('users').delete().eq('id', userId);
+        if (error) {
+            showToast('❌ خطأ: ' + error.message, false);
+        } else {
+            showToast('✅ تم الحذف نهائياً');
+            loadBranchesTable();
+        }
+    }
+};
+
+
+
+// ══════════════════════════════════════════════════════════
+// 9. نوافذ الإضافة والتعديل
+// ══════════════════════════════════════════════════════════
+window.openAddBranchModal = async function () {
+    const { value, isConfirmed } = await Swal.fire({
+        title: 'إضافة فرع جديد',
+        html: `
             <div style="direction:rtl;text-align:right;">
                 <div class="mb-3">
                     <label class="swal2-input">اسم الفرع *</label>
@@ -103,45 +445,301 @@ async function loadCurrentUserWithBranch(){try{let{data:{user:e}}=await window.s
                     <label class="swal2-input">الموقع</label>
                     <input id="sb-loc" class="form-control" placeholder="مثال: شارع التحرير">
                 </div>
-            </div>`,showCancelButton:!0,confirmButtonText:"إضافة",cancelButtonText:"إلغاء",confirmButtonColor:"#2563eb",width:"380px",focusConfirm:!1,preConfirm:()=>({name:document.getElementById("sb-name").value,location:document.getElementById("sb-loc").value})});t&&e&&await addBranch(e.name,e.location)&&loadBranchesTable()},window.openEditBranchModal=async function(e,t,a){let{value:n,isConfirmed:i}=await Swal.fire({title:"تعديل الفرع",html:`
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'إضافة', cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#2563eb', width: '380px',
+        focusConfirm: false,
+        preConfirm: () => ({
+            name:     document.getElementById('sb-name').value,
+            location: document.getElementById('sb-loc').value
+        })
+    });
+    if (isConfirmed && value && await addBranch(value.name, value.location))
+        loadBranchesTable();
+};
+
+window.openEditBranchModal = async function (id, name, location) {
+    const { value, isConfirmed } = await Swal.fire({
+        title: 'تعديل الفرع',
+        html: `
             <div style="direction:rtl;text-align:right;">
                 <div class="mb-3">
                     <label class="swal2-input">اسم الفرع *</label>
-                    <input id="sb-name" class="form-control" value="${t}">
+                    <input id="sb-name" class="form-control" value="${name}">
                 </div>
                 <div>
                     <label class="swal2-input">الموقع</label>
-                    <input id="sb-loc" class="form-control" value="${a}">
+                    <input id="sb-loc" class="form-control" value="${location}">
                 </div>
-            </div>`,showCancelButton:!0,confirmButtonText:"حفظ",cancelButtonText:"إلغاء",confirmButtonColor:"#2563eb",width:"380px",focusConfirm:!1,preConfirm:()=>({name:document.getElementById("sb-name").value,location:document.getElementById("sb-loc").value})});i&&n&&await updateBranch(e,n.name,n.location)&&loadBranchesTable()},window.renderBranchesSummary=async function(){let e=document.getElementById("branches-summary-container");if(!e)return;let t=document.getElementById("branches-tab");if(!t||"none"===t.style.display)return;e.innerHTML='<div class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';let a=await getAllBranches();if(!a.length){e.innerHTML='<div class="text-center p-4 text-muted small">لا توجد فروع</div>';return}let n=e=>Number(e||0).toLocaleString(),i=["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4"],[{data:r},{data:s},{data:l}]=await Promise.all([window.supa.from("transactions").select("amount, type, branch_id"),window.supa.from("accounts").select("balance, branch_id"),window.supa.from("users").select("branch_id, role, is_master")]);e.innerHTML=a.map((e,t)=>{let a=i[t%i.length],c=(r||[]).filter(t=>t.branch_id===e.id),o=(s||[]).filter(t=>t.branch_id===e.id),d=(l||[]).filter(t=>t.branch_id===e.id),u=d.filter(e=>"ADMIN"===(e.role||"").toUpperCase()).length,m=o.reduce((e,t)=>e+(Number(t.balance)||0),0),f=c.filter(e=>!/سحب|صادر/.test(e.type||"")).reduce((e,t)=>e+(Number(t.amount)||0),0),p=c.filter(e=>/سحب|صادر/.test(e.type||"")).reduce((e,t)=>e+(Number(t.amount)||0),0);return`
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'حفظ', cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#2563eb', width: '380px',
+        focusConfirm: false,
+        preConfirm: () => ({
+            name:     document.getElementById('sb-name').value,
+            location: document.getElementById('sb-loc').value
+        })
+    });
+    if (isConfirmed && value && await updateBranch(id, value.name, value.location))
+        loadBranchesTable();
+};
+
+
+// ══════════════════════════════════════════════════════════
+// 10. ملخص الفروع للمدير العام
+// ══════════════════════════════════════════════════════════
+window.renderBranchesSummary = async function () {
+    const container = document.getElementById('branches-summary-container');
+    // لا تشتغل لو الـ tab مش ظاهر
+    if (!container) return;
+    const tab = document.getElementById('branches-tab');
+    if (!tab || tab.style.display === 'none') return;
+
+    container.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+
+    const branches = await getAllBranches();
+    if (!branches.length) {
+        container.innerHTML = '<div class="text-center p-4 text-muted small">لا توجد فروع</div>';
+        return;
+    }
+
+    const f = n => Number(n||0).toLocaleString();
+    const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
+
+    const [{ data: allTx }, { data: allAcc }, { data: allUsers }] = await Promise.all([
+        window.supa.from('transactions').select('amount, type, branch_id'),
+        window.supa.from('accounts').select('balance, branch_id'),
+        window.supa.from('users').select('branch_id, role, is_master')
+    ]);
+
+    container.innerHTML = branches.map((b, i) => {
+        const color   = palette[i % palette.length];
+        const bTx     = (allTx    || []).filter(t => t.branch_id === b.id);
+        const bAcc    = (allAcc   || []).filter(a => a.branch_id === b.id);
+        const bUsers  = (allUsers || []).filter(u => u.branch_id === b.id);
+        const bAdmins = bUsers.filter(u => (u.role||'').toUpperCase() === 'ADMIN').length;
+        const totalBal = bAcc.reduce((s,a) => s+(Number(a.balance)||0), 0);
+        const totalIn  = bTx.filter(t => !/سحب|صادر/.test(t.type||'')).reduce((s,t) => s+(Number(t.amount)||0), 0);
+        const totalOut = bTx.filter(t =>  /سحب|صادر/.test(t.type||'')).reduce((s,t) => s+(Number(t.amount)||0), 0);
+
+        return `
         <div class="d-flex align-items-center p-2 mb-2 rounded-3 shadow-sm"
-             style="background:var(--card-bg);border:1px solid var(--card-border);border-right:4px solid ${a} !important;direction:rtl;">
+             style="background:var(--card-bg);border:1px solid var(--card-border);border-right:4px solid ${color} !important;direction:rtl;">
 
             <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                 style="width:36px;height:36px;min-width:36px;background:${a}15;color:${a};">
+                 style="width:36px;height:36px;min-width:36px;background:${color}15;color:${color};">
                 <i class="fa fa-building"></i>
             </div>
 
             <div class="flex-grow-1 px-2">
-                <div class="fw-bold" style="font-size:12px;color:${a};">${esc(e.name)}</div>
+                <div class="fw-bold" style="font-size:12px;color:${color};">${esc(b.name)}</div>
                 <div style="font-size:10px;" class="text-muted">
-                    <i class="fa fa-users me-1"></i>${d.length} موظف
-                    \xb7 <i class="fa fa-user-tie me-1"></i>${u} مدير
+                    <i class="fa fa-users me-1"></i>${bUsers.length} موظف
+                    · <i class="fa fa-user-tie me-1"></i>${bAdmins} مدير
                 </div>
             </div>
 
             <div class="d-flex gap-1 text-center">
                 <div class="px-2 border-start">
                     <div style="font-size:9px;" class="text-muted">رصيد</div>
-                    <div class="fw-bold english-num" style="font-size:11px;color:${a};">${n(m)}</div>
+                    <div class="fw-bold english-num" style="font-size:11px;color:${color};">${f(totalBal)}</div>
                 </div>
                 <div class="px-2 border-start">
                     <div style="font-size:9px;" class="text-muted">وارد</div>
-                    <div class="fw-bold text-success english-num" style="font-size:11px;">${n(f)}</div>
+                    <div class="fw-bold text-success english-num" style="font-size:11px;">${f(totalIn)}</div>
                 </div>
                 <div class="px-2 border-start">
                     <div style="font-size:9px;" class="text-muted">صادر</div>
-                    <div class="fw-bold text-danger english-num" style="font-size:11px;">${n(p)}</div>
+                    <div class="fw-bold text-danger english-num" style="font-size:11px;">${f(totalOut)}</div>
                 </div>
             </div>
-        </div>`}).join("")},document.addEventListener("DOMContentLoaded",()=>{let e=window.getDashboardStats;window.getDashboardStats=async function(){let t=window.currentUserData,a=t?.isMaster,n=null;if(n=a?window._currentDashBranch||null:t?.branch_id||null,a&&!n||!n)return"function"==typeof e?e():{success:!1};try{let i=new Date,r=String(i.getMonth()+1).padStart(2,"0"),s=i.getFullYear(),l=String(i.getDate()).padStart(2,"0"),c=`/${r}/${s}`,o=`${l}/${r}/${s}`,[{data:d},{data:u},{data:m},{data:f}]=await Promise.all([window.supa.from("accounts").select("*").eq("branch_id",n),window.supa.from("clients").select("name, balance").eq("branch_id",n),window.supa.from("transactions").select("commission, amount, type, date").eq("branch_id",n).ilike("date",`%${c}`).limit(1e3),window.supa.from("transactions").select("type, amount, date, time, added_by, notes").eq("branch_id",n).order("id",{ascending:!1}).limit(5)]),p=0,b=0,h=0,y={};(d||[]).forEach(e=>{let t=(e.name||"").trim(),a=Number(e.balance)||0,n=Number(e.daily_out_limit)||0;t.includes("الخزنة")||t.includes("كاش")?p+=a:n>=9e6?(h+=a,y[t]={balance:a,color:e.color||"#4f46e5"}):b+=a});let g=0,x=0,$=[];(u||[]).forEach(e=>{let t=Number(e.balance)||0;t>0?g+=t:t<0&&(x+=Math.abs(t)),0!==t&&$.push({name:e.name,balance:t})});let v=0,_=0,B=0,w=0,M=0,T=0;return(m||[]).forEach(e=>{let t=(e.date||"").trim(),a=(e.type||"").toLowerCase(),n=parseFloat(e.commission)||0,i=parseFloat(e.amount)||0;n&&(t===o&&(v+=n),_+=n),/مصروف|مصاريف|خارج|عجز/.test(a)&&(B+=i),t===o&&(w++,/سحب|صادر|مصروف/.test(a)?T+=i:M+=i)}),{success:!0,cash:p,walletsTotal:b,compTotal:h,totalAvailable:p+b+h,grandTotal:p+b+h+g-x,oweMe:g,have:x,dP:v,mP:_,ex:B,breakdown:y,clientsCards:$,todayCount:w,todayIn:M,todayOut:T,lastFive:f||[]}}catch(E){return{success:!1}}}}),document.addEventListener("DOMContentLoaded",()=>{initBranchFilterWithRetry()});
+        </div>`;
+    }).join('');
+};
+
+
+// ══════════════════════════════════════════════════════════
+// 11. داشبورد الفرع + فلتر اختيار الفرع للمدير العام
+// يغطي مشكلتين: مدير الفرع يشوف فرعه بس، والمدير العام يفلتر
+// ══════════════════════════════════════════════════════════
+
+// فلتر اختيار الفرع في الداشبورد (للمدير العام)
+async function renderDashBranchFilter() {
+    const filterDiv = document.getElementById('dashBranchFilter');
+    
+    if (!filterDiv) {
+        return;
+    }
+
+    const u = window.currentUserData;
+
+    // تأكد من أن الشرط يطابق طريقة تخزينك للبيانات (boolean أو number)
+    if (!u || (u.isMaster !== true && u.isMaster !== 1)) { 
+        filterDiv.style.display = 'none'; 
+        return; 
+    }
+
+    filterDiv.style.display = 'block'; // اجعله ظاهراً أثناء التحميل
+    filterDiv.innerHTML = '<span class="text-muted small">جاري تحميل الفروع...</span>';
+
+    try {
+        const branches = await getAllBranches();
+
+        if (!branches || branches.length === 0) {
+            filterDiv.innerHTML = '<span class="text-danger small">لا توجد فروع متاحة</span>';
+            return;
+        }
+
+        filterDiv.innerHTML = `
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap" style="direction:rtl;">
+                <span class="small fw-bold text-muted"><i class="fa fa-building me-1"></i>عرض:</span>
+                <button class="btn btn-sm btn-primary rounded-pill px-3 dash-branch-btn active"
+                        data-branch="" onclick="filterDashboardByBranch(this)">
+                    كل الفروع
+                </button>
+                ${branches.map(b => `
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 dash-branch-btn"
+                            data-branch="${esc(b.id)}" onclick="filterDashboardByBranch(this)">
+                        ${esc(b.name)}
+                    </button>`).join('')}
+            </div>`;
+    } catch (err) {
+        filterDiv.innerHTML = '<span class="text-danger small">فشل تحميل فلتر الفروع</span>';
+    }
+}
+
+async function filterDashboardByBranch(btn) {
+    // تحديث الأزرار
+    document.querySelectorAll('.dash-branch-btn').forEach(b => {
+        b.className = b.className.replace('btn-primary', 'btn-outline-primary').replace(' active','');
+    });
+    btn.className = btn.className.replace('btn-outline-primary','btn-primary') + ' active';
+
+    window._currentDashBranch = btn.dataset.branch || null;
+
+    // إعادة تحميل الداشبورد
+    if (typeof loadDashboard === 'function') loadDashboard();
+}
+
+// Override على getDashboardStats
+document.addEventListener('DOMContentLoaded', () => {
+    const _orig = window.getDashboardStats;
+
+    window.getDashboardStats = async function () {
+        const user     = window.currentUserData;
+        const isMaster = user?.isMaster;
+
+        // تحديد الفرع المطلوب
+        // مدير عام + اختار فرع معين → فلتر
+        // مدير عام + كل الفروع → لا فلتر (orig)
+        // مدير فرع أو موظف → فرعهم دايماً
+        let branchId = null;
+
+        if (isMaster) {
+            branchId = window._currentDashBranch || null; // null = كل الفروع
+        } else {
+            branchId = user?.branch_id || null;
+        }
+
+        // لو مدير عام وما اختارش فرع → الداشبورد الأصلي
+        if (isMaster && !branchId) {
+            return typeof _orig === 'function' ? _orig() : { success: false };
+        }
+
+        // لو مش معاه فرع أصلاً → الداشبورد الأصلي
+        if (!branchId) {
+            return typeof _orig === 'function' ? _orig() : { success: false };
+        }
+
+        // داشبورد الفرع المحدد
+        try {
+            const now      = new Date();
+            const m        = String(now.getMonth()+1).padStart(2,'0');
+            const y        = now.getFullYear();
+            const d        = String(now.getDate()).padStart(2,'0');
+            const monthStr = `/${m}/${y}`;
+            const todayStr = `${d}/${m}/${y}`;
+
+            const [
+                { data: accountsRaw },
+                { data: clients },
+                { data: monthTxs },
+                { data: lastFive }
+            ] = await Promise.all([
+                window.supa.from('accounts').select('*').eq('branch_id', branchId),
+                window.supa.from('clients').select('name, balance').eq('branch_id', branchId),
+                window.supa.from('transactions')
+                    .select('commission, amount, type, date')
+                    .eq('branch_id', branchId)
+                    .ilike('date', `%${monthStr}`).limit(1000),
+                window.supa.from('transactions')
+                    .select('type, amount, date, time, added_by, notes')
+                    .eq('branch_id', branchId)
+                    .order('id', { ascending: false }).limit(5)
+            ]);
+
+            const accounts = accountsRaw || [];
+            let cashBal=0, walletBal=0, compBal=0, breakdown={};
+            accounts.forEach(acc => {
+                const name  = (acc.name||'').trim();
+                const bal   = Number(acc.balance)||0;
+                const limit = Number(acc.daily_out_limit)||0;
+                if (name.includes('الخزنة')||name.includes('كاش')) cashBal+=bal;
+                else if (limit>=9000000) { compBal+=bal; breakdown[name]={balance:bal,color:acc.color||'#4f46e5'}; }
+                else walletBal+=bal;
+            });
+
+            let oweMe=0, have=0, clientsCards=[];
+            (clients||[]).forEach(c => {
+                const b=Number(c.balance)||0;
+                if(b>0) oweMe+=b; else if(b<0) have+=Math.abs(b);
+                if(b!==0) clientsCards.push({name:c.name,balance:b});
+            });
+
+            let dP=0,mP=0,ex=0,todayCount=0,todayIn=0,todayOut=0;
+            (monthTxs||[]).forEach(tx => {
+                const txDate=(tx.date||'').trim();
+                const type=(tx.type||'').toLowerCase();
+                const comm=parseFloat(tx.commission)||0;
+                const amt=parseFloat(tx.amount)||0;
+                if(comm){if(txDate===todayStr)dP+=comm; mP+=comm;}
+                if(/مصروف|مصاريف|خارج|عجز/.test(type)) ex+=amt;
+                if(txDate===todayStr){
+                    todayCount++;
+                    if(/سحب|صادر|مصروف/.test(type)) todayOut+=amt; else todayIn+=amt;
+                }
+            });
+
+            return {
+                success:true,
+                cash:cashBal, walletsTotal:walletBal, compTotal:compBal,
+                totalAvailable:cashBal+walletBal+compBal,
+                grandTotal:(cashBal+walletBal+compBal+oweMe)-have,
+                oweMe,have,dP,mP,ex,breakdown,clientsCards,
+                todayCount,todayIn,todayOut,
+                lastFive: lastFive||[]
+            };
+        } catch(err) {
+            return { success: false };
+        }
+    };
+
+    // تحميل فلتر الفروع في الداشبورد بعد init
+});
+function initBranchFilterWithRetry() {
+    if (window.currentUserData) {
+        renderDashBranchFilter();
+    } else {
+        // إذا لم تتوفر البيانات، حاول مرة أخرى بعد 100 ملي ثانية
+        setTimeout(initBranchFilterWithRetry, 100);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ... الكود الخاص بـ Override getDashboardStats ...
+    
+    // ابدأ محاولات الرندر
+    initBranchFilterWithRetry();
+});
