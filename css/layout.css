@@ -9,7 +9,8 @@
 #view-op.lyt-split .op-tabs-bar { display: none !important; }
 #view-op.lyt-split #col-new-op  { display: block !important; }
 #view-op.lyt-split #col-log-op  { display: block !important; }
-#view-op.lyt-split .lyt-float-btn   { display: none !important; }
+#view-op.lyt-split .lyt-float-btn   { display: none !important; pointer-events: none !important; }
+#view-op.lyt-split .lyt-float-sheet { display: none !important; pointer-events: none !important; }
 #view-op.lyt-split .lyt-tabs-bar    { display: none !important; }
 
 /* ══════════════════════════════
@@ -36,11 +37,22 @@
    TABS
 ══════════════════════════════ */
 #view-op.lyt-tabs .op-tabs-bar    { display: none !important; }
-#view-op.lyt-tabs .lyt-float-btn  { display: none !important; }
+#view-op.lyt-tabs .lyt-float-btn  { display: none !important; pointer-events: none !important; }
+#view-op.lyt-tabs .lyt-float-sheet { display: none !important; pointer-events: none !important; }
 #view-op.lyt-tabs .lyt-tabs-bar   { display: block !important; }
+
+/* كل عمود في وضع tabs: عرض كامل، ومخفي افتراضياً */
 #view-op.lyt-tabs #col-new-op,
-#view-op.lyt-tabs #col-log-op     { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+#view-op.lyt-tabs #col-log-op {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 100% !important;
+}
+/* الـ JS يضيف lyt-tab-hidden على اللي مش active */
 #view-op.lyt-tabs .lyt-tab-hidden { display: none !important; }
+/* اللي مش عنده lyt-tab-hidden يظهر */
+#view-op.lyt-tabs #col-new-op:not(.lyt-tab-hidden),
+#view-op.lyt-tabs #col-log-op:not(.lyt-tab-hidden) { display: block !important; }
 
 /* ══════════════════════════════
    FLOAT BUTTON (Drawer & Sheet)

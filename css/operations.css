@@ -376,7 +376,22 @@
   border: 1px solid rgba(255,255,255,0.2);
 }
 
-.bg-card { background: var(--card-bg) !important; color: var(--card-text) !important; }
+/* ══════════════════════════════
+   إصلاح: الزرار الـ fixed ميغطيش زرار تنفيذ العملية
+══════════════════════════════ */
+
+/* في وضع drawer: نحط مسافة سفلية كافية في الـ panel */
+#view-op.lyt-drawer .new-op-panel,
+#view-op.lyt-sheet .new-op-panel {
+  padding-bottom: 90px !important;
+}
+
+/* في الموبايل بدون layout class (الوضع الافتراضي) */
+@media (max-width: 991.98px) {
+  #view-op:not(.lyt-split) .new-op-panel {
+    padding-bottom: 90px !important;
+  }
+}
 
 /* ========================================
    OP VIEW - SPLIT SCREEN LAYOUT
@@ -390,9 +405,20 @@
 }
 
 @media (max-width: 991.98px) {
-  #col-new-op, #col-log-op { display: none; width: 100%; }
+  /* نخفي الأعمدة فقط لما مش في وضع tabs */
+  #view-op:not(.lyt-tabs) #col-new-op,
+  #view-op:not(.lyt-tabs) #col-log-op { display: none; width: 100%; }
+  /* في وضع tabs نخليهم يظهروا */
+  #view-op.lyt-tabs #col-new-op,
+  #view-op.lyt-tabs #col-log-op { display: block !important; width: 100%; }
+
   #col-new-op.mob-active, #col-log-op.mob-active { display: block !important; }
   .op-tabs-bar { display: block !important; }
+  /* في وضع tabs نخفي op-tabs-bar القديم ونظهر الـ lyt-tabs-bar */
+  #view-op.lyt-tabs .op-tabs-bar { display: none !important; }
+
+  /* ── مسافة سفلية في الـ panel عشان الزرار الـ fixed ميغطيش المحتوى ── */
+  .new-op-panel { padding-bottom: 90px !important; }
   #col-log-op .table-responsive { max-height: calc(100vh - 220px) !important; }
 
   /* ── الشبكة على الموبايل: عمودين بدل 3 أو 4 ── */
@@ -479,4 +505,168 @@
     width: 98%;
     padding: 14px 10px;
   }
+}
+/* ══════════════════════════════════════════
+   DETAILS MODAL — تحسينات احترافية
+══════════════════════════════════════════ */
+
+/* تحسين header الـ modal */
+.details-modal-head {
+    background: var(--bg-secondary, #f8fafc);
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--border-color, rgba(0,0,0,.07));
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--card-text, #1a2035);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 20px 20px 0 0;
+}
+
+/* flow section */
+.txd-flow {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color, rgba(0,0,0,.06));
+    background: var(--bg-secondary, #f8fafc);
+}
+.txd-flow-label {
+    font-size: 10.5px;
+    color: var(--text-muted, #6b7280);
+    font-weight: 700;
+    letter-spacing: .04em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.txd-flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.txd-flow-node {
+    background: var(--bg-card, #fff);
+    border: 1.5px solid var(--border-color, #e5e7eb);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--card-text, #1a2035);
+    max-width: 135px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hero improvements */
+.txd-hero {
+    padding: 16px 16px 14px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    position: relative;
+    border-bottom: 1px solid var(--border-color, rgba(0,0,0,.06));
+}
+.txd-hero-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.txd-hero-amount {
+    font-size: 24px;
+    font-weight: 900;
+    font-family: 'Roboto Mono', monospace;
+    line-height: 1;
+}
+.txd-hero-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 4px 11px;
+    border-radius: 20px;
+    letter-spacing: .02em;
+}
+
+/* Rows */
+.txd-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color, rgba(0,0,0,.045));
+    gap: 10px;
+    transition: background .15s;
+}
+.txd-row:last-child { border-bottom: none; }
+.txd-row:hover { background: var(--bg-secondary, rgba(0,0,0,.02)); }
+
+.txd-row-label {
+    font-size: 12px;
+    color: var(--text-muted, #6b7280);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    min-width: 95px;
+    padding-top: 1px;
+}
+.txd-row-label i {
+    width: 15px;
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+}
+.txd-row-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--card-text, #1a2035);
+    text-align: left;
+    word-break: break-word;
+    flex: 1;
+}
+
+/* Highlight row للعمولة */
+.txd-highlight {
+    background: rgba(245,158,11,.04) !important;
+}
+.txd-highlight:hover {
+    background: rgba(245,158,11,.09) !important;
+}
+
+/* footer */
+.txd-footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color, rgba(0,0,0,.06));
+    background: var(--bg-secondary, #f8fafc);
+    border-radius: 0 0 20px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.txd-id {
+    font-size: 10.5px;
+    color: var(--text-muted, #9ca3af);
+    font-family: 'Roboto Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+/* Dark mode tweaks */
+[data-theme="dark"] .txd-flow-node,
+.dark .txd-flow-node,
+body.dark-mode .txd-flow-node {
+    border-color: rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
 }

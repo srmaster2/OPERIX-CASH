@@ -400,7 +400,27 @@
 </div>
 
 
-        <div id="txDetailsModal" class="details-modal-overlay" style="display:none;"> ... </div>
+        <!-- Modal: تفاصيل العملية -->
+<div id="txDetailsModal" class="details-modal-overlay" style="display:none;" onclick="closeTxDetails()">
+    <div class="details-modal-box" onclick="event.stopPropagation()">
+        <div class="details-modal-head">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:32px;height:32px;border-radius:10px;background:rgba(59,130,246,.12);
+                            display:flex;align-items:center;justify-content:center;">
+                    <i class="fa fa-receipt" style="color:#3b82f6;font-size:13px;"></i>
+                </div>
+                <span>تفاصيل العملية</span>
+            </div>
+            <button class="layout-xbtn" onclick="closeTxDetails()"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="details-modal-content" id="txd-content">
+            <div class="txd-loading">
+                <div class="txd-spinner"></div>
+                <span>جاري التحميل...</span>
+            </div>
+        </div>
+    </div>
+</div>
 	
 					<div id="view-manage" class="view-section">
 				
