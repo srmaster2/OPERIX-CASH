@@ -117,10 +117,40 @@ async function getAllBranches() {
 
 async function addBranch(name, location = '') {
     if (!name?.trim()) { showToast('يرجى إدخال اسم الفرع', false); return false; }
-    const { error } = await window.supa.from('branches')
-        .insert({ name: name.trim(), location: location.trim() });
+
+    // 1. إضافة الفرع وجلب الـ id الجديد
+    const { data: branch, error } = await window.supa
+        .from('branches')
+        .insert({ name: name.trim(), location: location.trim() })
+        .select('id, name')
+        .single();
+
     if (error) { showToast('خطأ: ' + error.message, false); return false; }
-    showToast('✅ تم إضافة الفرع');
+
+    // 2. إنشاء خزنة (الكاش) تلقائياً للفرع الجديد
+    const { error: vaultError } = await window.supa
+        .from('accounts')
+        .insert({
+            name:              'الخزنة (الكاش)',
+            balance:           0,
+            branch_id:         branch.id,
+            daily_out_limit:   9999999999,
+            daily_in_limit:    9999999999,
+            monthly_limit:     9999999999,
+            daily_out_usage:   0,
+            daily_in_usage:    0,
+            monthly_usage_out: 0,
+            monthly_usage_in:  0,
+            profit:            0,
+            color:             '#6c757d'
+        });
+
+    if (vaultError) {
+        showToast(`⚠️ تم إضافة الفرع لكن فشل إنشاء الخزنة: ${vaultError.message}`, false);
+        return false;
+    }
+
+    showToast(`✅ تم إضافة فرع "${branch.name}" وإنشاء خزنته تلقائياً`);
     return true;
 }
 
