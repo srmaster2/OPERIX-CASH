@@ -216,8 +216,8 @@ body.dark-mode .lyt-tab-btn.lyt-tab-log.active {
 }
 .layout-drawer-panel {
   position: fixed;
-  top: 62px; left: 0; bottom: 0;
-  width: 72%;
+  top: 90px; left: 0; bottom: 0;
+  width: 80%;
   max-width: 560px;
   background: var(--bg-card, #fff);
   border-left: 1px solid rgba(0,0,0,.1);
@@ -247,36 +247,44 @@ body.dark-mode .lyt-tab-btn.lyt-tab-log.active {
   transition: background 0.3s;
   display: flex;
   align-items: flex-end;
+
+  /* التعديل هنا: التوسيط في النص عمودياً وأفقياً */
+  justify-content: center; 
 }
+
 .layout-sheet-overlay.open {
   background: rgba(0,0,0,.6);
   pointer-events: all;
   backdrop-filter: blur(3px);
 }
+
 .layout-sheet-panel {
-  width: 100%;
+  width: 80%;
   max-height: 80vh;
   background: var(--bg-card, #fff);
-  border-radius: 20px 20px 0 0;
-  border-top: 1px solid rgba(0,0,0,.1);
-  box-shadow: 0 -8px 32px rgba(0,0,0,.2);
+  /* تعديل: جعل الحواف دائرية من كل الجهات */
+  border-radius: 20px; 
+  border: 1px solid rgba(0,0,0,.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform: translateY(100%);
-  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
-}
-.layout-sheet-overlay.open .layout-sheet-panel {
-  transform: translateY(0);
-}
-.layout-sheet-handle {
-  width: 36px; height: 4px;
-  border-radius: 2px;
-  background: rgba(0,0,0,.15);
-  margin: 10px auto 4px;
-  flex-shrink: 0;
+  /* التعديل هنا: التأثير يبدأ من تصغير الحجم أو شفافية بدلاً من الصعود من أسفل */
+  transform: scale(0.9); 
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
 }
 
+.layout-sheet-overlay.open .layout-sheet-panel {
+  /* التعديل هنا: العودة للحجم الطبيعي والظهور */
+  transform: scale(1);
+  opacity: 1;
+}
+
+.layout-sheet-handle {
+  /* اختياري: ممكن تشيليه طالما بقت Modal مش Sheet */
+  display: none; 
+}
 /* ══════════════════════════════
    PANEL HEAD (shared)
 ══════════════════════════════ */
@@ -371,7 +379,7 @@ body.dark-mode .lyt-tab-btn.lyt-tab-log.active {
 .lop-sheet .lop-form  { width: 100%; height: 55%; background: rgba(59,130,246,.15); align-self: flex-start; }
 .lop-sheet .lop-log   {
   position: absolute; bottom: 0; left: 0; right: 0;
-  height: 40%;
+  height: 50%;
   background: rgba(139,92,246,.4);
   border-radius: 6px 6px 0 0;
 }
