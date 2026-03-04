@@ -692,22 +692,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const monthStr = `/${m}/${y}`;
             const todayStr = `${d}/${m}/${y}`;
 
+            // الشهر السابق
+            const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const pm = String(prevDate.getMonth() + 1).padStart(2, '0');
+            const py = prevDate.getFullYear();
+            const prevMonthStr = `/${pm}/${py}`;
+
             const [
                 { data: accountsRaw },
                 { data: clients },
                 { data: monthTxs },
-                { data: lastFive }
+                { data: lastFive },
+                { data: prevMonthTxs }
             ] = await Promise.all([
                 window.supa.from('accounts').select('*').eq('branch_id', branchId),
                 window.supa.from('clients').select('name, balance').eq('branch_id', branchId),
                 window.supa.from('transactions')
                     .select('commission, amount, type, date')
                     .eq('branch_id', branchId)
-                    .ilike('date', `%${monthStr}`).limit(1000),
+                    .ilike('date', `%${monthStr}`).limit(2000),
                 window.supa.from('transactions')
                     .select('type, amount, date, time, added_by, notes')
                     .eq('branch_id', branchId)
-                    .order('id', { ascending: false }).limit(5)
+                    .order('id', { ascending: false }).limit(5),
+                window.supa.from('transactions')
+                    .select('commission, amount, type')
+                    .eq('branch_id', branchId)
+                    .ilike('date', `%${prevMonthStr}`).limit(2000)
             ]);
 
             const accounts = accountsRaw || [];
@@ -729,17 +740,34 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             let dP=0,mP=0,ex=0,todayCount=0,todayIn=0,todayOut=0;
+            let mCount=0,mIn=0,mOut=0;
             (monthTxs||[]).forEach(tx => {
                 const txDate=(tx.date||'').trim();
                 const type=(tx.type||'').toLowerCase();
                 const comm=parseFloat(tx.commission)||0;
                 const amt=parseFloat(tx.amount)||0;
+                const isExp=/مصروف|مصاريف|خارج|عجز/.test(type);
+                const isOutTx=/سحب|صادر/.test(type)||isExp;
                 if(comm){if(txDate===todayStr)dP+=comm; mP+=comm;}
-                if(/مصروف|مصاريف|خارج|عجز/.test(type)) ex+=amt;
+                if(isExp) ex+=amt;
+                mCount++; if(isOutTx) mOut+=amt; else mIn+=amt;
                 if(txDate===todayStr){
                     todayCount++;
-                    if(/سحب|صادر|مصروف/.test(type)) todayOut+=amt; else todayIn+=amt;
+                    if(isOutTx) todayOut+=amt; else todayIn+=amt;
                 }
+            });
+            // حساب إحصائيات الشهر السابق فعلياً
+            let prevMP=0, prevEx=0, prevMCount=0, prevMIn=0, prevMOut=0;
+            (prevMonthTxs||[]).forEach(tx => {
+                const type=(tx.type||'').toLowerCase();
+                const comm=parseFloat(tx.commission)||0;
+                const amt=parseFloat(tx.amount)||0;
+                const isExp=/مصروف|مصاريف|خارج|عجز/.test(type);
+                const isOutTx=/سحب|صادر/.test(type)||isExp;
+                prevMP+=comm;
+                if(isExp) prevEx+=amt;
+                prevMCount++;
+                if(isOutTx) prevMOut+=amt; else prevMIn+=amt;
             });
 
             return {
@@ -750,7 +778,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 oweMe,have,dP,mP,ex,breakdown,clientsCards,
                 todayCount,todayIn,todayOut,
                 lastFive: lastFive||[],
-                accounts: accounts
+                accounts: accounts,
+                mCount,mIn,mOut,
+                prevMP,prevEx,prevMCount,prevMIn,prevMOut
             };
         } catch(err) {
             return { success: false };

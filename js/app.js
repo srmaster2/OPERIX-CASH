@@ -182,46 +182,54 @@ async function loadDashboard() {
     </div>
 
     <!-- ملخص اليوم -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <div class="dashboard-card-single p-3">
-          <div class="d-flex align-items-center gap-3">
-            <div class="day-stat-icon" style="background:rgba(99,102,241,0.1); color:#6366f1;">
-              <i class="fas fa-calendar-day"></i>
-            </div>
-            <div>
-              <div class="text-muted small">عمليات اليوم</div>
-              <div class="fw-bold fs-5 english-num">${s.todayCount || 0} عملية</div>
-            </div>
+    <!-- ملخص العمليات — نفس ستايل stat-card-premium -->
+    <div class="stats-grid-main" style="grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); margin-bottom:24px;">
+
+      <!-- عدد العمليات -->
+      <div class="stat-card-premium" style="color:#6366f1;">
+        <div class="stat-icon-wrapper" style="background:rgba(99,102,241,0.12);color:#6366f1;">
+          <i class="fas fa-list-check"></i>
+        </div>
+        <div class="stat-info" style="flex:1;">
+          <span class="stat-label">عدد العمليات</span>
+          <div class="d-flex align-items-baseline gap-2">
+            <span class="stat-value english-num" style="color:var(--text-primary);">${s.mCount || 0}</span>
+            <span class="text-muted" style="font-size:11px;">/ اليوم: ${s.todayCount || 0}</span>
           </div>
+          <div class="mt-1"><span id="dash-count-badge"></span></div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="dashboard-card-single p-3">
-          <div class="d-flex align-items-center gap-3">
-            <div class="day-stat-icon" style="background:rgba(16,185,129,0.1); color:#10b981;">
-              <i class="fas fa-arrow-trend-up"></i>
-            </div>
-            <div>
-              <div class="text-muted small">إجمالي وارد اليوم</div>
-              <div class="fw-bold fs-5 english-num text-success">${f(s.todayIn || 0)}</div>
-            </div>
+
+      <!-- إجمالي الوارد -->
+      <div class="stat-card-premium" style="color:#10b981;">
+        <div class="stat-icon-wrapper" style="background:rgba(16,185,129,0.12);color:#10b981;">
+          <i class="fas fa-arrow-trend-up"></i>
+        </div>
+        <div class="stat-info" style="flex:1;">
+          <span class="stat-label">إجمالي الوارد</span>
+          <div class="d-flex align-items-baseline gap-2 flex-wrap">
+            <span class="stat-value english-num" style="color:var(--text-primary);">${f(s.mIn || 0)}</span>
+            <span class="text-muted" style="font-size:11px;">/ اليوم: ${f(s.todayIn || 0)}</span>
           </div>
+          <div class="mt-1"><span id="dash-in-badge"></span></div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="dashboard-card-single p-3">
-          <div class="d-flex align-items-center gap-3">
-            <div class="day-stat-icon" style="background:rgba(239,68,68,0.1); color:#ef4444;">
-              <i class="fas fa-arrow-trend-down"></i>
-            </div>
-            <div>
-              <div class="text-muted small">إجمالي صادر اليوم</div>
-              <div class="fw-bold fs-5 english-num text-danger">${f(s.todayOut || 0)}</div>
-            </div>
+
+      <!-- إجمالي الصادر -->
+      <div class="stat-card-premium" style="color:#f59e0b;">
+        <div class="stat-icon-wrapper" style="background:rgba(245,158,11,0.12);color:#f59e0b;">
+          <i class="fas fa-arrow-trend-down"></i>
+        </div>
+        <div class="stat-info" style="flex:1;">
+          <span class="stat-label">إجمالي الصادر</span>
+          <div class="d-flex align-items-baseline gap-2 flex-wrap">
+            <span class="stat-value english-num" style="color:var(--text-primary);">${f(s.mOut || 0)}</span>
+            <span class="text-muted" style="font-size:11px;">/ اليوم: ${f(s.todayOut || 0)}</span>
           </div>
+          <div class="mt-1"><span id="dash-out-badge"></span></div>
         </div>
       </div>
+
     </div>
 
     <!-- الديون والأرباح -->
@@ -259,19 +267,30 @@ async function loadDashboard() {
             <i class="fas fa-eye-slash text-muted me-1"></i> إظهار
           </button>
         </div>
+        <!-- أرباح اليوم + الشهر + مصروفات مع مقارنة شهرية جوا كل item -->
         <div class="profits-container">
+
           <div class="profit-item">
             <p class="profit-label">اليوم</p>
             <p class="profit-value blur-v prof text-success">${f(s.dP)}</p>
           </div>
-          <div class="profit-item">
+
+          <div class="profit-item" style="position:relative;">
             <p class="profit-label">الشهر</p>
             <p class="profit-value blur-v prof text-primary">${f(s.mP)}</p>
+            <p class="blur-v prof mt-1 mb-0" style="font-size:11px;line-height:1;">
+              <span id="dash-profit-badge"></span>
+            </p>
           </div>
-          <div class="profit-item">
+
+          <div class="profit-item" style="position:relative;">
             <p class="profit-label">مصروفات</p>
             <p class="profit-value blur-v prof text-danger">${f(s.ex)}</p>
+            <p class="blur-v prof mt-1 mb-0" style="font-size:11px;line-height:1;">
+              <span id="dash-expense-badge"></span>
+            </p>
           </div>
+
         </div>
       </div>
     </div>
@@ -344,6 +363,7 @@ async function loadDashboard() {
   </div>`;
 
   applyWalletFilters();
+  _renderCompareBadges(s);
 }
 window.unlock = function() {
   if (prompt("كلمة السر:") === "1234") {
@@ -708,3 +728,24 @@ window.switchReportTab = function(tabName) {
         reportEl.style.display = 'block';
     }
 };
+// ── دالة رسم بادجات المقارنة في الداشبورد ──
+function _renderCompareBadges(s) {
+    // السهم + الفرق الفعلي (لو صفر مش بيظهر حاجة)
+    const badge = (cur, prev, invert) => {
+        const diff = cur - prev;
+        if (diff === 0) return '';
+        const up   = diff >= 0;
+        const good = invert ? !up : up;
+        const color = good ? '#10b981' : '#ef4444';
+        const fmt  = Math.abs(diff).toLocaleString('en-US', { maximumFractionDigits: 0 });
+        return `<span style="font-size:11px;color:${color};font-weight:800;">${up ? '▲' : '▼'} ${fmt}</span>`;
+    };
+
+    const setEl = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+    setEl('dash-count-badge',   badge(s.mCount ||0, s.prevMCount||0, false));
+    setEl('dash-in-badge',      badge(s.mIn    ||0, s.prevMIn   ||0, false));
+    setEl('dash-out-badge',     badge(s.mOut   ||0, s.prevMOut  ||0, true));
+    setEl('dash-profit-badge',  badge(s.mP     ||0, s.prevMP    ||0, false));
+    setEl('dash-expense-badge', badge(s.ex     ||0, s.prevEx    ||0, true));
+}
