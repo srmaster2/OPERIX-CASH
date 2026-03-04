@@ -84,24 +84,23 @@ async function loadDashboard() {
   
   dash.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted fw-bold">جاري تجهيز لوحة القيادة...</p></div>';
 
-  const [s, allAccounts] = await Promise.all([
-    getDashboardStats(),
-    loadAccounts()
-  ]);
+  // getDashboardStats بتجيب accounts مفلترة بالفرع تلقائياً عبر applyBranchFilter
+  const s = await getDashboardStats();
 
-  if (!s || !s.success || !allAccounts) {
+  if (!s || !s.success) {
     dash.innerHTML = '<div class="alert alert-danger text-center">خطأ في جلب البيانات</div>';
     return;
   }
 
   const f = (n) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(n) || 0);
 
+  // نبني globalWalletsData من الـ accounts المفلترة اللي رجعتها getDashboardStats
   const user = window.currentUserData;
-  window.globalWalletsData = allAccounts.filter(acc => {
+  const filteredAccounts = s.accounts || [];
+  window.globalWalletsData = filteredAccounts.filter(acc => {
     const dLimit  = Number(acc.daily_out_limit) || 0;
     const name    = acc.name || '';
     const isVault = name.includes('الخزنة') || name.includes('كاش');
-    // الخزنة تظهر في المراقبة للمدير العام فقط
     if (isVault && !user?.isMaster) return false;
     return acc.name !== "الخزنة (الكاش)" && dLimit > 0 && dLimit < 10000000;
   }).map(acc => ({

@@ -140,7 +140,8 @@ async function getDashboardStats() {
       grandTotal: (cashBal + walletBal + compBal + oweMe) - have,
       oweMe, have, dP, mP, ex, breakdown, clientsCards,
       todayCount, todayIn, todayOut,
-      lastFive: lastFive || []
+      lastFive: lastFive || [],
+      accounts: accounts  // ← مُرجَّعة عشان loadDashboard يبني globalWalletsData منها
     };
 
   } catch (err) {
