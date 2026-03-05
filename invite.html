@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>قبول دعوة - OPERIX</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <style>
+:root {
+  --font: 'Cairo', sans-serif;
+  --bg:      #060d1a;
+  --surface: #111e35;
+  --surface2:#182844;
+  --border:  rgba(99,179,237,0.10);
+  --border2: rgba(99,179,237,0.22);
+  --text:    #ffffff;
+  --text2:   #8fa8c8;
+  --blue:    #3b82f6;
+  --cyan:    #06b6d4;
+  --purple:  #8b5cf6;
+  --error:   #f87171;
+  --success: #34d399;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; position: relative; overflow-x: hidden;
+}
+
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+
+.bg-orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+.orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(139,92,246,0.14), transparent 70%); top: -100px; right: -80px; animation: orb-float 14s ease-in-out infinite; }
+.orb-2 { width: 380px; height: 380px; background: radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%); bottom: -60px; left: -60px; animation: orb-float 18s ease-in-out infinite reverse; }
+
+@keyframes orb-float {
+  0%,100% { transform: translate(0,0); }
+  50%      { transform: translate(25px,-20px); }
+}
+
+.card {
+  position: relative; z-index: 10;
+  width: 100%; max-width: 440px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 38px 34px 34px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.28), 0 0 80px rgba(139,92,246,0.08);
+  animation: card-in 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+
+@keyframes card-in {
+  from { opacity:0; transform: translateY(28px) scale(0.97); }
+  to   { opacity:1; transform: translateY(0) scale(1); }
+}
+
+.glow-bar {
+  position: absolute; top: -1px; right: 22%; left: 22%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--purple), var(--cyan), transparent);
+  border-radius: 2px;
+  animation: glow-bar 3.5s ease-in-out infinite;
+}
+@keyframes glow-bar {
+  0%,100% { opacity:0.55; right:22%; left:22%; }
+  50%      { opacity:1; right:10%; left:10%; }
+}
+
+/* لوجو */
+.logo-box { margin-bottom: 24px; display: flex; flex-direction: column; align-items: center; }
+.brand-wordmark {
+  display: flex; align-items: baseline;
+  letter-spacing: 0.4em;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 28px; font-weight: 900;
+  color: #ffffff; text-transform: uppercase;
+}
+.brand-wordmark .letter-x {
+  color: transparent;
+  -webkit-text-stroke: 1.8px #06b6d4;
+  font-size: 24px;
+  filter: drop-shadow(0 0 7px rgba(6,182,212,0.65));
+  animation: xGlow 3s ease-in-out infinite;
+}
+@keyframes xGlow {
+  0%,100% { filter: drop-shadow(0 0 6px rgba(6,182,212,0.5)); }
+  50%      { filter: drop-shadow(0 0 13px rgba(6,182,212,0.85)); }
+}
+.brand-tagline {
+  font-family: 'Orbitron', sans-serif; font-size: 7px;
+  letter-spacing: 0.38em; color: rgba(139,92,246,0.6);
+  text-transform: uppercase; margin-top: 4px;
+}
+
+/* بطاقة الدعوة */
+.invite-card {
+  background: rgba(139,92,246,0.07);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.invite-card .company-name {
+  font-size: 17px; font-weight: 800;
+  color: var(--text); margin-bottom: 4px;
+}
+.invite-card .invite-role {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(139,92,246,0.15);
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 6px; padding: 3px 10px;
+  font-size: 11px; font-weight: 700; color: var(--purple);
+  margin-top: 6px;
+}
+.invite-card .invite-sub {
+  font-size: 11px; color: var(--text2); margin-top: 8px;
+}
+
+/* states */
+#loadingState, #expiredState, #successState { display: none; text-align: center; padding: 20px 0; }
+#loadingState.active, #expiredState.active, #formState.active, #successState.active { display: block; }
+#formState { display: none; }
+
+.state-icon {
+  width: 60px; height: 60px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; margin: 0 auto 16px;
+  animation: pop-in 0.4s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes pop-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* الفورم */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+.inp-wrap { position: relative; }
+.inp-wrap input {
+  width: 100%; padding: 12px 40px 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  color: var(--text); font-family: var(--font); font-size: 14px;
+  outline: none; transition: all 0.25s;
+}
+.inp-wrap input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+}
+.inp-wrap input::placeholder { color: rgba(143,168,200,0.45); }
+.ico { position: absolute; top: 50%; right: 13px; transform: translateY(-50%); color: var(--text2); font-size: 13px; pointer-events: none; }
+
+.btn-go {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--purple), #7c3aed);
+  border: none; border-radius: 13px;
+  color: #fff; font-family: var(--font);
+  font-size: 15px; font-weight: 800;
+  cursor: pointer; transition: all 0.3s;
+  box-shadow: 0 6px 20px rgba(139,92,246,0.35);
+  margin-top: 8px;
+}
+.btn-go:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(139,92,246,0.45); }
+.btn-go:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 12px 20px;
+  font-size: 13px; font-weight: 600;
+  opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { border-color: rgba(52,211,153,0.4); color: var(--success); }
+.toast.err { border-color: rgba(248,113,113,0.4); color: var(--error); }
+  </style>
+</head>
+<body>
+<div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-2"></div>
+
+<div class="card">
+  <div class="glow-bar"></div>
+
+  <div class="logo-box">
+    <div class="brand-wordmark">
+      <span class="letter-x">X</span><span>IREPO</span>
+    </div>
+    <div class="brand-tagline">Team Invitation</div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loadingState" class="active">
+    <i class="fas fa-circle-notch fa-spin" style="font-size:32px; color:#8b5cf6;"></i>
+    <p style="margin-top:12px; color:var(--text2); font-size:13px;">جاري التحقق من الدعوة...</p>
+  </div>
+
+  <!-- منتهية أو غير صالحة -->
+  <div id="expiredState">
+    <div class="state-icon" style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171;">
+      <i class="fas fa-times"></i>
+    </div>
+    <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">رابط الدعوة غير صالح</h3>
+    <p style="font-size:12px; color:var(--text2); line-height:1.7;" id="expiredMsg">
+      هذا الرابط منتهي أو تم استخدامه من قبل.<br>يرجى التواصل مع مسؤول الشركة للحصول على دعوة جديدة.
+    </p>
+  </div>
+
+  <!-- الفورم -->
+  <div id="formState">
+    <div class="invite-card" id="inviteInfo">
+      <div style="font-size:11px; color:var(--text2); margin-bottom:6px;">
+        <i class="fas fa-envelope-open" style="color:#8b5cf6; margin-left:5px;"></i>دعوة للانضمام إلى
+      </div>
+      <div class="company-name" id="inviteCompanyName">—</div>
+      <div class="invite-role" id="inviteRoleBadge"><i class="fas fa-user"></i> موظف</div>
+      <div class="invite-sub" id="inviteBranchName"></div>
+    </div>
+
+    <div class="field">
+      <label><i class="fas fa-user" style="margin-left:5px; color:#8b5cf6;"></i>اسمك الكامل</label>
+      <div class="inp-wrap">
+        <input type="text" id="inviteName" placeholder="اسمك كما تريد ظهوره">
+        <i class="fas fa-user ico"></i>
+      </div>
+    </div>
+
+    <div class="field">
+      <label><i class="fas fa-envelope" style="margin-left:5px; color:#8b5cf6;"></i>البريد الإلكتروني</label>
+      <div class="inp-wrap">
+        <input type="email" id="inviteEmail" placeholder="بريدك الإلكتروني" readonly style="opacity:0.7;">
+        <i class="fas fa-envelope ico"></i>
+      </div>
+    </div>
+
+    <div class="field">
+      <label><i class="fas fa-lock" style="margin-left:5px; color:#8b5cf6;"></i>كلمة المرور</label>
+      <div class="inp-wrap">
+        <input type="password" id="invitePassword" placeholder="8 أحرف على الأقل">
+        <i class="fas fa-lock ico"></i>
+        <button type="button" onclick="toggleEye('invitePassword', this)"
+          style="position:absolute;top:50%;left:10px;transform:translateY(-50%);background:none;border:none;color:#8fa8c8;cursor:pointer;">
+          <i class="fas fa-eye"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label><i class="fas fa-lock" style="margin-left:5px; color:#8b5cf6;"></i>تأكيد كلمة المرور</label>
+      <div class="inp-wrap">
+        <input type="password" id="invitePasswordConfirm" placeholder="أعد كتابة كلمة المرور">
+        <i class="fas fa-lock ico"></i>
+      </div>
+    </div>
+
+    <button class="btn-go" id="btnAccept" onclick="acceptInvitation()">
+      <i class="fas fa-user-check" style="margin-left:8px;"></i>قبول الدعوة والدخول
+    </button>
+  </div>
+
+  <!-- نجاح -->
+  <div id="successState">
+    <div class="state-icon" style="background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); color:#34d399;">
+      <i class="fas fa-check"></i>
+    </div>
+    <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">مرحباً بك في الفريق! 🎉</h3>
+    <p style="font-size:12px; color:var(--text2);">تم إنشاء حسابك بنجاح.<br>جاري تحويلك للنظام...</p>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let _inviteData = null;
+
+function toggleEye(id, btn) {
+  const inp = document.getElementById(id);
+  const ico = btn.querySelector('i');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  ico.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.innerHTML = `<i class="fas fa-${ok ? 'check-circle' : 'circle-exclamation'}"></i> ${msg}`;
+  el.className = `toast ${ok ? 'ok' : 'err'} show`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function showState(id) {
+  ['loadingState','expiredState','formState','successState'].forEach(s => {
+    document.getElementById(s).classList.remove('active');
+    document.getElementById(s).style.display = 'none';
+  });
+  document.getElementById(id).style.display = 'block';
+  document.getElementById(id).classList.add('active');
+}
+
+async function loadInvitation() {
+  const params = new URLSearchParams(window.location.search);
+  const token  = params.get('token');
+
+  if (!token) {
+    showState('expiredState');
+    return;
+  }
+
+  try {
+    // جلب بيانات الدعوة مع اسم الشركة والفرع
+    const { data: inv, error } = await window.supa
+      .from('invitations')
+      .select('*, companies(name), branches(name)')
+      .eq('token', token)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (error || !inv) {
+      showState('expiredState');
+      return;
+    }
+
+    // التحقق من انتهاء الصلاحية
+    if (new Date(inv.expires_at) < new Date()) {
+      document.getElementById('expiredMsg').innerHTML =
+        'انتهت صلاحية هذه الدعوة.<br>يرجى طلب دعوة جديدة من مسؤول الشركة.';
+      showState('expiredState');
+      return;
+    }
+
+    _inviteData = inv;
+
+    // عرض بيانات الدعوة
+    document.getElementById('inviteCompanyName').textContent = inv.companies?.name || '—';
+    document.getElementById('inviteEmail').value = inv.email;
+    document.getElementById('inviteRoleBadge').innerHTML =
+      `<i class="fas fa-${inv.role === 'ADMIN' ? 'user-shield' : 'user'}"></i> ${inv.role === 'ADMIN' ? 'مدير فرع' : 'موظف'}`;
+    if (inv.branches?.name) {
+      document.getElementById('inviteBranchName').textContent = 'الفرع: ' + inv.branches.name;
+    }
+
+    showState('formState');
+
+  } catch (err) {
+    console.error(err);
+    showState('expiredState');
+  }
+}
+
+async function acceptInvitation() {
+  if (!_inviteData) return;
+
+  const name     = document.getElementById('inviteName').value.trim();
+  const pass     = document.getElementById('invitePassword').value;
+  const passConf = document.getElementById('invitePasswordConfirm').value;
+
+  if (!name)            return toast('يرجى إدخال اسمك', false);
+  if (pass.length < 8)  return toast('كلمة المرور 8 أحرف على الأقل', false);
+  if (pass !== passConf) return toast('كلمتا المرور غير متطابقتين', false);
+
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-left:8px;"></i>جاري الإنشاء...';
+
+  try {
+    const email = _inviteData.email;
+
+    // 1. إنشاء المستخدم في Supabase Auth
+    const { data: authData, error: authErr } = await window.supa.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { name } }
+    });
+
+    if (authErr) throw new Error(authErr.message);
+
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('فشل إنشاء المستخدم');
+
+    // 2. إنشاء سجل في users مرتبط بالشركة والفرع
+    const { error: userErr } = await window.supa.from('users').insert({
+      id:         userId,
+      email:      email,
+      name:       name,
+      role:       _inviteData.role || 'USER',
+      is_master:  false,
+      is_owner:   false,
+      company_id: _inviteData.company_id,
+      branch_id:  _inviteData.branch_id
+    });
+
+    if (userErr) throw new Error(userErr.message);
+
+    // 3. تحديث حالة الدعوة
+    await window.supa.from('invitations')
+      .update({ status: 'accepted' })
+      .eq('id', _inviteData.id);
+
+    // 4. تسجيل الدخول
+    await window.supa.auth.signInWithPassword({ email, password: pass });
+
+    showState('successState');
+    setTimeout(() => window.location.href = 'index.html', 2000);
+
+  } catch (err) {
+    console.error(err);
+    toast('خطأ: ' + err.message, false);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-user-check" style="margin-left:8px;"></i>قبول الدعوة والدخول';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && _inviteData) acceptInvitation();
+});
+
+// تشغيل عند التحميل
+loadInvitation();
+</script>
+</body>
+</html>

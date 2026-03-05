@@ -10,6 +10,7 @@
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">  
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+      <title>Operix Cash</title>
 			<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -23,9 +24,68 @@
 <script src="js/transactions.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/branches.js"></script>
-<script src="js/members.js"></script>
+<script src="js/stock.js"></script>
 <script src="js/app.js"></script>
 <script src="js/layout.js"></script>
+<script src="js/members.js"></script>
+<script>
+/* ══ Stock UI Helpers (inline) ══ */
+function filterInvoiceProducts(q) {
+  const container = document.getElementById('invoiceProductsList');
+  if (!container) return;
+  const all = typeof stockProducts !== 'undefined' ? stockProducts : [];
+  const filtered = all.filter(p => p.quantity > 0 && (!q || (p.name||'').toLowerCase().includes(q.toLowerCase()) || (p.brand||'').toLowerCase().includes(q.toLowerCase())));
+  if (!filtered.length) { container.innerHTML = '<div class="text-muted small text-center p-2">لا توجد نتائج</div>'; return; }
+  const colors = { mobile:'rgba(59,130,246,.12)', accessory:'rgba(139,92,246,.12)', tablet:'rgba(6,182,212,.12)', spare:'rgba(245,158,11,.12)' };
+  const icols  = { mobile:'var(--primary-blue)', accessory:'#8b5cf6', tablet:'var(--primary-cyan)', spare:'var(--warning-orange)' };
+  const icons  = { mobile:'fa-mobile-screen', accessory:'fa-headphones', tablet:'fa-tablet-screen-button', spare:'fa-screwdriver-wrench' };
+  container.innerHTML = filtered.slice(0,8).map(p => `
+    <div class="inv-product-row" onclick="addInvoiceItem(stockProducts.find(x=>x.id==${p.id}));filterInvoiceProducts('')">
+      <div class="inv-product-icon" style="background:${colors[p.category]||'rgba(59,130,246,.12)'};color:${icols[p.category]||'var(--primary-blue)'}">
+        <i class="fa ${icons[p.category]||'fa-box'}"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div style="font-size:12px;font-weight:800;">${p.name}</div>
+        <div style="font-size:10px;color:var(--text-muted);">${[p.brand,p.model].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div style="text-align:left;">
+        <div style="font-size:13px;font-weight:900;color:var(--success-green);" class="english-num">${Number(p.sell_price).toLocaleString()}</div>
+        <div style="font-size:9px;color:var(--text-muted);">${p.quantity} متاح</div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="pointer-events:none;"><i class="fa fa-plus"></i></button>
+    </div>`).join('');
+}
+
+function updateSupplyCost() {
+  const qty  = Number(document.getElementById('supplyQty')?.value)      || 0;
+  const cost = Number(document.getElementById('supplyCostPrice')?.value) || 0;
+  const el   = document.getElementById('supplyTotalCost');
+  if (el) el.textContent = (qty * cost).toLocaleString('en-US') + ' ج.م';
+}
+
+function onSupplySelectChange(sel) {
+  const all = typeof stockProducts !== 'undefined' ? stockProducts : [];
+  const p   = all.find(x => x.id == sel.value);
+  if (p) {
+    document.getElementById('supplyProductId').value    = p.id;
+    document.getElementById('supplyProductName').textContent = p.name;
+    document.getElementById('supplyCostPrice').value   = p.cost_price || 0;
+    updateSupplyCost();
+  }
+}
+
+// Override openNewInvoice to init product list
+const _stockOrigOpen = window.openNewInvoice;
+window.openNewInvoice = function(productId) {
+  if (typeof invoiceItems !== 'undefined') invoiceItems.length = 0; else window.invoiceItems = [];
+  ['invClientName','invClientPhone','invNotes'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  const w = document.getElementById('invWarranty'); if(w) w.value='0';
+  if (typeof switchStockTab === 'function') switchStockTab('invoiceView');
+  if (productId) { const p = (typeof stockProducts!=='undefined'?stockProducts:[]).find(x=>x.id===productId); if(p) addInvoiceItem(p); }
+  if (typeof renderInvoiceItems === 'function') renderInvoiceItems();
+  filterInvoiceProducts('');
+};
+</script>
 </head>
 <body>
 <header class="app-header-main">
@@ -98,6 +158,13 @@
         <a class="nav-link sidebar-link" onclick="showView('manage')">
             <i class="fa fa-sliders"></i>
             <span class="link-text">إدارة النظام</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link sidebar-link" onclick="showView('stock')">
+            <i class="fa fa-boxes-stacked"></i>
+            <span class="link-text">الاستوك</span>
         </a>
     </li>
 
@@ -511,13 +578,53 @@
     </div>
 </div>
 <div id="users-tab" class="manage-tab-content" style="display:none;">
+
+    <!-- قسم إرسال دعوة — للمدير العام فقط -->
+    <div id="invitationsSection" style="display:none;">
+        <div class="card-box mb-3" style="border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.05);">
+            <h6 class="fw-bold mb-3 small" style="color:#8b5cf6;">
+                <i class="fa fa-envelope-open-text me-1"></i> إرسال دعوة لموظف جديد
+            </h6>
+            <div class="row g-2 mb-2">
+                <div class="col-12">
+                    <input type="email" id="inviteEmail" class="form-control form-control-sm"
+                        placeholder="البريد الإلكتروني للموظف" style="direction:rtl;">
+                </div>
+                <div class="col-6">
+                    <select id="inviteRole" class="form-select form-select-sm" style="direction:rtl;">
+                        <option value="USER">موظف</option>
+                        <option value="ADMIN">مدير فرع</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <select id="inviteBranch" class="form-select form-select-sm" style="direction:rtl;">
+                        <option value="">— اختر الفرع —</option>
+                    </select>
+                </div>
+            </div>
+            <button id="btnSendInvite" class="btn btn-sm w-100 fw-bold"
+                    style="background:#8b5cf6;color:#fff;border-radius:10px;padding:8px;"
+                    onclick="sendInvitation()">
+                <i class="fa fa-paper-plane me-1"></i>إرسال الدعوة
+            </button>
+            <div class="mt-3 pt-2" style="border-top:1px solid rgba(139,92,246,0.2);">
+                <div class="small fw-bold text-muted mb-2">
+                    <i class="fa fa-list me-1"></i> الدعوات المرسلة
+                </div>
+                <div id="invitesList">
+                    <div class="text-center text-muted small py-2">جاري التحميل...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- قائمة الأعضاء -->
     <div class="d-flex text-muted fw-bold mb-2 px-3 small" style="direction: rtl; opacity: 0.8;">
         <div style="width: 50%;">العضو</div>
         <div style="width: 25%;" class="text-center">الصلاحية</div>
         <div style="width: 25%;" class="text-end pe-3">الإجراءات</div>
     </div>
-    
-    <div id="usersList" style="max-height: 450px; overflow-y: auto; padding: 2px;">
+    <div id="usersList" style="max-height: 350px; overflow-y: auto; padding: 2px;">
         <div class="text-center p-4 text-muted small">جاري التحميل...</div>
     </div>
 </div>				<div id="logs-tab" class="manage-tab-content" style="display:none;">
@@ -705,6 +812,10 @@
             <label class="small text-muted mb-1">البريد الإلكتروني</label>
             <div id="displayProfileEmail" class="form-control form-control-sm border-0">-</div>
         </div>
+        <div class="col-12 mt-2">
+            <label class="small text-muted mb-1">الشركة</label>
+            <div id="displayCompanyName" class="form-control form-control-sm border-0 fw-bold" style="color:var(--primary,#3b82f6);">-</div>
+        </div>
     </div>
 
     <div class="pt-3 border-top">
@@ -738,6 +849,377 @@
 				</div>
 			</div>
 		</div>
+
+
+<!-- ══════════════════════════════════════════
+     STOCK VIEW  — مطابق للـ preview تماماً
+══════════════════════════════════════════ -->
+<link rel="stylesheet" href="css/stock.css">
+
+<div id="view-stock" class="view-section">
+
+  <!-- ══ Stock Nav Tabs ══ -->
+  <div class="stk-tabs-nav">
+    <button class="stk-tab active" onclick="switchStockTab('stockView')">
+      <i class="fa fa-boxes-stacked"></i> الاستوك
+    </button>
+    <button class="stk-tab" onclick="switchStockTab('invoiceView'); openNewInvoice(null)">
+      <i class="fa fa-file-invoice"></i> فاتورة جديدة
+    </button>
+    <button class="stk-tab" onclick="switchStockTab('invoicesListView')">
+      <i class="fa fa-list-check"></i> الفواتير
+    </button>
+  </div>
+
+  <!-- ══ TAB 1: الاستوك ══ -->
+  <div id="stockView" class="stk-screen active">
+
+    <div class="sec-header">
+      <div>
+        <div class="sec-title"><i class="fa fa-boxes-stacked"></i>إدارة <span>الاستوك</span></div>
+        <div class="sec-sub" id="stockSubTitle">جاري التحميل...</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="openSupplyModal()"><i class="fa fa-truck-ramp-box"></i> توريد بضاعة</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddProduct()"><i class="fa fa-plus"></i> منتج جديد</button>
+      </div>
+    </div>
+
+    <!-- Stats 4 -->
+    <div class="stats-row" id="stockStats">
+      <div class="stat-card" onclick="setStockCategory('mobile',null)">
+        <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:var(--sk-blue);"><i class="fa fa-mobile-screen"></i></div>
+        <div class="stat-info"><div class="val" id="statMobile" style="color:var(--sk-blue);">—</div><div class="lbl">موبايلات</div></div>
+      </div>
+      <div class="stat-card" onclick="setStockCategory('accessory',null)">
+        <div class="stat-icon" style="background:rgba(139,92,246,0.12);color:var(--sk-purple);"><i class="fa fa-headphones"></i></div>
+        <div class="stat-info"><div class="val" id="statAccessory" style="color:var(--sk-purple);">—</div><div class="lbl">اكسسوار</div></div>
+      </div>
+      <div class="stat-card" onclick="setStockCategory('tablet',null)">
+        <div class="stat-icon" style="background:rgba(6,182,212,0.12);color:var(--sk-cyan);"><i class="fa fa-tablet-screen-button"></i></div>
+        <div class="stat-info"><div class="val" id="statTablet" style="color:var(--sk-cyan);">—</div><div class="lbl">تابلت / لابتوب</div></div>
+      </div>
+      <div class="stat-card" onclick="setStockCategory('spare',null)">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:var(--sk-orange);"><i class="fa fa-screwdriver-wrench"></i></div>
+        <div class="stat-info"><div class="val" id="statSpare" style="color:var(--sk-orange);">—</div><div class="lbl">قطع غيار</div></div>
+      </div>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="cat-tabs">
+      <button class="cat-tab active" onclick="setStockCategory('all',this)"><i class="fa fa-th-large"></i> الكل <span class="cnt" id="cntAll">0</span></button>
+      <button class="cat-tab" onclick="setStockCategory('mobile',this)"><i class="fa fa-mobile-screen"></i> موبايلات <span class="cnt" id="cntMobile">0</span></button>
+      <button class="cat-tab" onclick="setStockCategory('accessory',this)"><i class="fa fa-headphones"></i> اكسسوار <span class="cnt" id="cntAccessory">0</span></button>
+      <button class="cat-tab" onclick="setStockCategory('tablet',this)"><i class="fa fa-tablet-screen-button"></i> تابلت <span class="cnt" id="cntTablet">0</span></button>
+      <button class="cat-tab" onclick="setStockCategory('spare',this)"><i class="fa fa-screwdriver-wrench"></i> قطع غيار <span class="cnt" id="cntSpare">0</span></button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <i class="fa fa-search"></i>
+        <input type="text" placeholder="ابحث عن منتج، موديل، براند..." oninput="stockSearchChanged(this.value)">
+      </div>
+      <button class="btn btn-ghost btn-sm"><i class="fa fa-sliders"></i> فلتر</button>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="products-grid" id="stockGrid">
+      <div class="empty-state">
+        <div class="spinner-border text-primary mb-2" style="width:2rem;height:2rem;"></div>
+        <p>جاري التحميل...</p>
+      </div>
+    </div>
+
+  </div><!-- end stockView tab -->
+
+
+  <!-- ══ TAB 2: فاتورة جديدة ══ -->
+  <div id="invoiceView" class="stk-screen" style="display:none;">
+
+    <div class="sec-header">
+      <div>
+        <div class="sec-title"><i class="fa fa-file-invoice"></i>فاتورة <span>جديدة</span></div>
+        <div class="sec-sub" id="invoiceNumDisplay">—</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="closeInvoiceView()"><i class="fa fa-rotate-left"></i> رجوع</button>
+        <button class="btn btn-primary btn-sm" id="btnConfirmInvoice" onclick="confirmInvoice()"><i class="fa fa-check"></i> إتمام وطباعة</button>
+      </div>
+    </div>
+
+    <!-- Vault banner -->
+    <div class="vault-banner positive">
+      <i class="fa fa-vault fa-lg"></i>
+      <div>
+        <div>الخزنة ستزيد بقيمة الفاتورة</div>
+        <div style="font-size:10px;opacity:.7;margin-top:2px;">سيتم تسجيل عملية "بيع - استوك" في السجل تلقائياً</div>
+      </div>
+      <div class="amount" id="invoiceVaultImpact">+ 0 ج.م</div>
+    </div>
+
+    <div class="invoice-layout">
+
+      <!-- يسار -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- اختار منتجات -->
+        <div class="inv-panel">
+          <div class="inv-panel-header">
+            <i class="fa fa-boxes-stacked" style="color:var(--sk-blue);"></i> اختار المنتجات
+          </div>
+          <div class="inv-panel-body">
+            <div class="search-bar" style="margin-bottom:12px;">
+              <div class="search-input-wrap">
+                <i class="fa fa-search"></i>
+                <input type="text" id="invProductSearch" placeholder="ابحث عن منتج..." oninput="filterInvoiceProducts(this.value)">
+              </div>
+            </div>
+            <div id="invoiceProductsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:220px;overflow-y:auto;">
+              <div class="empty-state" style="padding:20px;grid-column:unset;">
+                <i class="fa fa-magnifying-glass" style="font-size:24px;"></i>
+                <p>ابدأ الكتابة للبحث</p>
+              </div>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:var(--sk-text2);margin-bottom:8px;">
+              <i class="fa fa-cart-shopping me-1"></i> المنتجات المضافة
+            </div>
+            <div id="invoiceItemsList">
+              <div style="text-align:center;color:var(--sk-text3);font-size:12px;padding:12px;">لم تُضف منتجات بعد</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- بيانات العميل -->
+        <div class="inv-panel">
+          <div class="inv-panel-header">
+            <i class="fa fa-user" style="color:var(--sk-cyan);"></i> بيانات العميل
+          </div>
+          <div class="inv-panel-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label>اسم العميل *</label>
+                <input type="text" id="invClientName" placeholder="محمد أحمد">
+              </div>
+              <div class="form-group">
+                <label>رقم الهاتف</label>
+                <input type="text" id="invClientPhone" class="ltr" placeholder="01XXXXXXXXX">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>ضمان (بالشهور)</label>
+                <select id="invWarranty">
+                  <option value="0">بدون ضمان</option>
+                  <option value="3">3 شهور</option>
+                  <option value="6">6 شهور</option>
+                  <option value="12">12 شهر</option>
+                  <option value="24">24 شهر</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>ملاحظات</label>
+                <input type="text" id="invNotes" placeholder="أي ملاحظات...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end left -->
+
+      <!-- يمين -->
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <div class="inv-panel">
+          <div class="inv-panel-header">
+            <i class="fa fa-wallet" style="color:var(--sk-green);"></i> طريقة الدفع
+          </div>
+          <div class="inv-panel-body">
+            <div class="pay-types">
+              <button class="pay-type active" data-type="cash" onclick="setPayType('cash',this)">
+                <i class="fa fa-money-bill-wave"></i> كاش كامل
+              </button>
+              <button class="pay-type" data-type="partial" onclick="setPayType('partial',this)">
+                <i class="fa fa-hand-holding-dollar"></i> دفع جزئي
+              </button>
+            </div>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label>المبلغ المدفوع</label>
+              <input type="number" id="invoicePaid" class="ltr" oninput="updateRemaining()" placeholder="0" style="text-align:right;">
+            </div>
+            <div class="remaining-box" id="remainingBox">
+              <span class="lbl">المتبقي</span>
+              <span class="val english-num" id="invoiceRemaining">0 ج.م</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="inv-panel">
+          <div class="inv-panel-header">
+            <i class="fa fa-receipt" style="color:var(--sk-orange);"></i> ملخص الفاتورة
+          </div>
+          <div class="inv-panel-body" style="padding-bottom:0;">
+            <div id="invSummaryItems">
+              <div class="inv-summary-item">
+                <span class="lbl">لا توجد منتجات</span><span class="val">—</span>
+              </div>
+            </div>
+            <div class="inv-total-row">
+              <span class="lbl">الإجمالي</span>
+              <span class="val english-num" id="invoiceTotalDisplay">0 ج.م</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;" onclick="confirmInvoice()" id="btnConfirmInvoice2">
+          <i class="fa fa-print"></i> إتمام وطباعة الفاتورة
+        </button>
+
+      </div><!-- end right -->
+
+    </div><!-- end invoice-layout -->
+  </div><!-- end invoiceView tab -->
+
+
+  <!-- ══ TAB 3: الفواتير ══ -->
+  <div id="invoicesListView" class="stk-screen" style="display:none;">
+
+    <div class="sec-header">
+      <div>
+        <div class="sec-title"><i class="fa fa-list-check"></i>سجل <span>الفواتير</span></div>
+        <div class="sec-sub" id="invoicesListSubTitle">جاري التحميل...</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="switchStockTab('invoiceView'); openNewInvoice(null)"><i class="fa fa-plus"></i> فاتورة جديدة</button>
+    </div>
+
+    <!-- Inv Stats -->
+    <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(16,185,129,0.12);color:var(--sk-green);"><i class="fa fa-circle-check"></i></div>
+        <div class="stat-info"><div class="val" id="invCountPaid" style="color:var(--sk-green);">—</div><div class="lbl">مكتملة</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:var(--sk-orange);"><i class="fa fa-clock"></i></div>
+        <div class="stat-info"><div class="val" id="invCountPartial" style="color:var(--sk-orange);">—</div><div class="lbl">جزئية</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:var(--sk-blue);"><i class="fa fa-sack-dollar"></i></div>
+        <div class="stat-info"><div class="val" id="invTotalSales" style="color:var(--sk-blue);">—</div><div class="lbl">إجمالي المبيعات</div></div>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <i class="fa fa-search"></i>
+        <input type="text" placeholder="ابحث بالاسم أو رقم الفاتورة..." oninput="filterInvoicesTable(this.value)">
+      </div>
+      <button class="btn btn-ghost btn-sm"><i class="fa fa-filter"></i> فلتر</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>رقم الفاتورة</th>
+            <th>العميل</th>
+            <th>المنتجات</th>
+            <th>الضمان</th>
+            <th>الإجمالي</th>
+            <th>الحالة</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="invoicesTableBody">
+          <tr><td colspan="7" class="text-center p-4">
+            <div class="spinner-border spinner-border-sm text-primary"></div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- end invoicesListView tab -->
+
+</div><!-- end view-stock -->
+
+
+<!-- ══════════════════════════════════
+     Modal: إضافة / تعديل منتج
+══════════════════════════════════ -->
+<div id="productModal" class="stock-modal-overlay">
+  <div class="stock-modal">
+    <div class="stock-modal-header">
+      <span id="productModalTitle">منتج جديد</span>
+      <button class="stock-modal-close" onclick="closeProductModal()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="stock-modal-body">
+      <input type="hidden" id="productId">
+      <div id="pmForm"><!-- form fields injected by js --></div>
+    </div>
+    <div class="stock-modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeProductModal()">إلغاء</button>
+      <button class="btn btn-primary btn-sm" id="btnSaveProduct" onclick="saveProduct()"><i class="fa fa-save"></i> حفظ</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════
+     Modal: توريد بضاعة
+══════════════════════════ -->
+<div id="supplyModal" class="stock-modal-overlay">
+  <div class="stock-modal" style="max-width:460px;">
+    <div class="stock-modal-header">
+      <span><i class="fa fa-truck-ramp-box" style="color:#f59e0b;margin-left:8px;"></i> توريد بضاعة</span>
+      <button class="stock-modal-close" onclick="closeSupplyModal()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="stock-modal-body">
+      <div class="vault-banner negative" style="margin-bottom:16px;">
+        <i class="fa fa-vault fa-lg"></i>
+        <div>الخزنة ستنقص بقيمة التوريد</div>
+      </div>
+      <input type="hidden" id="supplyProductId">
+      <div class="supply-prod-box" id="supplyProductInfo">
+        <div class="supply-prod-icon"><i class="fa fa-box"></i></div>
+        <div>
+          <div class="name" id="supplyProductName">—</div>
+          <div class="meta" id="supplyProductMeta"></div>
+        </div>
+      </div>
+      <div id="supplySelectProduct" style="display:none;margin-bottom:14px;">
+        <div class="form-group">
+          <label>اختار المنتج</label>
+          <select id="supplyProductSelect" onchange="onSupplySelectChange(this)">
+            <option value="">— اختار المنتج —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>الكمية *</label>
+          <input type="number" id="supplyQty" class="ltr" placeholder="0" oninput="updateSupplyCost()" style="text-align:right;">
+        </div>
+        <div class="form-group">
+          <label>سعر الشراء للقطعة *</label>
+          <input type="number" id="supplyCostPrice" class="ltr" placeholder="0" oninput="updateSupplyCost()" style="text-align:right;">
+        </div>
+      </div>
+      <div class="supply-total-box">
+        <span>إجمالي التكلفة</span>
+        <span class="english-num" id="supplyTotalCost">0 ج.م</span>
+      </div>
+      <div class="form-group" style="margin-top:12px;">
+        <label>ملاحظات</label>
+        <input type="text" id="supplyNotes" placeholder="اسم المورد أو أي تفاصيل...">
+      </div>
+    </div>
+    <div class="stock-modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeSupplyModal()">إلغاء</button>
+      <button class="btn btn-primary btn-sm" id="btnConfirmSupply" onclick="confirmSupply()"><i class="fa fa-check"></i> تأكيد التوريد</button>
+    </div>
+  </div>
+</div>
 </main>
 		<div id="editModal" class="modal-overlay" style="display:none;">
 			  <div class="modal-box">

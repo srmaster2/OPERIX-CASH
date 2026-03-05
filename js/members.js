@@ -1,225 +1,306 @@
-// دالة جلب وعرض الأعضاء
-window.loadUsersTable = async function() {
-    const listDiv = document.getElementById('usersList');
-    if (!listDiv) return;
+// ============================================================
+// members.js — إدارة الأعضاء + الدعوات + اسم الشركة + Admin Logs
+// ============================================================
 
-    listDiv.innerHTML = '<div class="text-center p-3 small text-muted">جاري الاتصال بقاعدة البيانات...</div>';
+// ══════════════════════════════════════════════════════════
+// 1. اسم الشركة — يظهر في الهيدر والإعدادات
+// ══════════════════════════════════════════════════════════
+async function loadCompanyInfo() {
+    const u = window.currentUserData;
+    if (!u?.company_id) return;
 
-    try {
-        const cu       = window.currentUserData;
-        const isMaster = cu?.isMaster === true;
-        const isAdmin  = cu?.isAdmin === true;
+    const { data: company } = await window.supa
+        .from('companies')
+        .select('name, is_active')
+        .eq('id', u.company_id)
+        .maybeSingle();
 
-        // ✅ فلتر الفرع اليدوي المضمون
-        let q = supabase.from('users').select('*').order('created_at', { ascending: false });
+    if (!company) return;
 
-        if (!isMaster && cu?.branch_id) {
-            q = q.eq('branch_id', cu.branch_id);
-        } else if (!isMaster && !cu?.branch_id) {
-            q = q.eq('branch_id', '00000000-0000-0000-0000-000000000000');
-        }
+    // هيدر — tagline تحت OPERIX
+    const tagline = document.querySelector('.brand-tagline');
+    if (tagline) tagline.textContent = company.name;
 
-        const { data: users, error } = await q;
-        if (error) throw error;
+    // الإعدادات — لو في عنصر مخصص
+    const companyNameEl = document.getElementById('displayCompanyName');
+    if (companyNameEl) companyNameEl.textContent = company.name;
 
-        if (!users || users.length === 0) {
-            listDiv.innerHTML = '<div class="text-center p-4 text-muted small">لا يوجد أعضاء مسجلين حالياً</div>';
-            return;
-        }
-
-        listDiv.innerHTML = users.map(user => {
-            const isM = user.is_master;
-            const lbl = isM ? '👑 مدير عام' : user.role === 'ADMIN' ? '🔑 مدير فرع' : '👤 موظف';
-            const bdg = isM ? 'bg-warning text-dark' : user.role === 'ADMIN' ? 'bg-primary' : 'bg-light text-primary border';
-            // تطهير البيانات من XSS
-            const safeId   = esc(user.id);
-            const safeRole = esc(user.role);
-            const safeName = esc(user.name);
-
-            // ✅ المدير العام: تعديل صلاحية + حذف
-            // ✅ مدير الفرع: إزالة من الفرع فقط
-            let btns = '';
-            if (isMaster) {
-                btns = `
-                <button class="btn btn-sm btn-light border p-1" title="تعديل الصلاحية" onclick="openEditRoleModal('${safeId}','${safeRole}')">
-                    <i class="fa fa-shield-alt text-primary"></i>
-                </button>
-                <button class="btn btn-sm btn-light border p-1" title="حذف العضو" onclick="confirmDeleteUser('${safeId}','${safeAttr(user.name)}')">
-                    <i class="fa fa-trash-alt text-danger"></i>
-                </button>`;
-            } else if (isAdmin && !isM) {
-                btns = `
-                <button class="btn btn-sm btn-light border p-1" title="إزالة من الفرع" onclick="removeUserFromBranch('${safeId}','${safeAttr(user.name)}')">
-                    <i class="fa fa-user-minus text-warning"></i>
-                </button>`;
-            }
-
-            return `
-            <div class="member-card d-flex align-items-center p-2 mb-2 bg-white border rounded-3 shadow-sm" style="direction:rtl;">
-                <div style="width:50%;" class="text-start ps-2">
-                    <div class="fw-bold text-dark" style="font-size:13px;">${safeName || 'مستخدم جديد'}</div>
-                    <div class="text-muted small" style="font-size:10px;">${esc(user.email)}</div>
-                </div>
-                <div style="width:25%;" class="text-center">
-                    <span class="badge ${bdg}" style="font-size:9px;">${lbl}</span>
-                </div>
-                <div style="width:25%;" class="text-end d-flex justify-content-end gap-1">${btns}</div>
-            </div>`;
-        }).join('');
-
-    } catch (err) {
-        listDiv.innerHTML = '<div class="alert alert-danger p-2 small text-center">خطأ في الاتصال، يرجى المحاولة لاحقاً</div>';
-    }
-};
-
-// ✅ إزالة موظف من الفرع (لمدير الفرع)
-async function removeUserFromBranch(userId, userName) {
-    const res = await Swal.fire({
-        title: 'إزالة من الفرع؟',
-        text: `سيتم إزالة "${userName}" من الفرع الحالي`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'نعم، أزل',
-        cancelButtonText: 'إلغاء',
-        confirmButtonColor: '#f59e0b'
-    });
-
-    if (res.isConfirmed) {
-        try {
-            const { error } = await supabase.from('users').update({ branch_id: null }).eq('id', userId);
-            if (error) throw error;
-            Swal.fire({ icon: 'success', title: 'تم', timer: 1000, showConfirmButton: false, width: '300px' });
-            window.loadUsersTable();
-        } catch (err) {
-            Swal.fire('خطأ', err.message, 'error');
-        }
-    }
+    // تخزين اسم الشركة في الـ currentUserData
+    window.currentUserData.companyName = company.name;
 }
 
-// تعديل الصلاحية (للمدير العام فقط)
-async function openEditRoleModal(userId, currentRole) {
-    const modalHtml = `
-        <div class="edit-role-container" style="direction: rtl; padding: 10px;">
-            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">اختر الصلاحية الجديدة للعضو:</p>
-            <select id="swal-custom-select" class="form-select"
-                style="max-width: 180px !important; margin: 0 auto !important; display: block;
-                       padding: 8px; border-radius: 8px; border: 1px solid #ddd; text-align: center;">
-                <option value="USER"  ${currentRole === 'USER'  ? 'selected' : ''}>موظف</option>
-                <option value="ADMIN" ${currentRole === 'ADMIN' ? 'selected' : ''}>مدير فرع</option>
-            </select>
+
+// ══════════════════════════════════════════════════════════
+// 2. Admin Logs — تصليح اسم الـ div
+// ══════════════════════════════════════════════════════════
+async function loadAdminLogs() {
+    // يدعم الاسمين: adminLogsDiv (القديم) و admin-logs-body (الجديد)
+    const container = document.getElementById('adminLogsDiv')
+                   || document.getElementById('admin-logs-body');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center p-4 text-muted small">
+            <i class="fa fa-circle-notch fa-spin me-1"></i> جاري التحميل...
         </div>`;
 
-    const { isConfirmed } = await Swal.fire({
-        title: '<span style="font-size: 18px;">تعديل الصلاحية</span>',
-        html: modalHtml,
-        showCancelButton: true,
-        confirmButtonText: 'حفظ التعديل',
-        cancelButtonText: 'إلغاء',
-        confirmButtonColor: '#0d6efd',
-        cancelButtonColor: '#6c757d',
-        width: '350px',
-        focusConfirm: false,
-        preConfirm: () => document.getElementById('swal-custom-select').value
-    });
-
-    if (isConfirmed) {
-        const newRole = Swal.getHtmlContainer().querySelector('#swal-custom-select').value;
-        if (newRole !== currentRole) {
-            try {
-                const { error } = await supabase.from('users').update({ role: newRole }).eq('id', userId);
-                if (error) throw error;
-                Swal.fire({ icon: 'success', title: 'تم التحديث', timer: 1000, showConfirmButton: false, width: '300px' });
-                window.loadUsersTable();
-            } catch (err) {
-                Swal.fire('خطأ', 'فشل في تحديث البيانات', 'error');
-            }
-        }
+    const cid = window.currentUserData?.company_id || '';
+    if (!cid) {
+        container.innerHTML = '<div class="text-center text-danger p-3 small">خطأ: لم يتم تحديد الشركة</div>';
+        return;
     }
+
+    const { data: logs, error } = await window.supa
+        .from('admin_logs')
+        .select('*')
+        .eq('company_id', cid)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    if (error) {
+        container.innerHTML = `<div class="text-center text-danger p-3 small">خطأ: ${error.message}</div>`;
+        return;
+    }
+    if (!logs?.length) {
+        container.innerHTML = `
+            <div class="text-center py-5 text-muted">
+                <i class="fa fa-clipboard-list fa-2x mb-2 opacity-25 d-block"></i>
+                <span class="small">لا يوجد سجلات بعد</span>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = logs.map(log => {
+        const date     = new Date(log.created_at);
+        const dateStr  = date.toLocaleDateString('ar-EG');
+        const timeStr  = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        const isRollback = log.action === 'ROLLBACK';
+
+        return `
+        <div class="d-flex align-items-start p-2 mb-2 rounded-3"
+             style="background:var(--card-bg);border:1px solid var(--card-border);direction:rtl;font-size:12px;">
+            <div class="flex-shrink-0 me-2 mt-1">
+                <span class="badge ${isRollback ? 'bg-danger' : 'bg-secondary'}" style="font-size:10px;">
+                    ${log.action || '—'}
+                </span>
+            </div>
+            <div class="flex-grow-1">
+                <div class="fw-bold" style="font-size:12px;color:var(--card-text);">${log.details || '—'}</div>
+                <div class="text-muted mt-1" style="font-size:10px;">
+                    <i class="fa fa-user me-1"></i>${log.created_by || '—'}
+                    &nbsp;·&nbsp;
+                    <i class="fa fa-clock me-1"></i>${dateStr} ${timeStr}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
-// حذف العضو (للمدير العام فقط)
-async function confirmDeleteUser(userId, userName) {
-    const res = await Swal.fire({
-        title: 'هل أنت متأكد؟',
-        text: `سيتم حذف العضو "${userName}" نهائياً`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'نعم، احذف',
-        cancelButtonText: 'إلغاء',
-        confirmButtonColor: '#d33'
-    });
 
-    if (res.isConfirmed) {
-        try {
-            const { error } = await supabase.from('users').delete().eq('id', userId);
-            if (error) throw error;
-            Swal.fire('تم!', 'تم حذف العضو بنجاح', 'success');
-            window.loadUsersTable();
-        } catch (err) {
-            Swal.fire('خطأ', err.message, 'error');
-        }
+// ══════════════════════════════════════════════════════════
+// 3. نظام الدعوات — إرسال + عرض
+// ══════════════════════════════════════════════════════════
+
+// عرض قسم الدعوات (للـ owner/master فقط)
+async function loadInvitationsSection() {
+    const container = document.getElementById('invitationsSection');
+    if (!container) return;
+
+    const u = window.currentUserData;
+    if (!u?.isMaster && !u?.is_owner) {
+        container.style.display = 'none';
+        return;
     }
+    container.style.display = 'block';
+
+    // جلب الفروع لبناء map اسم الفرع
+    const { data: branchesData } = await window.supa
+        .from('branches').select('id, name').eq('company_id', u.company_id);
+    const _branchMap = {};
+    (branchesData || []).forEach(b => { _branchMap[b.id] = b.name; });
+
+    // جلب الدعوات المرسلة
+    const { data: invites } = await window.supa
+        .from('invitations')
+        .select('*')
+        .eq('company_id', u.company_id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    const listEl = document.getElementById('invitesList');
+    if (!listEl) return;
+
+    if (!invites?.length) {
+        listEl.innerHTML = '<div class="text-center text-muted small py-3">لا يوجد دعوات مرسلة</div>';
+        return;
+    }
+
+    const statusMap = {
+        pending:  { label: 'في الانتظار', cls: 'bg-warning text-dark' },
+        accepted: { label: 'تم القبول',   cls: 'bg-success' },
+        expired:  { label: 'منتهية',       cls: 'bg-secondary' },
+    };
+
+    listEl.innerHTML = invites.map(inv => {
+        const st      = statusMap[inv.status] || statusMap.pending;
+        const branch  = _branchMap[inv.branch_id] || inv.branch_id?.slice(0,8) || '—';
+        const roleLabel = inv.role === 'ADMIN' ? 'مدير فرع' : 'موظف';
+        const expires = new Date(inv.expires_at).toLocaleDateString('ar-EG');
+        const isExpired = new Date(inv.expires_at) < new Date() && inv.status === 'pending';
+
+        return `
+        <div class="d-flex align-items-center p-2 mb-2 rounded-3"
+             style="background:var(--card-bg);border:1px solid var(--card-border);direction:rtl;font-size:12px;">
+            <div class="flex-grow-1">
+                <div class="fw-bold" style="color:var(--card-text);">${inv.email}</div>
+                <div class="text-muted mt-1" style="font-size:10px;">
+                    <i class="fa fa-building me-1"></i>${branch}
+                    &nbsp;·&nbsp;
+                    <i class="fa fa-user-tag me-1"></i>${roleLabel}
+                    &nbsp;·&nbsp;
+                    <i class="fa fa-clock me-1"></i>${expires}
+                </div>
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1">
+                <span class="badge ${isExpired ? 'bg-danger' : st.cls}" style="font-size:9px;">
+                    ${isExpired ? 'منتهية' : st.label}
+                </span>
+                ${inv.status === 'pending' && !isExpired ? `
+                <button class="btn btn-outline-primary" style="font-size:9px;padding:2px 7px;border-radius:6px;"
+                    onclick="copyInviteLink('${inv.token}')">
+                    <i class="fa fa-copy me-1"></i>نسخ الرابط
+                </button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
 }
 
-// سجل العمليات الإدارية
-async function loadAdminLogs() {
-    const logsDiv = document.getElementById('adminLogsDiv');
-    if (!logsDiv) return;
+// نسخ رابط الدعوة
+function copyInviteLink(token) {
+    const url = `${window.location.origin}/login.html?token=${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+        if (typeof showToast === 'function') showToast('✅ تم نسخ رابط الدعوة');
+    }).catch(() => {
+        prompt('انسخ الرابط يدوياً:', url);
+    });
+}
+
+// إرسال دعوة جديدة
+async function sendInvitation() {
+    const email    = document.getElementById('inviteEmail')?.value?.trim();
+    const role     = document.getElementById('inviteRole')?.value;
+    const branchId = document.getElementById('inviteBranch')?.value;
+
+    const u = window.currentUserData;
+
+    if (!email)    return showToast('يرجى إدخال البريد الإلكتروني', false);
+    if (!branchId) return showToast('يرجى اختيار الفرع', false);
+
+    // التحقق من البريد
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return showToast('البريد الإلكتروني غير صحيح', false);
+
+    const btn = document.getElementById('btnSendInvite');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-circle-notch fa-spin me-1"></i>جاري الإرسال...'; }
 
     try {
-        const cu       = window.currentUserData;
-        const isMaster = cu?.isMaster === true;
+        // التحقق من وجود دعوة سابقة pending لنفس البريد
+        const { data: existing } = await window.supa
+            .from('invitations')
+            .select('id, status')
+            .eq('company_id', u.company_id)
+            .eq('email', email)
+            .eq('status', 'pending')
+            .maybeSingle();
 
-        let logsQuery = supabase
-            .from('admin_logs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
-
-        if (!isMaster && cu?.branch_id) {
-            logsQuery = logsQuery.eq('branch_id', cu.branch_id);
-        } else if (!isMaster && !cu?.branch_id) {
-            logsQuery = logsQuery.eq('branch_id', '00000000-0000-0000-0000-000000000000');
-        }
-
-        const { data: logs, error } = await logsQuery;
-        if (error) throw error;
-
-        if (!logs || logs.length === 0) {
-            logsDiv.innerHTML = '<div class="text-center p-4 small text-muted">لا توجد سجلات حالياً.</div>';
+        if (existing) {
+            showToast('يوجد دعوة معلقة لهذا البريد بالفعل', false);
             return;
         }
 
-        let html = `
-        <div class="table-responsive">
-            <table class="table table-borderless align-middle mb-0" style="direction: rtl; min-width: 450px;">
-                <thead>
-                    <tr class="text-muted border-bottom" style="font-size: 11px; background-color: #f8f9fa;">
-                        <th style="width: 15%;" class="py-2 text-start">الوقت</th>
-                        <th style="width: 20%;" class="py-2 text-center">الإجراء</th>
-                        <th style="width: 45%;" class="py-2 text-center">التفاصيل</th>
-                        <th style="width: 20%;" class="py-2 text-center">المسؤول</th>
-                    </tr>
-                </thead>
-                <tbody style="font-size: 12.5px;">`;
+        // إنشاء token عشوائي
+        const token = crypto.randomUUID().replace(/-/g, '');
 
-        logs.forEach(log => {
-            const logTime = new Date(log.created_at).toLocaleTimeString('en-EG', {
-                hour: '2-digit', minute: '2-digit', hour12: true
-            });
-            html += `
-                <tr class="border-bottom hover-row">
-                    <td class="text-start text-muted english-num" style="font-size: 11px;">${esc(logTime)}</td>
-                    <td class="text-center"><span class="badge bg-light text-primary border-0">${esc(log.action)}</span></td>
-                    <td class="text-center text-secondary" style="line-height: 1.4;">${esc(log.details) || '---'}</td>
-                    <td class="text-center fw-bold text-dark">${esc(log.created_by) || 'النظام'}</td>
-                </tr>`;
+        const { error } = await window.supa.from('invitations').insert({
+            company_id: u.company_id,
+            branch_id:  branchId,
+            email,
+            role:       role || 'USER',
+            token,
+            status:     'pending',
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         });
 
-        html += `</tbody></table></div>`;
-        logsDiv.innerHTML = html;
+        if (error) throw error;
 
-    } catch (e) {
-        logsDiv.innerHTML = '<div class="text-center p-3 text-danger small">تعذر تحديث السجل</div>';
+        // نسخ الرابط تلقائياً
+        const url = `${window.location.origin}/login.html?token=${token}`;
+        navigator.clipboard.writeText(url).catch(() => {});
+
+        showToast('✅ تم إنشاء الدعوة — تم نسخ الرابط تلقائياً');
+
+        // تفريغ الحقول وإعادة تحميل القائمة
+        if (document.getElementById('inviteEmail'))  document.getElementById('inviteEmail').value  = '';
+        if (document.getElementById('inviteBranch')) document.getElementById('inviteBranch').value = '';
+
+        await loadInvitationsSection();
+
+    } catch (err) {
+        showToast('خطأ: ' + err.message, false);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa fa-paper-plane me-1"></i>إرسال الدعوة'; }
     }
 }
+
+
+// ══════════════════════════════════════════════════════════
+// 4. تحديث loadUsersList — يضيف زر دعوة في أعلى القائمة
+// ══════════════════════════════════════════════════════════
+async function loadMembersTab() {
+    const u = window.currentUserData;
+    const isOwner = u?.isMaster || u?.is_owner;
+
+    // ملء select الفروع في فورم الدعوة
+    if (isOwner) {
+        const branchSel = document.getElementById('inviteBranch');
+        if (branchSel) {
+            const { data: branches } = await window.supa
+                .from('branches')
+                .select('id, name')
+                .eq('company_id', u.company_id)
+                .order('created_at');
+            branchSel.innerHTML = '<option value="">— اختر الفرع —</option>';
+            (branches || []).forEach(b => {
+                branchSel.innerHTML += `<option value="${b.id}">${b.name}</option>`;
+            });
+        }
+    }
+
+    // تحميل قائمة الأعضاء
+    if (typeof loadUsersList === 'function') loadUsersList();
+
+    // تحميل الدعوات
+    await loadInvitationsSection();
+}
+
+
+// ══════════════════════════════════════════════════════════
+// 5. Hook على showManageTab — تشغيل loadMembersTab
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // تحميل اسم الشركة بعد ما currentUserData يكون جاهز
+    const _waitCompany = setInterval(() => {
+        if (window.currentUserData?.company_id) {
+            clearInterval(_waitCompany);
+            loadCompanyInfo();
+        }
+    }, 200);
+
+    // Override showManageTab عشان نضيف loadMembersTab
+    const _origShowManageTab = window.showManageTab;
+    window.showManageTab = function(el) {
+        if (typeof _origShowManageTab === 'function') _origShowManageTab(el);
+        const tabId = el?.dataset?.tab;
+        if (tabId === 'users-tab') loadMembersTab();
+    };
+});

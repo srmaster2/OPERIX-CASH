@@ -39,14 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
     var _txInitAttempts = 0;
     var _txInitTimer = setInterval(function() {
         _txInitAttempts++;
-        if (window.supa) {
+        // ننتظر supa + currentUserData مع company_id
+        if (window.supa && window.currentUserData?.company_id) {
             clearInterval(_txInitTimer);
             setupLiveLogs();
-            executeAdvancedSearch(); // تحميل البيانات لأول مرة
-        } else if (_txInitAttempts > 20) {
-            clearInterval(_txInitTimer); // وقف بعد 10 ثواني
+            executeAdvancedSearch();
+        } else if (_txInitAttempts > 40) {
+            clearInterval(_txInitTimer);
         }
-    }, 500);
+    }, 250);
 });
 async function getSession() {
     const { data } = await _supa().auth.getSession();
@@ -306,9 +307,11 @@ async function renderPinnedWallets() {
 
     try {
         const user = window.currentUserData;
+        if (!user?.company_id) { isRenderingPins = false; return; }
         let pinQuery = _supa()
             .from('accounts')
             .select('id, name, balance, is_pinned, tag, color, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out, monthly_usage_in')
+            .eq('company_id', user.company_id)
             .eq('is_pinned', true)
             .order('name');
         if (typeof applyBranchFilter === 'function') pinQuery = applyBranchFilter(pinQuery, user);
@@ -468,7 +471,10 @@ async function loadWalletsToSelect(category) {
     select.innerHTML = '<option value="">جاري التحميل...</option>';
 
     const user = window.currentUserData;
-    let query = _supa().from('accounts').select('id, name, balance, daily_out_limit').order('name');
+    let query = _supa().from('accounts')
+        .select('id, name, balance, daily_out_limit')
+        .eq('company_id', user?.company_id || '')
+        .order('name');
     if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
     const { data: accounts, error } = await query;
 
@@ -650,7 +656,8 @@ async function finalExecuteStep(btn) {
         const now      = new Date();
         const { walletId, walletName, type, provider, amount, comm, clientId, note, commDest, deductComm } = globalPendingData;
 
-        const { data: allAccounts } = await _supa().from('accounts').select('*');
+        const cid = window.currentUserData?.company_id || '';
+        const { data: allAccounts } = await _supa().from('accounts').select('*').eq('company_id', cid);
         const branchId  = window.currentUserData?.branch_id || null;
         const cashAcc   = allAccounts?.find(a => a.name.includes("الخزنة") && (!branchId || a.branch_id === branchId));
         const walletAcc = allAccounts?.find(a => a.id == walletId && !a.name.includes("الخزنة"));
@@ -849,7 +856,8 @@ async function finalExecuteStep(btn) {
             client:      _cName    || '',
             comm_dest:   commDest  || 'CASH',
             deduct_comm: deductComm || false,
-            branch_id:   window.currentUserData?.branch_id || null
+            branch_id:   window.currentUserData?.branch_id  || null,
+            company_id:  window.currentUserData?.company_id || null
         }]);
         if (txErr) throw txErr;
 
@@ -1033,7 +1041,7 @@ async function rollbackTx(txId) {
     const { data: tx } = await _supa().from('transactions').select('*').eq('id', txId).maybeSingle();
     if (!tx) return showToast("❌ العملية غير موجودة", false);
 
-    const { data: allAccounts } = await _supa().from('accounts').select('*');
+    const { data: allAccounts } = await _supa().from('accounts').select('*').eq('company_id', window.currentUserData?.company_id || '');
     const val     = Number(tx.amount);
     const fee     = Number(tx.commission) || 0;
     const updates = [];
@@ -1142,10 +1150,11 @@ const adminName = profile?.name || session?.user?.email;
 
 // 4. الآن قم بعملية الإدراج في الـ logs
 await _supa().from('admin_logs').insert([{
-    action: 'ROLLBACK', 
-    details: `تراجع: ${tx.type} بمبلغ ${val}`,
+    action:     'ROLLBACK',
+    details:    `تراجع: ${tx.type} بمبلغ ${val}`,
     created_by: adminName,
-    branch_id: window.currentUserData?.branch_id || null  // ✅ أضف دي
+    branch_id:  window.currentUserData?.branch_id  || null,
+    company_id: window.currentUserData?.company_id || null
 }]);
     showToast("✅ تم التراجع بنجاح", true);
     if (typeof executeAdvancedSearch === "function") executeAdvancedSearch();
@@ -1408,8 +1417,9 @@ function applySecurityUI(role) {
 }
 
 async function calculateStats() {
-    const { data: accounts }     = await _supa().from('accounts').select('balance');
-    const { data: transactions } = await _supa().from('transactions').select('commission').limit(1000);
+    const cid = window.currentUserData?.company_id || '';
+    const { data: accounts }     = await _supa().from('accounts').select('balance').eq('company_id', cid);
+    const { data: transactions } = await _supa().from('transactions').select('commission').eq('company_id', cid).limit(1000);
     return {
         totalBalance:      (accounts||[]).reduce((s,a) => s + Number(a.balance), 0),
         totalProfit:       (transactions||[]).reduce((s,t) => s + Number(t.commission), 0),
@@ -1418,10 +1428,63 @@ async function calculateStats() {
 }
 
 window.addEventListener('DOMContentLoaded', function() {
-    if (typeof applyTheme    === "function") applyTheme();
-    if (typeof checkUserRole === "function") checkUserRole();
-    // loadWallets و loadClientsToSelect هيتشغلوا من initApp بعد ما currentUserData يتحمل
+    if (typeof applyTheme         === "function") applyTheme();
     if (typeof toggleClientField  === "function") toggleClientField();
     if (typeof renderWalletsCards === "function") renderWalletsCards();
-    if (typeof loadDash           === "function") loadDash();
+    // loadDash + checkUserRole بيتشغلوا من initApp بعد تحميل currentUserData
 });
+
+// ============================================================
+// loadAdminLogs — سجل عمليات الإدارة (مفلتر بـ company_id)
+// ============================================================
+async function loadAdminLogs() {
+    const container = document.getElementById('admin-logs-body');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
+
+    const cid = window.currentUserData?.company_id || '';
+    if (!cid) {
+        container.innerHTML = '<div class="text-center text-danger p-3">خطأ: لم يتم تحديد الشركة</div>';
+        return;
+    }
+
+    const { data: logs, error } = await _supa()
+        .from('admin_logs')
+        .select('*')
+        .eq('company_id', cid)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    if (error || !logs) {
+        container.innerHTML = '<div class="text-center text-danger p-3">خطأ في تحميل السجل</div>';
+        return;
+    }
+    if (!logs.length) {
+        container.innerHTML = '<div class="text-center text-muted small p-4">لا يوجد سجلات</div>';
+        return;
+    }
+
+    container.innerHTML = logs.map(log => {
+        const date = new Date(log.created_at);
+        const dateStr = date.toLocaleDateString('ar-EG');
+        const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        const isRollback = log.action === 'ROLLBACK';
+
+        return `
+        <div class="d-flex align-items-start p-2 mb-2 border rounded-3" style="direction:rtl;font-size:12px;">
+            <div class="me-2 mt-1">
+                <span class="badge ${isRollback ? 'bg-danger' : 'bg-secondary'}" style="font-size:10px;">
+                    ${log.action || '—'}
+                </span>
+            </div>
+            <div class="flex-grow-1">
+                <div class="fw-bold text-dark" style="font-size:12px;">${log.details || '—'}</div>
+                <div class="text-muted" style="font-size:10px; margin-top:2px;">
+                    <i class="fa fa-user me-1"></i>${log.created_by || '—'}
+                    &nbsp;·&nbsp;
+                    <i class="fa fa-clock me-1"></i>${dateStr} ${timeStr}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}

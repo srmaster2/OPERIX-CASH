@@ -24,8 +24,8 @@ async function loadCurrentUserWithBranch() {
 
         const { data } = await window.supa
             .from('users')
-            .select('*, branches(name, location)')
-            .eq('email', user.email)
+            .select('*, branches(name, location), companies(name, is_active)')
+            .eq('id', user.id)
             .maybeSingle();
 
         if (data) {
@@ -35,12 +35,15 @@ async function loadCurrentUserWithBranch() {
                 ...data,
                 email:      user.email,
                 isMaster,
-                // مدير فرع = ADMIN + مش master + عنده branch_id
                 isAdmin:    !isMaster && role === 'ADMIN' && !!data.branch_id,
-                // موظف = USER أو ADMIN بدون branch_id
                 isUser:     !isMaster && role === 'USER',
-                branchName: data.branches?.name || ''
+                branchName: data.branches?.name   || '',
+                companyName: data.companies?.name || ''
             };
+        } else {
+            // المستخدم موجود في auth بس مش في public.users بعد
+            console.warn('User not found in public.users:', user.id);
+            return null;
         }
         return window.currentUserData;
     } catch (e) {
@@ -109,8 +112,13 @@ function applyBranchPermissions() {
 // 5. CRUD الفروع
 // ══════════════════════════════════════════════════════════
 async function getAllBranches() {
+    const u = window.currentUserData;
+    if (!u?.company_id) return [];
     const { data, error } = await window.supa
-        .from('branches').select('*').order('created_at', { ascending: true });
+        .from('branches')
+        .select('*')
+        .eq('company_id', u.company_id)
+        .order('created_at', { ascending: true });
     if (error) { return []; }
     return data || [];
 }
@@ -119,9 +127,11 @@ async function addBranch(name, location = '') {
     if (!name?.trim()) { showToast('يرجى إدخال اسم الفرع', false); return false; }
 
     // 1. إضافة الفرع وجلب الـ id الجديد
+    const u = window.currentUserData;
+    if (!u?.company_id) { showToast('خطأ: لم يتم تحديد الشركة', false); return false; }
     const { data: branch, error } = await window.supa
         .from('branches')
-        .insert({ name: name.trim(), location: location.trim() })
+        .insert({ name: name.trim(), location: location.trim(), company_id: u.company_id })
         .select('id, name')
         .single();
 
@@ -134,6 +144,7 @@ async function addBranch(name, location = '') {
             name:              'الخزنة (الكاش)',
             balance:           0,
             branch_id:         branch.id,
+            company_id:        u.company_id,
             daily_out_limit:   9999999999,
             daily_in_limit:    9999999999,
             monthly_limit:     9999999999,
@@ -226,6 +237,7 @@ async function loadUsersForAssign() {
         let query = window.supa
             .from('users')
             .select('id, name, email, branch_id, branches(name)')
+            .eq('company_id', u?.company_id)
             .order('name');
 
         // مدير الفرع يشوف موظفي فرعه بس
@@ -306,7 +318,7 @@ window.loadBranchesTable = async function () {
     }
 
     // جلب أعضاء الفرع
-    const { data: usersData } = await window.supa.from('users').select('id, name, email, branch_id');
+    const { data: usersData } = await window.supa.from('users').select('id, name, email, branch_id').eq('company_id', u?.company_id || '');
     const countMap = {};
     (usersData || []).forEach(row => {
         if (row.branch_id) countMap[row.branch_id] = (countMap[row.branch_id] || 0) + 1;
@@ -538,10 +550,11 @@ window.renderBranchesSummary = async function () {
     const f = n => Number(n||0).toLocaleString();
     const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ef4444','#06b6d4'];
 
+    const cid = window.currentUserData?.company_id || '';
     const [{ data: allTx }, { data: allAcc }, { data: allUsers }] = await Promise.all([
-        window.supa.from('transactions').select('amount, type, branch_id'),
-        window.supa.from('accounts').select('balance, branch_id'),
-        window.supa.from('users').select('branch_id, role, is_master')
+        window.supa.from('transactions').select('amount, type, branch_id').eq('company_id', cid),
+        window.supa.from('accounts').select('balance, branch_id').eq('company_id', cid),
+        window.supa.from('users').select('branch_id, role, is_master').eq('company_id', cid)
     ]);
 
     container.innerHTML = branches.map((b, i) => {
@@ -705,19 +718,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 { data: lastFive },
                 { data: prevMonthTxs }
             ] = await Promise.all([
-                window.supa.from('accounts').select('*').eq('branch_id', branchId),
-                window.supa.from('clients').select('name, balance').eq('branch_id', branchId),
+                window.supa.from('accounts').select('*').eq('branch_id', branchId).eq('company_id', user?.company_id),
+                window.supa.from('clients').select('name, balance').eq('branch_id', branchId).eq('company_id', user?.company_id),
                 window.supa.from('transactions')
                     .select('commission, amount, type, date')
-                    .eq('branch_id', branchId)
+                    .eq('branch_id', branchId).eq('company_id', user?.company_id)
                     .ilike('date', `%${monthStr}`).limit(2000),
                 window.supa.from('transactions')
                     .select('type, amount, date, time, added_by, notes')
-                    .eq('branch_id', branchId)
+                    .eq('branch_id', branchId).eq('company_id', user?.company_id)
                     .order('id', { ascending: false }).limit(5),
                 window.supa.from('transactions')
                     .select('commission, amount, type')
-                    .eq('branch_id', branchId)
+                    .eq('branch_id', branchId).eq('company_id', user?.company_id)
                     .ilike('date', `%${prevMonthStr}`).limit(2000)
             ]);
 

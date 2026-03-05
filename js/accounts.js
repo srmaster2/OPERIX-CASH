@@ -3,9 +3,8 @@
 // جلب جميع الحسابات
 async function loadAccounts() {
   const user = window.currentUserData;
-  let query = supabase.from('accounts').select('*');
-  
-  // فلتر الفرع التلقائي ← جديد
+  let query = window.supa.from('accounts').select('*')
+      .eq('company_id', user?.company_id || '');
   if (user && typeof applyBranchFilter === 'function') {
       query = applyBranchFilter(query, user);
   }
@@ -17,7 +16,12 @@ async function loadAccounts() {
 
 async function addAccount(name, type, tag = '', balance = 0) {
   if (!name) return false;
-  const { error } = await supabase.from('accounts').insert([{ name, type, tag, balance: Number(balance) }]);
+  const u = window.currentUserData;
+  const { error } = await window.supa.from('accounts').insert([{
+      name, type, tag, balance: Number(balance),
+      company_id: u?.company_id || null,
+      branch_id:  u?.branch_id  || null
+  }]);
   return !error;
 }
 
@@ -53,11 +57,10 @@ async function loadAccountsTable() {
 
     try {
         const user = window.currentUserData;
-        let accQuery = supabase
+        let accQuery = window.supa
             .from('accounts')
             .select('*')
-         
-        // فلتر الفرع التلقائي ← جديد
+            .eq('company_id', user?.company_id || '');
         if (user && typeof applyBranchFilter === 'function') {
             accQuery = applyBranchFilter(accQuery, user);
         }
@@ -133,7 +136,7 @@ async function confirmDeleteAccount(accId, name) {
             return;
         }
 
-        const { error } = await supabase.from('accounts').delete().eq('id', numericId);
+        const { error } = await window.supa.from('accounts').delete().eq('id', numericId);
         if (!error) {
             showToast("✅ تم الحذف بنجاح", true);
             loadAccountsTable();
@@ -164,12 +167,9 @@ async function openTagModal(id, currentTag, currentColor) {
         showToast("جاري التحديث...", true);
         try {
             // تحديث البيانات في سوبابيس
-            const { error } = await supabase
+            const { error } = await window.supa
                 .from('accounts')
-                .update({
-                    tag: formValues.tag,
-                    color: formValues.color
-                })
+                .update({ tag: formValues.tag, color: formValues.color })
                 .eq('id', id);
 
             if (error) throw error;
@@ -189,7 +189,7 @@ async function openTagModal(id, currentTag, currentColor) {
     }
 }
 async function openEditAccountModal(id) {
-    const { data: acc } = await supabase.from('accounts').select('*').eq('id', id).single();
+    const { data: acc } = await window.supa.from('accounts').select('*').eq('id', id).single();
     if (!acc) return;
 
     const { value: formValues } = await Swal.fire({
@@ -235,7 +235,7 @@ async function openEditAccountModal(id) {
     });
 
     if (formValues) {
-        const { error } = await supabase.from('accounts').update(formValues).eq('id', id);
+        const { error } = await window.supa.from('accounts').update(formValues).eq('id', id);
         if (!error) {
             showToast("✅ تم التحديث بنجاح");
             loadAccountsTable();
@@ -317,7 +317,7 @@ async function handleChangeTag(id, currentTag) {
     });
     
     if (newTag) {
-        await supabase.from('accounts').update({ tag: newTag }).eq('id', id);
+        await window.supa.from('accounts').update({ tag: newTag }).eq('id', id);
         loadAccountsTable();
     }
 }
@@ -349,7 +349,7 @@ async function handleTogglePin(id) {
     showToast("جاري التحديث...", true);
     
     try {
-        const { error } = await supabase
+        const { error } = await window.supa
             .from('accounts')
             .update({ is_pinned: nextState })
             .eq('id', id);
@@ -369,7 +369,7 @@ async function handleTogglePin(id) {
 async function delAcc(id) {
     if(!confirm("هل أنت متأكد من حذف هذا الحساب نهائياً؟")) return;
     try {
-        const { error } = await supabase.from('accounts').delete().eq('id', id);
+        const { error } = await window.supa.from('accounts').delete().eq('id', id);
         if (error) throw error;
         showToast("تم الحذف بنجاح");
         loadAccountsTable();
@@ -397,7 +397,7 @@ async function saveEdit() {
 
     try {
         // 1. تحديث البيانات الأساسية (الحدود والاسم)
-        const { error: updateError } = await supabase
+        const { error: updateError } = await window.supa
             .from('accounts')
             .update({
                 name: walletName,
@@ -412,10 +412,9 @@ async function saveEdit() {
         // 2. إذا وجد مبلغ لتسوية الأرباح
         if (adjProfit !== 0 && !isNaN(adjProfit)) {
             // جلب الربح الحالي أولاً ثم إضافة التسوية
-            const { data } = await supabase.from('accounts').select('profit').eq('id', id).single();
+            const { data } = await window.supa.from('accounts').select('profit').eq('id', id).single();
             const newProfit = (Number(data.profit) || 0) + adjProfit;
-            
-            await supabase.from('accounts').update({ profit: newProfit }).eq('id', id);
+            await window.supa.from('accounts').update({ profit: newProfit }).eq('id', id);
         }
 
         // إنهاء العملية
@@ -446,7 +445,7 @@ async function addWallet() {
     try {
 const user = window.currentUserData;
 
-        const { error } = await supabase.from('accounts').insert([{
+        const { error } = await window.supa.from('accounts').insert([{
             name: n,
             tag: (t === 'محفظة' ? 'محفظة' : 'شركة'),
             color: (t === 'محفظة' ? '#007bff' : '#ffc107'),
@@ -455,7 +454,8 @@ const user = window.currentUserData;
             daily_in_limit: dailyLim,
             monthly_limit: monthlyLim,
             is_pinned: false,
-            branch_id: user?.branch_id || null   // ← جديد
+            branch_id:  user?.branch_id  || null,
+            company_id: user?.company_id || null
         }]);
         if (error) throw error;
 
@@ -474,14 +474,14 @@ const user = window.currentUserData;
     }
 }
 async function checkUserRole() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await window.supa.auth.getUser();
     if (!user) {
         window.location.href = "login.html"; // لو مش مسجل دخول يخرجه
         return;
     }
 
     // جلب بيانات المستخدم من جدول الـ users اللي عملناه في Supabase
-    const { data: userData } = await supabase
+    const { data: userData } = await window.supa
         .from('users')
         .select('role')
         .eq('email', user.email)
@@ -506,7 +506,7 @@ async function saveTagSettings() {
     setLoading('btnSaveTag', true);
 
     try {
-        const { error } = await supabase
+        const { error } = await window.supa
             .from('accounts')
             .update({ tag: tag, color: color })
             .eq('id', id);
@@ -541,12 +541,9 @@ async function resetTagSettings() {
 
     try {
         // إرسال قيم فارغة ولون افتراضي لـ Supabase
-        const { error } = await supabase
+        const { error } = await window.supa
             .from('accounts')
-            .update({ 
-                tag: "", 
-                color: "#6c757d" 
-            })
+            .update({ tag: "", color: "#6c757d" })
             .eq('id', id);
 
         if (error) throw error;
@@ -640,7 +637,7 @@ function closeEditRole() {
 
 async function saveUserRole() {
     // 1. جلب بيانات المستخدم الحالي (أنت)
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await window.supa.auth.getUser();
     
     if (!user) {
         showToast('❌ يجب تسجيل الدخول أولاً', false);
@@ -651,9 +648,9 @@ async function saveUserRole() {
         setLoading('btnSaveRole', true);
 
         // 2. التحقق من صلاحيتك كـ Master (التعديل هنا)
-        const { data: currentUserData, error: fetchError } = await supabase
+        const { data: currentUserData, error: fetchError } = await window.supa
             .from('users')
-            .select('is_master') // لازم نطلب الـ column ده عشان نستخدمه
+            .select('is_master')
             .eq('id', user.id)
             .single();
 
@@ -669,7 +666,7 @@ async function saveUserRole() {
         const newRole = document.getElementById('newRoleSelect').value;
 
         // 4. تنفيذ التحديث في قاعدة البيانات
-        const { error: updateError } = await supabase
+        const { error: updateError } = await window.supa
             .from('users')
             .update({ role: newRole })
             .eq('email', emailToUpdate);

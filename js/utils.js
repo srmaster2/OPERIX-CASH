@@ -45,6 +45,7 @@ async function loadWallets() {
         let query = window.supa
             .from('accounts')
             .select('id, name, balance, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out')
+            .eq('company_id', user?.company_id || '')
             .order('name');
         if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
         const { data: accounts, error } = await query;
@@ -177,7 +178,9 @@ async function loadClientsToSelect() {
     const select = document.getElementById('client');
     if (!select) return;
     const user = window.currentUserData;
-    let qc = window.supa.from('clients').select('id, name, balance').order('name');
+    let qc = window.supa.from('clients').select('id, name, balance')
+        .eq('company_id', user?.company_id || '')
+        .order('name');
     if (typeof applyBranchFilter === 'function') qc = applyBranchFilter(qc, user);
     const { data: clients } = await qc;
     if (!clients) return;
@@ -197,7 +200,9 @@ async function loadClientsTable() {
     container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
 
     const user = window.currentUserData;
-    let qt = window.supa.from('clients').select('*').order('name');
+    let qt = window.supa.from('clients').select('*')
+        .eq('company_id', user?.company_id || '')
+        .order('name');
     if (typeof applyBranchFilter === 'function') qt = applyBranchFilter(qt, user);
     const { data: clients, error } = await qt;
 
@@ -257,7 +262,11 @@ async function addClient() {
     if (!name) return showToast("⚠️ أدخل اسم العميل", false);
     setLoading('btnAddClient', true);
     try {
-        const { error } = await window.supa.from('clients').insert([{ name, number: phone, balance: 0, branch_id: window.currentUserData?.branch_id || null }]);
+        const { error } = await window.supa.from('clients').insert([{
+            name, number: phone, balance: 0,
+            branch_id:  window.currentUserData?.branch_id  || null,
+            company_id: window.currentUserData?.company_id || null
+        }]);
         if (error) throw error;
         showToast("✅ تم إضافة العميل", true);
         if (nameEl)  nameEl.value  = '';
@@ -277,7 +286,11 @@ async function loadUsersList() {
     if (!container) return;
     container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
 
-    const { data: users, error } = await window.supa.from('users').select('*').order('name');
+    const cid = window.currentUserData?.company_id || '';
+    const { data: users, error } = await window.supa.from('users')
+        .select('*')
+        .eq('company_id', cid)
+        .order('name');
 
     if (error || !users) {
         container.innerHTML = '<div class="text-center text-danger p-3">خطأ في التحميل</div>';
@@ -350,12 +363,14 @@ function setupAccountsLive() {
     // منع تكرار الاشتراك
     if (_accountsLiveSub) return;
 
+    const _liveCid = window.currentUserData?.company_id;
     _accountsLiveSub = window.supa
         .channel('live:accounts')
         .on('postgres_changes', {
             event:  'UPDATE',
             schema: 'public',
-            table:  'accounts'
+            table:  'accounts',
+            filter: _liveCid ? `company_id=eq.${_liveCid}` : undefined
         }, function(payload) {
             const updated = payload.new;
             if (!updated) return;
@@ -422,7 +437,7 @@ async function loadProfileSettings() {
         const { data: { user } } = await window.supa.auth.getUser();
         if (!user) return;
         const { data: dbUser } = await window.supa
-            .from('users').select('*').eq('email', user.email).maybeSingle();
+            .from('users').select('*').eq('id', user.id).maybeSingle();
 
         const nameEl  = document.getElementById('displayProfileName');
         const emailEl = document.getElementById('displayProfileEmail');
@@ -466,8 +481,13 @@ async function refreshVaultWithToast() {
     const icon = document.getElementById('refresh-vault-icon');
     if (icon) icon.classList.add('fa-spin');
     try {
+        const cid = window.currentUserData?.company_id || '';
         const { data } = await window.supa.from('accounts')
-            .select('balance').eq('name','الخزنة (الكاش)').single();
+            .select('balance')
+            .eq('company_id', cid)
+            .ilike('name','%الخزنة%')
+            .limit(1)
+            .single();
         const val = document.getElementById('system-vault-val');
         if (val && data) val.textContent = Number(data.balance).toLocaleString();
         showToast('✅ تم تحديث رصيد الخزنة');
@@ -487,6 +507,7 @@ async function getTransactionLogs(filters) {
         let query = window.supa
             .from('transactions')
             .select('id, date, time, type, amount, commission, wallet_name, provider, balance_after, notes, added_by, branch_id')
+            .eq('company_id', user?.company_id || '')
             .order('id', { ascending: false });
         if (typeof applyBranchFilter === 'function') query = applyBranchFilter(query, user);
 

@@ -63,11 +63,28 @@ async function initApp() {
 
   await initUserAccess();
 
+  // تأكد إن currentUserData جاهز وعنده company_id قبل أي query
+  const _u = window.currentUserData;
+  if (!_u?.company_id) {
+    console.error('company_id مش موجود في بيانات المستخدم — تأكد من إنشاء الشركة أولاً');
+    // إظهار رسالة للمستخدم
+    const dash = document.getElementById('view-dashboard');
+    if (dash) dash.innerHTML = `
+      <div style="text-align:center;padding:40px;direction:rtl;">
+        <i class="fa fa-exclamation-triangle fa-3x text-warning mb-3 d-block"></i>
+        <h5>حساب غير مكتمل</h5>
+        <p class="text-muted small">لم يتم ربط حسابك بشركة بعد.<br>
+        يرجى التواصل مع مسؤول النظام أو إنشاء شركة جديدة.</p>
+        <a href="login.html" class="btn btn-sm btn-primary mt-2">العودة للدخول</a>
+      </div>`;
+    return;
+  }
+
   // currentUserData جاهز — نشغّل كل الدوال اللي بتحتاج فلتر الفرع
   if (typeof loadWallets          === 'function') loadWallets();
   if (typeof loadClientsToSelect  === 'function') loadClientsToSelect();
   if (typeof renderPinnedWallets  === 'function') renderPinnedWallets();
-  if (typeof fetchVaultBalance    === 'function') fetchVaultBalance(); // ← أضف السطر ده
+  if (typeof fetchVaultBalance    === 'function') fetchVaultBalance();
 
   // تشغيل الباقي بالتوازي
   Promise.all([
@@ -379,30 +396,32 @@ function refreshDashboardData() {
 window.loadDash = loadDashboard;
 
 function initRealtime() {
+    const companyId = window.currentUserData?.company_id;
+    const filter = companyId ? `company_id=eq.${companyId}` : undefined;
+
     window.supa
         .channel('schema-db-changes')
         .on(
-            'postgres_changes', 
-            { 
-                event: '*', // يراقب الإضافة والحذف والتعديل
-                schema: 'public', 
-                table: 'transactions' 
-            }, 
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'transactions',
+                ...(filter ? { filter } : {})
+            },
             (payload) => {
-                console.log("تغيير لحظي اكتشفناه!", payload);
-                // استدعاء الدالة السابقة فوراً لتحديث الأرقام والقائمة
-                refreshDashboardData(); 
+                // فقط بيانات الشركة الحالية
+                refreshDashboardData();
             }
         )
-        .subscribe((status) => {
-            console.log("حالة الاتصال اللحظي:", status);
-        });
+        .subscribe();
 }
 
 // تشغيل عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    refreshDashboardData(); // جلب البيانات أول مرة
-    initRealtime();        // تشغيل المراقب اللحظي
+    // refreshDashboardData بيتشغّل من initApp بعد تحميل currentUserData
+    // initRealtime بس هنا عشان تسمع التغييرات اللحظية
+    initRealtime();
 });
 
 

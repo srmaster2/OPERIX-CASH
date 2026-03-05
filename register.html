@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل شركة جديدة - OPERIX</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <style>
+:root {
+  --font: 'Cairo', sans-serif;
+  --bg:           #060d1a;
+  --surface:      #111e35;
+  --surface2:     #182844;
+  --border:       rgba(99,179,237,0.10);
+  --border2:      rgba(99,179,237,0.22);
+  --text:         #ffffff;
+  --text2:        #8fa8c8;
+  --blue:         #3b82f6;
+  --blue2:        #2563eb;
+  --cyan:         #06b6d4;
+  --green:        #10b981;
+  --error:        #f87171;
+  --success:      #34d399;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+
+.bg-orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+.orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(16,185,129,0.14), transparent 70%); top: -100px; right: -80px; animation: orb-float 14s ease-in-out infinite; }
+.orb-2 { width: 380px; height: 380px; background: radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%); bottom: -60px; left: -60px; animation: orb-float 18s ease-in-out infinite reverse; }
+
+@keyframes orb-float {
+  0%,100% { transform: translate(0,0); }
+  50%      { transform: translate(25px,-20px); }
+}
+
+.card {
+  position: relative; z-index: 10;
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 38px 34px 34px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.28), 0 0 80px rgba(16,185,129,0.08);
+  animation: card-in 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+
+@keyframes card-in {
+  from { opacity:0; transform: translateY(28px) scale(0.97); }
+  to   { opacity:1; transform: translateY(0) scale(1); }
+}
+
+.glow-bar {
+  position: absolute;
+  top: -1px; right: 22%; left: 22%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), var(--cyan), transparent);
+  border-radius: 2px;
+  animation: glow-bar 3.5s ease-in-out infinite;
+}
+@keyframes glow-bar {
+  0%,100% { opacity:0.55; right:22%; left:22%; }
+  50%      { opacity:1;    right:10%; left:10%; }
+}
+
+/* لوجو */
+.logo-box { margin-bottom: 28px; display: flex; flex-direction: column; align-items: center; gap: 0; }
+.brand-wordmark {
+  display: flex; align-items: baseline; gap: 0;
+  letter-spacing: 0.4em;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px; font-weight: 900;
+  color: #ffffff; text-transform: uppercase; user-select: none;
+}
+.brand-wordmark .letter-x {
+  color: transparent;
+  -webkit-text-stroke: 1.8px #06b6d4;
+  font-size: 27px;
+  filter: drop-shadow(0 0 7px rgba(6,182,212,0.65));
+  animation: xGlow 3s ease-in-out infinite;
+}
+@keyframes xGlow {
+  0%,100% { filter: drop-shadow(0 0 6px rgba(6,182,212,0.5)); }
+  50%      { filter: drop-shadow(0 0 13px rgba(6,182,212,0.85)); }
+}
+.brand-tagline {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 7px; font-weight: 400;
+  letter-spacing: 0.38em;
+  color: rgba(16,185,129,0.6);
+  text-transform: uppercase; margin-top: 4px;
+}
+
+/* هيدر القسم */
+.section-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.section-header h2 {
+  font-size: 18px; font-weight: 800;
+  color: var(--text); margin-bottom: 6px;
+}
+.section-header p {
+  font-size: 12px; color: var(--text2); line-height: 1.6;
+}
+
+/* الفورم */
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 7px; }
+.inp-wrap { position: relative; }
+.inp-wrap input {
+  width: 100%; padding: 12px 40px 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  color: var(--text); font-family: var(--font); font-size: 14px;
+  outline: none; transition: all 0.25s;
+}
+.inp-wrap input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+  background: rgba(16,185,129,0.04);
+}
+.inp-wrap input::placeholder { color: rgba(143,168,200,0.45); }
+.ico {
+  position: absolute; top: 50%; right: 13px;
+  transform: translateY(-50%);
+  color: var(--text2); font-size: 14px; pointer-events: none;
+}
+
+/* فاصل */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0;
+  color: var(--text2); font-size: 11px; font-weight: 700;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+
+/* زر */
+.btn-go {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--green), #059669);
+  border: none; border-radius: 13px;
+  color: #fff; font-family: var(--font);
+  font-size: 15px; font-weight: 800;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: all 0.3s;
+  box-shadow: 0 6px 20px rgba(16,185,129,0.35);
+  margin-top: 8px;
+}
+.btn-go:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(16,185,129,0.45); }
+.btn-go:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* باقات Trial */
+.plan-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 11px; font-weight: 700;
+  color: var(--green); margin-bottom: 20px;
+}
+
+/* رابط تسجيل الدخول */
+.login-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--text2);
+}
+.login-link a {
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+.login-link a:hover { text-decoration: underline; }
+
+/* خطوات */
+.steps {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; margin-bottom: 24px;
+}
+.step {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.step-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800;
+  background: var(--surface2);
+  border: 2px solid var(--border2);
+  color: var(--text2);
+  transition: all 0.3s;
+}
+.step.active .step-dot {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.step.done .step-dot {
+  background: rgba(16,185,129,0.2);
+  border-color: var(--green);
+  color: var(--green);
+}
+.step-label { font-size: 9px; color: var(--text2); }
+.step-line { width: 30px; height: 2px; background: var(--border); margin-top: -14px; }
+.step.done + .step-line { background: var(--green); }
+
+/* رسالة نجاح */
+.success-box {
+  display: none;
+  text-align: center; padding: 30px 20px;
+}
+.success-box .check-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(16,185,129,0.15);
+  border: 2px solid var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: var(--green);
+  margin: 0 auto 16px;
+  animation: pop-in 0.5s cubic-bezier(0.34,1.4,0.64,1);
+}
+@keyframes pop-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.success-box h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+.success-box p  { font-size: 13px; color: var(--text2); line-height: 1.7; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 12px 20px;
+  font-size: 13px; font-weight: 600;
+  opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok { border-color: rgba(16,185,129,0.4); color: var(--green); }
+.toast.err { border-color: rgba(248,113,113,0.4); color: var(--error); }
+  </style>
+</head>
+<body>
+<div class="bg-orb orb-1"></div>
+<div class="bg-orb orb-2"></div>
+
+<div class="card">
+  <div class="glow-bar"></div>
+
+  <!-- لوجو -->
+  <div class="logo-box">
+    <div class="brand-wordmark">
+      <span class="letter-x">X</span>
+      <span>IREP</span>
+      <span style="color:#8fa8c8;">O</span>
+    </div>
+    <div class="brand-tagline">New Company Registration</div>
+  </div>
+
+  <!-- الفورم الرئيسي -->
+  <div id="registerForm">
+    <div class="section-header">
+      <h2><i class="fas fa-building" style="color:#10b981; margin-left:8px;"></i>تسجيل شركة جديدة</h2>
+      <p>سيتم إنشاء حسابك وفرعك الرئيسي تلقائياً<br>مع فترة تجريبية مجانية 7 أيام</p>
+    </div>
+
+    <div style="text-align:center; margin-bottom:20px;">
+      <span class="plan-badge">
+        <i class="fas fa-gift"></i> تجريبي مجاني 7 أيام · لا يلزم بطاقة ائتمان
+      </span>
+    </div>
+
+    <!-- اسم الشركة -->
+    <div class="field">
+      <label><i class="fas fa-building" style="margin-left:5px; color:#10b981;"></i>اسم الشركة</label>
+      <div class="inp-wrap">
+        <input type="text" id="companyName" placeholder="مثال: شركة الأمل للتحويلات">
+        <i class="fas fa-building ico"></i>
+      </div>
+    </div>
+
+    <div class="divider">بيانات المدير</div>
+
+    <!-- اسم المدير -->
+    <div class="field">
+      <label><i class="fas fa-user" style="margin-left:5px; color:#3b82f6;"></i>الاسم الكامل</label>
+      <div class="inp-wrap">
+        <input type="text" id="ownerName" placeholder="اسم المدير المسؤول">
+        <i class="fas fa-user ico"></i>
+      </div>
+    </div>
+
+    <!-- الإيميل -->
+    <div class="field">
+      <label><i class="fas fa-envelope" style="margin-left:5px; color:#3b82f6;"></i>البريد الإلكتروني</label>
+      <div class="inp-wrap">
+        <input type="email" id="ownerEmail" placeholder="owner@company.com">
+        <i class="fas fa-envelope ico"></i>
+      </div>
+    </div>
+
+    <!-- كلمة المرور -->
+    <div class="field">
+      <label><i class="fas fa-lock" style="margin-left:5px; color:#3b82f6;"></i>كلمة المرور</label>
+      <div class="inp-wrap">
+        <input type="password" id="ownerPassword" placeholder="8 أحرف على الأقل">
+        <i class="fas fa-lock ico"></i>
+        <button type="button" onclick="toggleEye('ownerPassword', this)"
+          style="position:absolute;top:50%;left:10px;transform:translateY(-50%);background:none;border:none;color:#8fa8c8;cursor:pointer;">
+          <i class="fas fa-eye"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- تأكيد كلمة المرور -->
+    <div class="field">
+      <label><i class="fas fa-lock" style="margin-left:5px; color:#3b82f6;"></i>تأكيد كلمة المرور</label>
+      <div class="inp-wrap">
+        <input type="password" id="ownerPasswordConfirm" placeholder="أعد كتابة كلمة المرور">
+        <i class="fas fa-lock ico"></i>
+      </div>
+    </div>
+
+    <button class="btn-go" id="btnRegister" onclick="registerCompany()">
+      <i class="fas fa-rocket" style="margin-left:8px;"></i>إنشاء الشركة والبدء
+    </button>
+  </div>
+
+  <!-- رسالة النجاح -->
+  <div class="success-box" id="successBox">
+    <div class="check-icon"><i class="fas fa-check"></i></div>
+    <h3>🎉 تم إنشاء شركتك بنجاح!</h3>
+    <p>
+      تم إنشاء حسابك وفرعك الرئيسي.<br>
+      <strong style="color:#10b981;">فترة تجريبية: 7 أيام مجانية</strong><br><br>
+      يتم تحويلك للنظام...
+    </p>
+  </div>
+
+  <div class="login-link">
+    لديك حساب بالفعل؟ <a href="login.html">تسجيل الدخول</a>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function toggleEye(id, btn) {
+  const inp = document.getElementById(id);
+  const ico = btn.querySelector('i');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  ico.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.innerHTML = `<i class="fas fa-${ok ? 'check-circle' : 'circle-exclamation'}"></i> ${msg}`;
+  el.className = `toast ${ok ? 'ok' : 'err'} show`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+async function registerCompany() {
+  const companyName = document.getElementById('companyName').value.trim();
+  const ownerName   = document.getElementById('ownerName').value.trim();
+  const email       = document.getElementById('ownerEmail').value.trim();
+  const pass        = document.getElementById('ownerPassword').value;
+  const passConf    = document.getElementById('ownerPasswordConfirm').value;
+
+  // validation
+  if (!companyName)        return toast('يرجى إدخال اسم الشركة', false);
+  if (!ownerName)          return toast('يرجى إدخال اسم المدير', false);
+  if (!email)              return toast('يرجى إدخال البريد الإلكتروني', false);
+  if (pass.length < 8)    return toast('كلمة المرور 8 أحرف على الأقل', false);
+  if (pass !== passConf)  return toast('كلمتا المرور غير متطابقتين', false);
+
+  const btn = document.getElementById('btnRegister');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-left:8px;"></i>جاري الإنشاء...';
+
+  try {
+    // 1. إنشاء المستخدم في Supabase Auth
+    const { data: authData, error: authErr } = await window.supa.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { name: ownerName } }
+    });
+
+    if (authErr) throw new Error(authErr.message);
+
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('فشل إنشاء المستخدم');
+
+    // 2. استدعاء الدالة create_company_with_owner في Supabase
+    const { data, error: fnErr } = await window.supa.rpc('create_company_with_owner', {
+      p_company_name: companyName,
+      p_user_id:      userId,
+      p_user_email:   email,
+      p_user_name:    ownerName
+    });
+
+    if (fnErr) throw new Error(fnErr.message);
+
+    // 3. تسجيل الدخول تلقائياً
+    await window.supa.auth.signInWithPassword({ email, password: pass });
+
+    // 4. إظهار رسالة النجاح
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('successBox').style.display = 'block';
+
+    setTimeout(() => window.location.href = 'index.html', 2500);
+
+  } catch (err) {
+    console.error(err);
+    toast('خطأ: ' + err.message, false);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-rocket" style="margin-left:8px;"></i>إنشاء الشركة والبدء';
+  }
+}
+
+// Enter key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') registerCompany();
+});
+
+// لو مسجّل دخول يتحول للنظام
+window.supa?.auth.getUser().then(({ data: { user } }) => {
+  if (user) window.location.replace('index.html');
+});
+</script>
+</body>
+</html>
