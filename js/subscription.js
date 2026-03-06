@@ -214,7 +214,7 @@ async function loadSubscriptionPage() {
     if (!section) return;
 
     const u = window.currentUserData;
-    // يظهر لكل المستخدمين — بس فيه بيانات حسب الشركة
+    if (!u?.isMaster && !u?.is_owner) return; // فقط للـ owner
     section.style.display = 'block';
 
     const sub = await getSubscription(true);
@@ -280,27 +280,50 @@ async function loadSubscriptionPage() {
             { label: 'عمليات/شهر',key: 'max_transactions',fmt: p => p.max_transactions >= 999999 ? '∞' : p.max_transactions?.toLocaleString('ar-EG') },
             { label: 'المدة',     key: null,               fmt: p => p.duration_days ? p.duration_days + ' يوم' : '—' },
         ];
+        const planOrder2 = ['FREE','PRO','ENTERPRISE'];
+        const currentIdx  = planOrder2.indexOf(sub.plan_code);
+
         tbody.innerHTML = rows.map(row => {
             const isCurrent = (plan) => plan.code === sub.plan_code;
             return '<tr>' +
-                '<td style="padding:9px 14px;font-size:12px;color:var(--text-muted);">' + row.label + '</td>' +
+                '<td style="padding:9px 14px;font-size:12px;color:var(--text-muted,#94a3b8);">' + row.label + '</td>' +
                 sortedPlans.map(p =>
                     '<td style="padding:9px;text-align:center;font-size:12px;font-weight:' + (isCurrent(p)?'800':'500') + ';'
-                    + (isCurrent(p)?'background:rgba(59,130,246,.07);color:#3b82f6;':'') + '">'
-                    + row.fmt(p) + (isCurrent(p)?' <i class="fa fa-check-circle text-primary" style="font-size:10px;"></i>':'')
+                    + (isCurrent(p)?'background:rgba(59,130,246,.08);color:#3b82f6;':'') + '">'
+                    + row.fmt(p) + (isCurrent(p)?' <i class="fa fa-check-circle" style="color:#3b82f6;font-size:10px;"></i>':'')
                     + '</td>'
                 ).join('') + '</tr>';
         }).join('');
+
+        // ── صف أزرار الدفع ──
+        const planColors = { FREE:'#64748b', PRO:'#3b82f6', ENTERPRISE:'#8b5cf6' };
+        const btnRow = '<tr style="background:rgba(255,255,255,.03);">' +
+            '<td style="padding:10px 14px;font-size:12px;color:var(--text-muted,#94a3b8);">الاشتراك</td>' +
+            sortedPlans.map(p => {
+                const pIdx = planOrder2.indexOf(p.code);
+                if (isCurrent(p)) {
+                    return '<td style="padding:8px;text-align:center;">' +
+                        '<span style="display:inline-block;padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(34,197,94,.12);color:#22c55e;">خطتك الحالية ✓</span>' +
+                        '</td>';
+                }
+                if (p.code === 'FREE' || pIdx < currentIdx) {
+                    return '<td style="padding:8px;text-align:center;">' +
+                        '<span style="font-size:11px;color:var(--text-muted,#64748b);">—</span>' +
+                        '</td>';
+                }
+                const price = p.price ? p.price.toLocaleString('ar-EG') + ' ج.م' : 'مجاناً';
+                return '<td style="padding:8px;text-align:center;">' +
+                    '<button onclick="initiateKashierPayment(\'' + p.code + '\')" ' +
+                    'style="background:' + (planColors[p.code]||'#3b82f6') + ';color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;width:100%;">' +
+                    '<i class="fa fa-credit-card" style="margin-left:4px;"></i>' + price + '/سنة' +
+                    '</button>' +
+                    '</td>';
+            }).join('') + '</tr>';
+
+        tbody.innerHTML += btnRow;
     }
 
-    // ── طلب ترقية معلّق؟ ──
-    const { data: pending } = await window.supa
-        .from('upgrade_requests')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('status', 'pending')
-        .maybeSingle();
-
+    // ── طلب ترقية معلّق (موروث) ── مش بنستخدمه بعد كده مع Kashier
     const pendingAlert = document.getElementById('pendingUpgradeAlert');
     const requestForm  = document.getElementById('upgradeRequestForm');
     if (pending) {
@@ -314,7 +337,7 @@ async function loadSubscriptionPage() {
         if (requestForm) requestForm.style.display = 'none';
     } else {
         if (pendingAlert) pendingAlert.style.display = 'none';
-        if (requestForm) requestForm.style.display = 'block';
+        if (requestForm) requestForm.style.display = 'none'; // الدفع عبر أزرار جدول الخطط
         // إخفاء الخطط الأقل من الحالية في select
         const sel = document.getElementById('requestedPlan');
         if (sel) {
