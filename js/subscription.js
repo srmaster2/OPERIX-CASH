@@ -214,7 +214,7 @@ async function loadSubscriptionPage() {
     if (!section) return;
 
     const u = window.currentUserData;
-    if (!u?.isMaster && !u?.is_owner) return; // فقط للـ owner
+    // يظهر لكل المستخدمين
     section.style.display = 'block';
 
     const sub = await getSubscription(true);
@@ -323,32 +323,11 @@ async function loadSubscriptionPage() {
         tbody.innerHTML += btnRow;
     }
 
-    // ── طلب ترقية معلّق (موروث) ── مش بنستخدمه بعد كده مع Kashier
+    // ── إخفاء فورم الطلب القديم — الدفع عبر أزرار الجدول ──
     const pendingAlert = document.getElementById('pendingUpgradeAlert');
     const requestForm  = document.getElementById('upgradeRequestForm');
-    if (pending) {
-        if (pendingAlert) {
-            pendingAlert.style.display = 'flex';
-            const msg = document.getElementById('pendingUpgradeMsg');
-            if (msg) msg.textContent = 'طلب ترقية إلى ' + pending.requested_plan + ' — بتاريخ ' +
-                new Date(pending.created_at).toLocaleDateString('ar-EG');
-            pendingAlert.dataset.reqId = pending.id;
-        }
-        if (requestForm) requestForm.style.display = 'none';
-    } else {
-        if (pendingAlert) pendingAlert.style.display = 'none';
-        if (requestForm) requestForm.style.display = 'none'; // الدفع عبر أزرار جدول الخطط
-        // إخفاء الخطط الأقل من الحالية في select
-        const sel = document.getElementById('requestedPlan');
-        if (sel) {
-            const order = ['FREE','PRO','ENTERPRISE'];
-            const idx   = order.indexOf(sub.plan_code);
-            Array.from(sel.options).forEach(opt => {
-                if (opt.value && order.indexOf(opt.value) <= idx)
-                    opt.style.display = 'none';
-            });
-        }
-    }
+    if (pendingAlert) pendingAlert.style.display = 'none';
+    if (requestForm)  requestForm.style.display  = 'none';
 }
 
 // ════════════════════════════════════════════════════════════
