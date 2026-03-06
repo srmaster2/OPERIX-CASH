@@ -94,7 +94,7 @@ async function initiateKashierPayment(planCode) {
         .from('plans').select('*').eq('code', planCode).maybeSingle();
     if (planErr || !plan) return showToast('خطأ: الخطة غير موجودة', false);
 
-    const orderId = `ORX-${u.company_id.slice(0,8)}-${Date.now()}`;
+    const orderId = `ORX-${Date.now()}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
     const amount  = plan.price;
     if (!amount || amount <= 0) return showToast('هذه الخطة مجانية', false);
 
