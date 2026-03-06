@@ -63,13 +63,12 @@ async function buildKashierURL({ orderId, amount, planCode, customerEmail, custo
     const hash = await generateKashierHash(orderId, amount);
     const params = new URLSearchParams({
         merchantId:       KASHIER_CONFIG.mid,
-        mid:              KASHIER_CONFIG.mid,
         orderId:          orderId,
         amount:           String(amount),
         currency:         KASHIER_CONFIG.currency,
         hash:             hash,
-        merchantRedirect: encodeURIComponent(`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`),
-        failureRedirect:  encodeURIComponent(`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&status=failed`),
+        merchantRedirect: `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`,
+        failureRedirect:  `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`,
         webhook:          `${KASHIER_CONFIG.supabaseUrl}/functions/v1/super-api`,
         merchantOrderId:  orderId,
         allowedMethods:   'card,wallet',
