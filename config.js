@@ -5,7 +5,7 @@
 if (!window.CONFIG) {
   window.CONFIG = {
     SUPABASE_URL: 'https://hgzyjfsbqxqwzbdtuekh.supabase.co',
-    SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenlqZnNicXhxd3piZHR1ZWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzI4NDAsImV4cCI6MjA4NTAwODg0MH0.eR8p2SM66S8TSKjSMNzNG8Ip2B5kZYLXWoOBYKMTRCQ',
+    SUPABASE_KEY: 'sb_publishable_cYK-ahWLrRzvrf_OC9K8DQ_aWlzObD5',
     MASTER_EMAIL: 'srmaster2@gmail.com',
     TABLES: {
       accounts: 'accounts',
