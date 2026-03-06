@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نتيجة الدفع — Operix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 48px 40px;
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 25px 60px rgba(0,0,0,.4);
+  }
+  .icon-wrap {
+    width: 88px; height: 88px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 36px;
+  }
+  .icon-success { background: rgba(34,197,94,.15); color: #22c55e; }
+  .icon-fail    { background: rgba(239,68,68,.15);  color: #ef4444; }
+  .icon-loading { background: rgba(59,130,246,.15); color: #3b82f6; }
+  h2 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+  .sub { color: #94a3b8; font-size: 14px; line-height: 1.7; margin-bottom: 28px; }
+  .detail-box {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: right;
+    margin-bottom: 24px;
+  }
+  .detail-row {
+    display: flex; justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-row .lbl { color: #94a3b8; }
+  .detail-row .val { font-weight: 700; }
+  .btn-back {
+    display: block; width: 100%;
+    padding: 13px;
+    border-radius: 12px;
+    border: none; cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 14px; font-weight: 700;
+    transition: opacity .2s;
+    text-decoration: none;
+  }
+  .btn-back:hover { opacity: .85; }
+  .btn-success { background: #22c55e; color: #fff; }
+  .btn-fail    { background: #ef4444; color: #fff; }
+  .btn-retry   { background: #3b82f6; color: #fff; margin-top: 10px; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .plan-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px; font-weight: 800;
+    margin-bottom: 16px;
+  }
+  .badge-pro        { background: rgba(59,130,246,.2);  color: #3b82f6; }
+  .badge-enterprise { background: rgba(139,92,246,.2);  color: #8b5cf6; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="icon-wrap icon-loading" id="iconWrap">
+    <i class="fa fa-circle-notch spin" id="iconEl"></i>
+  </div>
+  <h2 id="title">جاري التحقق من الدفع...</h2>
+  <p class="sub" id="subtitle">لحظة من فضلك</p>
+  <div id="detailBox" style="display:none;"></div>
+  <div id="actions"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/payment.js"></script>
+<script>
+const supa = window.supabase.createClient(window._SUPABASE_URL, window._SUPABASE_ANON_KEY);
+
+const planNames = { FREE:'مجانية', PRO:'Pro', ENTERPRISE:'Enterprise' };
+const planBadge = { PRO:'badge-pro', ENTERPRISE:'badge-enterprise' };
+
+async function init() {
+    const params  = new URLSearchParams(window.location.search);
+    const orderId = params.get('orderId') || params.get('merchantOrderId');
+    const plan    = params.get('plan');
+    const txId    = params.get('transactionId');
+
+    const iconWrap = document.getElementById('iconWrap');
+    const iconEl   = document.getElementById('iconEl');
+    const title    = document.getElementById('title');
+    const subtitle = document.getElementById('subtitle');
+    const detailBox= document.getElementById('detailBox');
+    const actions  = document.getElementById('actions');
+
+    // استخدم handlePaymentSuccess من payment.js للتحقق وتحديث الاشتراك
+    let result;
+    try {
+        result = await handlePaymentSuccess(supa);
+    } catch(e) {
+        console.error(e);
+        result = { ok: false, reason: 'error' };
+    }
+
+    if (result.ok) {
+        iconWrap.className   = 'icon-wrap icon-success';
+        iconEl.className     = 'fa fa-check-circle';
+        title.textContent    = 'تم الدفع بنجاح! 🎉';
+        subtitle.textContent = 'تم تفعيل اشتراكك. يمكنك الآن الاستمتاع بكل مميزات الخطة الجديدة.';
+
+        if (plan || result.planCode) {
+            const p = plan || result.planCode;
+            detailBox.style.display = 'block';
+            detailBox.innerHTML =
+                '<span class="plan-badge ' + (planBadge[p]||'badge-pro') + '">خطة ' + (planNames[p]||p) + '</span>' +
+                '<div class="detail-row"><span class="lbl">رقم الطلب</span><span class="val" style="font-size:11px;">' + (orderId||'—') + '</span></div>' +
+                (txId ? '<div class="detail-row"><span class="lbl">رقم المعاملة</span><span class="val" style="font-size:11px;">' + txId + '</span></div>' : '') +
+                '<div class="detail-row"><span class="lbl">الحالة</span><span class="val" style="color:#22c55e;">✅ مدفوع</span></div>';
+        }
+
+        actions.innerHTML = '<a href="index.html" class="btn-back btn-success"><i class="fa fa-home"></i> العودة للتطبيق</a>';
+
+    } else {
+        iconWrap.className   = 'icon-wrap icon-fail';
+        iconEl.className     = 'fa fa-times-circle';
+        title.textContent    = 'فشل عملية الدفع';
+        subtitle.textContent = 'لم تتم عملية الدفع. لم يتم خصم أي مبلغ من حسابك.';
+        actions.innerHTML    = '<a href="index.html" class="btn-back btn-fail"><i class="fa fa-arrow-right"></i> العودة وإعادة المحاولة</a>';
+    }
+}
+
+init().catch(console.error);
+</script>
+</body>
+</html>
