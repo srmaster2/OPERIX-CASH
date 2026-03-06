@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
     var _txInitAttempts = 0;
     var _txInitTimer = setInterval(function() {
         _txInitAttempts++;
-        // ننتظر supa + currentUserData مع company_id
         if (window.supa && window.currentUserData?.company_id) {
             clearInterval(_txInitTimer);
             setupLiveLogs();
@@ -307,7 +306,7 @@ async function renderPinnedWallets() {
 
     try {
         const user = window.currentUserData;
-        if (!user?.company_id) { isRenderingPins = false; return; }
+        if (!user?.company_id) return;
         let pinQuery = _supa()
             .from('accounts')
             .select('id, name, balance, is_pinned, tag, color, daily_out_limit, daily_in_limit, monthly_limit, daily_out_usage, daily_in_usage, monthly_usage_out, monthly_usage_in')
@@ -1428,10 +1427,11 @@ async function calculateStats() {
 }
 
 window.addEventListener('DOMContentLoaded', function() {
-    if (typeof applyTheme         === "function") applyTheme();
+    if (typeof applyTheme    === "function") applyTheme();
+    if (typeof checkUserRole === "function") checkUserRole();
     if (typeof toggleClientField  === "function") toggleClientField();
     if (typeof renderWalletsCards === "function") renderWalletsCards();
-    // loadDash + checkUserRole بيتشغلوا من initApp بعد تحميل currentUserData
+    // loadDash يتشغل من initApp بعد currentUserData — لا تشغّله هنا
 });
 
 // ============================================================

@@ -25,7 +25,7 @@ async function loadCurrentUserWithBranch() {
         const { data } = await window.supa
             .from('users')
             .select('*, branches(name, location), companies(name, is_active)')
-            .eq('id', user.id)
+            .eq('email', user.email)
             .maybeSingle();
 
         if (data) {
@@ -35,15 +35,12 @@ async function loadCurrentUserWithBranch() {
                 ...data,
                 email:      user.email,
                 isMaster,
+                // مدير فرع = ADMIN + مش master + عنده branch_id
                 isAdmin:    !isMaster && role === 'ADMIN' && !!data.branch_id,
+                // موظف = USER أو ADMIN بدون branch_id
                 isUser:     !isMaster && role === 'USER',
-                branchName: data.branches?.name   || '',
-                companyName: data.companies?.name || ''
+                branchName: data.branches?.name || ''
             };
-        } else {
-            // المستخدم موجود في auth بس مش في public.users بعد
-            console.warn('User not found in public.users:', user.id);
-            return null;
         }
         return window.currentUserData;
     } catch (e) {
@@ -75,8 +72,10 @@ function renderCurrentBranchBadge() {
 // 3. فلتر الفرع التلقائي على أي Supabase query
 // ══════════════════════════════════════════════════════════
 function applyBranchFilter(query, user) {
-    // مدير عام → بلا فلتر
-    if (!user || user.isMaster) return query;
+    // دايماً فلتر company_id أولاً
+    if (user?.company_id) query = query.eq('company_id', user.company_id);
+    // مدير عام → شركته كلها
+    if (!user || user.isMaster || user.is_owner) return query;
     // مدير فرع أو موظف → فرعهم فقط
     if (user.branch_id) return query.eq('branch_id', user.branch_id);
     // مش معينله فرع → لا يشوف أي بيانات

@@ -1,26 +1,22 @@
 /* ================================================================
    stock.js — SADEK CASH
    ================================================================ */
-'use strict';
+
+   'use strict';
 
 /* ══ TAB NAVIGATION ══════════════════════════════════════════ */
 function switchStockTab(tabId) {
-  // Hide all screens
   document.querySelectorAll('#view-stock .stk-screen').forEach(s => {
     s.style.display = 'none';
     s.classList.remove('active');
   });
-  // Remove active from all nav tabs
   document.querySelectorAll('.stk-tab').forEach(t => t.classList.remove('active'));
-  // Show target screen
   const target = document.getElementById(tabId);
   if (target) { target.style.display = 'block'; target.classList.add('active'); }
-  // Map tabId → nav tab index
   const tabMap = { stockView: 0, invoiceView: 1, invoicesListView: 2 };
   const idx = tabMap[tabId];
   const navTabs = document.querySelectorAll('.stk-tab');
   if (idx !== undefined && navTabs[idx]) navTabs[idx].classList.add('active');
-  // Load invoices list when switching to that tab
   if (tabId === 'invoicesListView') loadInvoicesList();
 }
 window.switchStockTab = switchStockTab;
@@ -35,13 +31,25 @@ const _now = () => {
   return { date: d.toLocaleDateString('en-GB'), time: d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) };
 };
 
+
+async function _waitReady() {
+  let t=0; while(!window.supa&&t<30){await new Promise(r=>setTimeout(r,200));t++;}
+  if(!window.supa) throw new Error('Supabase غير جاهز');
+  t=0; while(!window.currentUserData?.company_id&&t<20){await new Promise(r=>setTimeout(r,200));t++;}
+}
 let stockProducts = [];
 let stockCategory = 'all';
 let stockSearch   = '';
 let invoiceItems  = [];
 let allInvoices   = [];
+let allClients    = [];   // for ajel
 
-const CAT_LABEL = { mobile:'موبايل', accessory:'اكسسوار', tablet:'تابلت/لابتوب', spare:'قطع غيار' };
+const CAT_LABEL = { mobile:'موبايل', accessory:'اكسسوار', tablet:'تابلت/لابتوب', spare:'قطع غيار',all: 'الكل',
+  mobile: 'هواتف',
+  accessory: 'إكسسوارات',
+  tablet: 'تابلت',
+  spare: 'قطع غيار'
+ };
 const CAT_ICON  = { mobile:'fa-mobile-screen', accessory:'fa-headphones', tablet:'fa-tablet-screen-button', spare:'fa-screwdriver-wrench' };
 const CAT_BG    = { mobile:'rgba(59,130,246,0.12)', accessory:'rgba(139,92,246,0.12)', tablet:'rgba(6,182,212,0.12)', spare:'rgba(245,158,11,0.12)' };
 const CAT_CLR   = { mobile:'#3b82f6', accessory:'#8b5cf6', tablet:'#06b6d4', spare:'#f59e0b' };
@@ -50,82 +58,138 @@ const CAT_CLR   = { mobile:'#3b82f6', accessory:'#8b5cf6', tablet:'#06b6d4', spa
 async function loadStock() {
   const grid = document.getElementById('stockGrid');
   if (!grid) return;
-  grid.innerHTML = `<div class="empty-state"><div class="spinner-border text-primary mb-2" style="width:2rem;height:2rem;"></div><p>جاري التحميل...</p></div>`;
+
+  grid.innerHTML = `<div class="empty-state"><div class="spinner-border text-primary"></div><p class="mt-2">جاري جلب المنتجات...</p></div>`;
+
   try {
-    if (!window.supa) throw new Error('Supabase غير جاهز');
-    const user = _usr();
-    let q = _db().from('products').select('*').order('created_at',{ascending:false});
-    if (!user.isMaster && user.branch_id)  q = q.eq('branch_id', user.branch_id);
-    if (!user.isMaster && user.company_id) q = q.eq('company_id', user.company_id);
+    // 1. التأكد من اتصال السيرفر
+    if (!window.supa) {
+        let t = 0; while(!window.supa && t<20){ await new Promise(r=>setTimeout(r,200)); t++; }
+    }
+
+    const user = window.currentUserData || {};
+    console.log("Current User for Filtering:", user); // للـ Debugging
+
+    // 2. بناء الاستعلام
+    let q = window.supa.from('products').select('*');
+
+    // 3. الفلترة الذكية
+    if (!user.isMaster) {
+      // إذا كان مستخدم عادي، سنحاول جلب منتجات فرعه أو المنتجات العامة (NULL)
+      // ملاحظة: لدعم الـ OR في Supabase نستخدم فلتر .or
+      if (user.branch_id) {
+         q = q.or(`branch_id.eq.${user.branch_id},branch_id.is.null`);
+      }
+      
+      if (user.company_id) {
+         q = q.eq('company_id', user.company_id);
+      }
+    }
+
+    // ترتيب المضاف حديثاً أولاً
+    q = q.order('created_at', { ascending: false });
+
     const { data, error } = await q;
     if (error) throw error;
-    stockProducts = data || [];
-    _renderStats();
-    _renderGrid();
+
+    console.log(`Loaded ${data?.length || 0} products`); // لعرض عدد المنتجات في الـ Console
+
+    stockProducts        = data || [];   // متغير محلي
+    window.stockProducts = stockProducts; // متغير عالمي — لازم متزامنين
+
+    _renderStats();  // تحديث العدادات
+    _renderGrid();   // رسم الكروت
+
   } catch (err) {
-    grid.innerHTML = `<div class="empty-state">
-      <i class="fa fa-triangle-exclamation" style="color:#ef4444;"></i>
-      <p>خطأ: ${_esc(err.message)}</p>
-      <button class="btn btn-ghost btn-sm mt-2" onclick="loadStock()"><i class="fa fa-rotate-right"></i> إعادة المحاولة</button>
-    </div>`;
+    console.error('Final Load Error:', err);
+    grid.innerHTML = `<div class="empty-state text-danger"><p>حدث خطأ: ${err.message}</p></div>`;
   }
 }
-
 function _renderStats() {
-  const c = { mobile:0, accessory:0, tablet:0, spare:0 };
-  stockProducts.forEach(p => { if (c[p.category] !== undefined) c[p.category]++; });
-  ['mobile','accessory','tablet','spare'].forEach(cat => {
-    const key = 'stat' + cat[0].toUpperCase() + cat.slice(1);
-    const el  = document.getElementById(key); if (el) el.textContent = c[cat];
-  });
-  const counts = { all: stockProducts.length, ...c };
-  ['all','mobile','accessory','tablet','spare'].forEach(k => {
-    const el = document.getElementById('cnt' + k[0].toUpperCase() + k.slice(1)); if (el) el.textContent = counts[k];
-  });
-  const sub = document.getElementById('stockSubTitle');
-  if (sub) sub.textContent = `إجمالي ${stockProducts.length} منتج في الفرع الحالي`;
-}
+  const products = window.stockProducts || [];
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
 
+  // عداد لكل قسم
+  const cnt = { mobile:0, accessory:0, tablet:0, spare:0 };
+  products.forEach(p => { if (cnt[p.category] !== undefined) cnt[p.category]++; });
+
+  // الكروت الكبيرة (statMobile etc.)
+  s('statMobile',    cnt.mobile);
+  s('statAccessory', cnt.accessory);
+  s('statTablet',    cnt.tablet);
+  s('statSpare',     cnt.spare);
+
+  // الأرقام في تابات الفلتر (cntAll etc.)
+  s('cntAll',       products.length);
+  s('cntMobile',    cnt.mobile);
+  s('cntAccessory', cnt.accessory);
+  s('cntTablet',    cnt.tablet);
+  s('cntSpare',     cnt.spare);
+
+  // العنوان الفرعي
+  s('stockSubTitle', `إجمالي ${products.length} منتج`);
+}
 function _renderGrid() {
-  const grid = document.getElementById('stockGrid'); if (!grid) return;
-  let list = stockProducts;
-  if (stockCategory !== 'all') list = list.filter(p => p.category === stockCategory);
-  if (stockSearch.trim()) {
+  const grid = document.getElementById('stockGrid');
+  if (!grid) return;
+
+  // تأكد من استخدام المصفوفة العالمية
+  let list = window.stockProducts || [];
+
+  // 1. الفلترة حسب القسم
+  if (stockCategory !== 'all') {
+    list = list.filter(p => p.category === stockCategory);
+  }
+
+  // 2. الفلترة حسب البحث
+  if (stockSearch && stockSearch.trim()) {
     const q = stockSearch.trim().toLowerCase();
     list = list.filter(p =>
-      (p.name||'').toLowerCase().includes(q) ||
-      (p.brand||'').toLowerCase().includes(q) ||
-      (p.model||'').toLowerCase().includes(q)
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.brand || '').toLowerCase().includes(q) ||
+      (p.model || '').toLowerCase().includes(q)
     );
   }
+
+  // 3. لو مفيش بيانات
   if (!list.length) {
-    grid.innerHTML = `<div class="empty-state"><i class="fa fa-box-open"></i><p>لا توجد منتجات</p></div>`;
+    grid.innerHTML = `
+      <div class="empty-state">
+        <i class="fa fa-box-open" style="font-size:3rem; color:#ccc; margin-bottom:1rem;"></i>
+        <p>لا توجد منتجات حالياً</p>
+      </div>`;
     return;
   }
+
+  // 4. الرسم
   grid.innerHTML = list.map(p => {
     const cat  = p.category || 'mobile';
     const qCls = p.quantity <= 0 ? 'out' : p.quantity <= 2 ? 'low' : 'ok';
-    const qTxt = p.quantity <= 0 ? '0 قطع' : p.quantity === 1 ? '1 قطعة' : `${p.quantity} قطع`;
+    const qTxt = p.quantity <= 0 ? 'نفذت' : p.quantity === 1 ? 'قطعة واحدة' : `${p.quantity} قطع`;
+    
+    // استخدام الرموز من القاموس مع حماية لو مش موجودة
+    const icon = CAT_ICON[cat] || 'fa-box';
+    const label = CAT_LABEL[cat] || cat;
+
     return `
-    <div class="product-card ${_esc(cat)}">
-      <div class="cat-badge ${_esc(cat)}"><i class="fa ${_esc(CAT_ICON[cat]||'fa-box')}"></i> ${_esc(CAT_LABEL[cat]||cat)}</div>
-      <div class="p-name">${_esc(p.name)}</div>
-      <div class="p-brand">${_esc([p.brand, p.model].filter(Boolean).join(' — ') || '—')}</div>
-      <div class="p-footer">
-        <div class="p-price english-num">${_fmt(p.sell_price)} ج.م</div>
-        <div class="p-qty ${qCls}">${_esc(qTxt)}</div>
-      </div>
-      <div class="p-actions">
-        ${p.quantity > 0
-          ? `<button class="btn btn-primary btn-sm" style="flex:1;" onclick="openNewInvoice(${p.id})"><i class="fa fa-file-invoice"></i> بيع</button>`
-          : `<button class="btn btn-ghost btn-sm" style="flex:1;" onclick="openSupplyModal(${p.id})"><i class="fa fa-plus"></i> إعادة تعبئة</button>`}
-        <button class="btn btn-ghost btn-sm" onclick="openEditProduct(${p.id})"><i class="fa fa-pen"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})"><i class="fa fa-trash"></i></button>
-      </div>
-    </div>`;
+      <div class="product-card ${_esc(cat)}">
+        <div class="cat-badge ${_esc(cat)}"><i class="fa ${icon}"></i> ${_esc(label)}</div>
+        <div class="p-name">${_esc(p.name)}</div>
+        <div class="p-brand">${_esc([p.brand, p.model].filter(Boolean).join(' — ') || '—')}</div>
+        <div class="p-footer">
+          <div class="p-price english-num">${_fmt(p.sell_price)} ج.م</div>
+          <div class="p-qty ${qCls}">${_esc(qTxt)}</div>
+        </div>
+        <div class="p-actions">
+          ${p.quantity > 0
+            ? `<button class="btn btn-primary btn-sm" style="flex:1;" onclick="openNewInvoice(${p.id})"><i class="fa fa-file-invoice"></i> بيع</button>`
+            : `<button class="btn btn-ghost btn-sm" style="flex:1;" onclick="showToast('الكمية غير كافية', false)"><i class="fa fa-minus-circle"></i> نفذ</button>`}
+          <button class="btn btn-ghost btn-sm" onclick="openEditProduct(${p.id})"><i class="fa fa-pen"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})"><i class="fa fa-trash"></i></button>
+        </div>
+      </div>`;
   }).join('');
 }
-
 function setStockCategory(cat, btn) {
   stockCategory = cat;
   document.querySelectorAll('#view-stock .cat-tab').forEach(b => b.classList.remove('active'));
@@ -255,25 +319,31 @@ window.openNewInvoice = function(productId) {
   if (productId) { const p = stockProducts.find(x => x.id === productId); if (p) addInvoiceItem(p); }
   _renderInvoiceItems();
   filterInvoiceProducts('');
+  _setAjelSection(false);
   const s = document.getElementById('invProductSearch'); if (s) s.value = '';
 };
 
-function closeInvoiceView() {
-  switchStockTab('stockView');
-}
+function closeInvoiceView() { switchStockTab('stockView'); }
 
 function addInvoiceItem(product) {
   if (!product) return;
-  const exists = invoiceItems.find(i => i.product.id === product.id);
-  if (exists) {
-    if (exists.qty < (product.quantity||99)) exists.qty++;
+  const existing = invoiceItems.find(i => i.product.id === product.id);
+  if (existing) {
+    if (existing.qty < (product.quantity || 99)) { existing.qty++; }
     else { showToast('لا يوجد مخزون كافٍ', false); return; }
   } else {
-    invoiceItems.push({ product, qty:1, unit_price: product.sell_price });
+    invoiceItems.push({ product, qty: 1, unit_price: product.sell_price || 0 });
   }
   _renderInvoiceItems();
 }
-
+function addInvoiceItemById(id) {
+  const product = (window.stockProducts || stockProducts).find(p => p.id == id);
+  if (!product) return;
+  addInvoiceItem(product);
+  // أعد رسم قائمة المنتجات مع الكميات المحدثة
+  const searchInput = document.getElementById('invProductSearch');
+  _renderInvoiceProductList(searchInput?.value || '');
+}
 function removeInvoiceItem(idx) { invoiceItems.splice(idx, 1); _renderInvoiceItems(); }
 
 function _renderInvoiceItems() {
@@ -323,7 +393,8 @@ function setPayType(type, btn) {
   if (btn) btn.classList.add('active');
   const total  = invoiceItems.reduce((s, i) => s + i.qty * i.unit_price, 0);
   const paidEl = document.getElementById('invoicePaid');
-  if (paidEl) paidEl.value = type === 'cash' ? (total || '') : '';
+  if (paidEl) paidEl.value = (type === 'cash') ? (total || '') : '';
+  _setAjelSection(type === 'ajel');
   updateRemaining();
 }
 
@@ -337,43 +408,42 @@ function updateRemaining() {
   if (box) box.classList.toggle('warn', rem > 0);
 }
 
-function filterInvoiceProducts(q) {
-  const container = document.getElementById('invoiceProductsList'); if (!container) return;
-  const list = q
-    ? stockProducts.filter(p => p.quantity > 0 && (
-        (p.name||'').toLowerCase().includes(q.toLowerCase()) ||
-        (p.brand||'').toLowerCase().includes(q.toLowerCase()) ||
-        (p.model||'').toLowerCase().includes(q.toLowerCase())
-      ))
-    : stockProducts.filter(p => p.quantity > 0);
+function filterInvoiceProducts(query){ _renderInvoiceProductList(query||''); }
 
-  if (!list.length) {
-    container.innerHTML = `<div class="empty-state" style="padding:20px;grid-column:unset;">
-      <i class="fa fa-magnifying-glass" style="font-size:24px;"></i>
-      <p>${q ? 'لا توجد نتائج' : 'ابدأ الكتابة للبحث'}</p>
-    </div>`;
+function _renderInvoiceProductList(query){
+  /* الـ ID الصح في HTML */
+  const listEl=document.getElementById('invoiceProductsList'); if(!listEl) return;
+  const q=query.trim().toLowerCase();
+  const src=window.stockProducts?.length?window.stockProducts:stockProducts;
+  let list=src.filter(p=>(p.quantity||0)>0);
+  if(q) list=list.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q)||(p.model||'').toLowerCase().includes(q));
+  if(!list.length){
+    listEl.innerHTML=`<div style="text-align:center;padding:16px;color:var(--s-text3,#475569);font-size:12px;">
+      <i class="fa fa-box-open" style="font-size:20px;display:block;margin-bottom:6px;opacity:.4;"></i>
+      ${q?'لا توجد نتائج للبحث':'لا توجد منتجات متاحة'}</div>`;
     return;
   }
-
-  container.innerHTML = list.slice(0, 8).map(p => `
-    <div class="prod-result-row" onclick="addInvoiceItem(stockProducts.find(x=>x.id==${p.id}))">
-      <div class="prod-result-icon" style="background:${CAT_BG[p.category]||CAT_BG.mobile};color:${CAT_CLR[p.category]||CAT_CLR.mobile};">
-        <i class="fa ${_esc(CAT_ICON[p.category]||'fa-box')}"></i>
+  const bg  ={mobile:'rgba(59,130,246,.12)',accessory:'rgba(139,92,246,.12)',tablet:'rgba(6,182,212,.12)',spare:'rgba(245,158,11,.12)'};
+  const clr ={mobile:'#3b82f6',accessory:'#8b5cf6',tablet:'#06b6d4',spare:'#f59e0b'};
+  const icon={mobile:'fa-mobile-screen',accessory:'fa-headphones',tablet:'fa-tablet-screen-button',spare:'fa-screwdriver-wrench'};
+  listEl.innerHTML=list.slice(0,20).map(p=>`
+    <div class="inv-product-row" onclick="addInvoiceItemById(${p.id})">
+      <div class="inv-product-icon" style="background:${bg[p.category]||bg.mobile};color:${clr[p.category]||clr.mobile};">
+        <i class="fa ${icon[p.category]||'fa-box'}"></i>
       </div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;color:var(--text);">${_esc(p.name)}</div>
-        <div style="font-size:11px;color:var(--text2);">${_esc([p.brand,p.model].filter(Boolean).join(' — ')||'—')}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(p.name)}</div>
+        <div style="font-size:10px;color:var(--s-text2,#94a3b8);">${_esc([p.brand,p.model].filter(Boolean).join(' · '))||'—'}</div>
       </div>
       <div style="text-align:left;flex-shrink:0;">
-        <div style="font-size:14px;font-weight:800;color:var(--green);" class="english-num">${_fmt(p.sell_price)}</div>
-        <div style="font-size:10px;color:var(--text2);">${p.quantity} متاح</div>
+        <div style="font-size:13px;font-weight:900;color:var(--s-green,#10b981);" class="english-num">${_fmt(p.sell_price)}</div>
+        <div style="font-size:9px;color:var(--s-text2,#94a3b8);">${p.quantity} متاح</div>
       </div>
-      <button class="btn btn-primary btn-sm" style="pointer-events:none;"><i class="fa fa-plus"></i></button>
     </div>`).join('');
 }
-
 async function confirmInvoice() {
   if (!invoiceItems.length) return showToast('أضف منتجات للفاتورة', false);
+  
   const clientName  = document.getElementById('invClientName')?.value.trim()  || '';
   const clientPhone = document.getElementById('invClientPhone')?.value.trim() || '';
   const warrantyM   = Number(document.getElementById('invWarranty')?.value)    || 0;
@@ -381,37 +451,88 @@ async function confirmInvoice() {
   const paid        = Number(document.getElementById('invoicePaid')?.value)    || 0;
   const total       = invoiceItems.reduce((s, i) => s + i.qty * i.unit_price, 0);
   const payType     = document.querySelector('#invoiceView .pay-type.active')?.dataset.type || 'cash';
+  const ajelClientId = document.getElementById('ajelClientSelect')?.value;
+
   if (!clientName)  return showToast('أدخل اسم العميل', false);
-  if (paid <= 0)    return showToast('أدخل المبلغ المدفوع', false);
   if (paid > total) return showToast('المدفوع أكبر من الإجمالي!', false);
+  if (payType === 'ajel' && !ajelClientId) return showToast('يجب اختيار عميل مسجل للأجل', false);
 
   setLoading('btnConfirmInvoice', true);
   try {
     const user = _usr();
+    const remainingToPay = total - paid; // نحسبها محلياً لخصمها من العميل فقط
+    
     let warrantyExpires = null;
-    if (warrantyM > 0) { const d = new Date(); d.setMonth(d.getMonth()+warrantyM); warrantyExpires = d.toISOString().split('T')[0]; }
+    if (warrantyM > 0) { 
+        const d = new Date(); d.setMonth(d.getMonth() + warrantyM); 
+        warrantyExpires = d.toISOString().split('T')[0]; 
+    }
+
+    // 1. إنشاء الفاتورة (بدون إرسال حقل remaining لتجنب خطأ non-DEFAULT)
     const { data: inv, error: e1 } = await _db().from('invoices').insert([{
-      invoice_number:'PENDING', client_name:clientName, client_phone:clientPhone,
-      total, paid, payment_type:payType, warranty_expires:warrantyExpires, notes,
-      branch_id:user.branch_id||null, company_id:user.company_id||null, created_by:user.name||user.email||''
+      invoice_number: 'PENDING',
+      client_id: ajelClientId ? parseInt(ajelClientId) : null, // إرسال المعرف كرقم
+      client_name: clientName,
+      client_phone: clientPhone,
+      total,
+      paid,
+      payment_type: payType,
+      warranty_expires: warrantyExpires,
+      notes,
+      branch_id: user.branch_id || null,
+      company_id: user.company_id || null,
+      created_by: user.name || user.email || ''
     }]).select().single();
+    
     if (e1) throw e1;
-    await _db().from('invoice_items').insert(invoiceItems.map(i=>({ invoice_id:inv.id, product_id:i.product.id, product_name:i.product.name, quantity:i.qty, unit_price:i.unit_price })));
-    for (const item of invoiceItems)
-      await _db().from('products').update({ quantity: Math.max(0,(item.product.quantity||0)-item.qty) }).eq('id', item.product.id);
-    await _updateVault(paid, 'add', `بيع - استوك | ${clientName}`);
-    showToast('تمت الفاتورة بنجاح ✅', true);
+
+    // 2. إضافة الأصناف وتحديث المخزون
+    await _db().from('invoice_items').insert(invoiceItems.map(i => ({ 
+        invoice_id: inv.id, 
+        product_id: i.product.id, 
+        product_name: i.product.name, 
+        quantity: i.qty, 
+        unit_price: i.unit_price 
+    })));
+
+    for (const item of invoiceItems) {
+      await _db().from('products')
+        .update({ quantity: Math.max(0, (item.product.quantity || 0) - item.qty) })
+        .eq('id', item.product.id);
+    }
+
+    // 3. تحديث الخزنة (للكاش المدفوع فقط)
+    if (paid > 0) await _updateVault(paid, 'add', `بيع - استوك | ${clientName}`);
+
+    // 4. 🔥 تحديث رصيد العميل بالمديونية (إذا كان الدفع آجل)
+    if (payType === 'ajel' && remainingToPay > 0) {
+      const { data: clientData } = await _db().from('clients').select('balance').eq('id', ajelClientId).single();
+      const currentBalance = Number(clientData?.balance || 0);
+      
+      // نخصم المتبقي من الرصيد ليتسجل كمديونية
+      await _db().from('clients')
+        .update({ balance: currentBalance - remainingToPay })
+        .eq('id', ajelClientId);
+    }
+
+    showToast('تم إتمام الفاتورة وتحديث المديونية ✅', true);
+    
     const snap = [...invoiceItems];
-    printInvoice(inv.invoice_number||inv.id, clientName, clientPhone, snap, total, paid, warrantyExpires);
+    printInvoice(inv.invoice_number || inv.id, clientName, clientPhone, snap, total, paid, warrantyExpires);
+    
     invoiceItems = [];
     closeInvoiceView();
-    await loadStock(); await loadInvoicesList();
-    if (typeof fetchVaultBalance==='function') fetchVaultBalance();
-    if (typeof loadDashboard==='function')     loadDashboard();
-  } catch (err) { showToast('خطأ: '+err.message, false); }
-  finally { setLoading('btnConfirmInvoice', false); }
-}
+    await loadStock(); 
+    await loadInvoicesList();
+    if (typeof fetchVaultBalance === 'function') fetchVaultBalance();
 
+  } catch (err) { 
+    console.error("Invoice Error:", err);
+    showToast('خطأ: ' + err.message, false); 
+  } finally { 
+    setLoading('btnConfirmInvoice', false); 
+  }
+}
 
 /* ══ 4. SUPPLY ══════════════════════════════════════════════ */
 function openSupplyModal(productId) {
@@ -505,6 +626,15 @@ async function loadInvoicesList() {
   const tbody=document.getElementById('invoicesTableBody'); if(!tbody) return;
   tbody.innerHTML=`<tr><td colspan="7" class="text-center p-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>`;
   try {
+    /* انتظر Supabase */
+    let tries=0;
+    while(!window.supa && tries<20){ await new Promise(r=>setTimeout(r,300)); tries++; }
+    if(!window.supa) throw new Error('Supabase غير جاهز');
+    /* انتظر بيانات المستخدم */
+    tries=0;
+    while((!window.currentUserData||!window.currentUserData.company_id) && tries<15){
+      await new Promise(r=>setTimeout(r,300)); tries++;
+    }
     const user=_usr();
     let q=_db().from('invoices').select('*,invoice_items(product_name,quantity)').order('created_at',{ascending:false}).limit(100);
     if(!user.isMaster&&user.branch_id)  q=q.eq('branch_id',user.branch_id);
@@ -513,7 +643,7 @@ async function loadInvoicesList() {
     allInvoices=data||[];
     _renderInvoicesTable(allInvoices); _updateInvStats(allInvoices);
   } catch(err) {
-    tbody.innerHTML=`<tr><td colspan="7" class="text-center text-danger p-4">خطأ: ${_esc(err.message)}</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="7" class="text-center text-danger p-4"><i class="fa fa-triangle-exclamation me-2"></i>خطأ: ${_esc(err.message)}<br><button class="btn btn-ghost btn-sm mt-2" onclick="loadInvoicesList()"><i class="fa fa-rotate-right"></i> إعادة المحاولة</button></td></tr>`;
   }
 }
 
@@ -601,12 +731,76 @@ async function printInvoiceById(id) {
 }
 
 
+
+
+/* ════════════════════════════════════════
+   AJEL SYSTEM — نظام الأجل
+════════════════════════════════════════ */
+function _setAjelSection(on){
+  const sec=document.getElementById('ajelSection'); if(!sec) return;
+  sec.style.display=on?'block':'none';
+  if(on) _loadClientsForAjel();
+}
+
+async function _loadClientsForAjel(){
+  const sel=document.getElementById('ajelClientSelect'); if(!sel) return;
+  sel.innerHTML='<option value="">جاري التحميل...</option>';
+  try{
+    await _waitReady();
+    const user=_usr();
+    let q=_db().from('clients').select('id,name,number,balance').order('name');
+    /* استخدام applyBranchFilter من branches.js — بتحط company_id + branch_id صح */
+    if(typeof applyBranchFilter === 'function'){
+      q = applyBranchFilter(q, user);
+    } else {
+      /* fallback لو مش موجودة */
+      if(user.company_id) q = q.eq('company_id', user.company_id);
+      if(!user.isMaster && user.branch_id) q = q.eq('branch_id', user.branch_id);
+    }
+    const{data,error}=await q; if(error) throw error;
+    allClients=data||[];
+    if(!allClients.length){
+      sel.innerHTML='<option value="">لا يوجد عملاء في هذا الفرع</option>';
+      return;
+    }
+    sel.innerHTML='<option value="">— اختار العميل —</option>'+
+      allClients.map(cl=>{
+        const bal=Number(cl.balance)||0;
+        const balTxt=bal<0?`مديون ${_fmt(Math.abs(bal))}`:`رصيد ${_fmt(bal)}`;
+        return `<option value="${cl.id}">${_esc(cl.name)}${cl.number?' | '+_esc(cl.number):''} | ${balTxt} ج.م</option>`;
+      }).join('');
+  }catch(err){
+    sel.innerHTML='<option value="">خطأ في التحميل</option>';
+    console.error('_loadClientsForAjel:',err);
+  }
+}
+
+function onAjelClientChange(sel){
+  const client=allClients.find(c=>c.id==sel.value);
+  const info=document.getElementById('ajelClientInfo'); if(!info) return;
+  if(client){
+    const bal=Number(client.balance)||0;
+    info.style.display='flex';
+    info.innerHTML=`
+      <i class="fa fa-user" style="color:var(--s-cyan,#06b6d4);font-size:18px;"></i>
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:13px;color:var(--s-text,#f1f5f9);">${_esc(client.name)}</div>
+        ${client.number?`<div style="font-size:11px;color:var(--s-text2,#94a3b8);">${_esc(client.number)}</div>`:''}
+      </div>
+      <div style="font-size:14px;font-weight:900;color:${bal<0?'var(--s-red,#ef4444)':'var(--s-green,#10b981)'};" class="english-num">
+        <div style="font-size:9px;font-weight:600;margin-bottom:2px;">${bal<0?'عليه دين':'رصيد له'}</div>
+        ${_fmt(Math.abs(bal))} ج.م
+      </div>`;
+  }else{
+    info.style.display='none'; info.innerHTML='';
+  }
+}
+window.onAjelClientChange = onAjelClientChange;
+
 /* ══ 8. INIT ════════════════════════════════════════════════ */
 window.initStockView = async function() {
   switchStockTab('stockView');
   stockCategory='all'; stockSearch='';
   document.querySelectorAll('#view-stock .cat-tab').forEach((b,i)=>b.classList.toggle('active',i===0));
-  let tries=0;
-  while(!window.supa && tries<20){ await new Promise(r=>setTimeout(r,300)); tries++; }
-  await Promise.all([loadStock(), loadInvoicesList()]);
+  await loadStock();
 };

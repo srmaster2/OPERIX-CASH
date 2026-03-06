@@ -92,7 +92,7 @@ async function login() {
   } else {
     if (window.LoginSecurity) window.LoginSecurity.reset();
     toast('تم تسجيل الدخول بنجاح ✓');
-    // _smartRedirect هتتشغّل تلقائياً من onAuthStateChange
+    setTimeout(() => window.location.href = 'index.html', 900);
   }
 }
 
@@ -165,7 +165,7 @@ async function registerCompany() {
       </div>`;
 
     window.__registering = false;
-    setTimeout(() => window.location.href = 'index.html', 2200); // الشركة الجديدة دايماً index
+    setTimeout(() => window.location.href = 'index.html', 2200);
 
   } catch (err) {
     window.__registering = false;
@@ -359,8 +359,13 @@ async function acceptInvitation() {
     }, { onConflict: 'id' });
     if (userErr) throw new Error(userErr.message);
 
-    // 4. تحديث حالة الدعوة
-    await window.supa.from('invitations').update({ status: 'accepted' }).eq('id', _inviteData.id);
+    // 4. حذف الدعوة بعد القبول عشان ما تظهرش في القائمة
+    const { error: invDelErr } = await window.supa
+        .from('invitations').delete().eq('id', _inviteData.id);
+    if (invDelErr) {
+        // fallback: لو الحذف فشل، حدّث الحالة
+        await window.supa.from('invitations').update({ status: 'accepted' }).eq('id', _inviteData.id);
+    }
 
     document.getElementById('tab-invite').innerHTML = `
       <div class="success-box">
@@ -396,31 +401,12 @@ document.addEventListener('keydown', e => {
 });
 
 /* ══ Auto redirect لو مسجّل دخول ══ */
-async function _smartRedirect() {
-  if (window.__r || window.__registering) return;
-  const { data: { user } } = await window.supa.auth.getUser();
-  if (!user) return;
-  window.__r = true;
-
-  // تحقق هل هو platform_admin
-  const { data: pa } = await window.supa
-    .from('platform_admins')
-    .select('role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (pa) {
-    window.location.replace('platform_admin.html');
-  } else {
-    window.location.replace('index.html');
-  }
-}
-
+// window.__registering = true أثناء التسجيل — يمنع الـ redirect المبكر
 window.supa?.auth.getUser().then(({ data: { user } }) => {
-  if (user && !window.__r && !window.__registering) _smartRedirect();
+  if (user && !window.__r && !window.__registering) { window.__r = true; window.location.replace('index.html'); }
 });
 window.supa?.auth.onAuthStateChange((e, s) => {
-  if (s && !window.__r && !window.__registering) _smartRedirect();
+  if (s && !window.__r && !window.__registering) { window.__r = true; window.location.replace('index.html'); }
 });
 
 /* ══ تشغيل loadInvitation عند فتح الصفحة ══ */

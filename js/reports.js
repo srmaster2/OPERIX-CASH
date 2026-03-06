@@ -57,10 +57,10 @@ async function getDashboardStats() {
     const todayStr = `${d}/${m}/${y}`;
 
     const u  = window.currentUserData;
-    const cid = u?.company_id || '';
+    const cid = u?.company_id;
+    if (!cid) throw new Error('company_id غير موجود — يرجى الانتظار');
     const bf = (q) => {
-      q = q.eq('company_id', cid);
-      return (typeof applyBranchFilter === 'function') ? applyBranchFilter(q, u) : q;
+      return (typeof applyBranchFilter === 'function') ? applyBranchFilter(q, u) : q.eq('company_id', cid);
     };
 
     // حساب الشهر السابق للمقارنة

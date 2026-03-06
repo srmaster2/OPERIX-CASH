@@ -200,10 +200,13 @@ async function loadClientsTable() {
     container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
 
     const user = window.currentUserData;
-    let qt = window.supa.from('clients').select('*')
-        .eq('company_id', user?.company_id || '')
-        .order('name');
+    if (!user?.company_id) {
+        container.innerHTML = '<div class="text-center text-muted small p-3">جاري التحميل...</div>';
+        return;
+    }
+    let qt = window.supa.from('clients').select('*').order('name');
     if (typeof applyBranchFilter === 'function') qt = applyBranchFilter(qt, user);
+    else qt = qt.eq('company_id', user.company_id);
     const { data: clients, error } = await qt;
 
     if (error || !clients) {
@@ -286,31 +289,60 @@ async function loadUsersList() {
     if (!container) return;
     container.innerHTML = '<div class="text-center p-3"><i class="fa fa-spin fa-circle-notch"></i></div>';
 
-    const cid = window.currentUserData?.company_id || '';
-    const { data: users, error } = await window.supa.from('users')
-        .select('*')
-        .eq('company_id', cid)
-        .order('name');
+    const me  = window.currentUserData;
+    const cid = me?.company_id;
+    if (!cid) {
+        container.innerHTML = '<div class="text-center text-danger p-3">خطأ: لم يتم تحديد الشركة</div>';
+        return;
+    }
+
+    const [{ data: users, error }, { data: branches }] = await Promise.all([
+        window.supa.from('users').select('*').eq('company_id', cid).order('name'),
+        window.supa.from('branches').select('id,name').eq('company_id', cid)
+    ]);
 
     if (error || !users) {
         container.innerHTML = '<div class="text-center text-danger p-3">خطأ في التحميل</div>';
         return;
     }
-    container.innerHTML = users.map(u => `
-        <div class="d-flex align-items-center p-2 mb-2 border rounded-3" style="direction:rtl;">
-            <div style="width:50%;">
-                <div class="fw-bold small">${u.name || u.email}</div>
-                <div class="text-muted" style="font-size:11px;">${u.email}</div>
-            </div>
-            <div style="width:25%;" class="text-center">
-                <span class="badge ${u.role==='ADMIN'?'bg-danger':'bg-secondary'}">${u.role==='ADMIN'?'أدمن':'موظف'}</span>
-            </div>
-            <div style="width:25%;" class="text-end pe-2">
-                <button class="btn btn-sm btn-light border" onclick="openEditRole('${u.email}','${u.name||u.email}')">
-                    <i class="fa fa-user-shield text-primary"></i>
-                </button>
-            </div>
-        </div>`).join('');
+
+    const branchMap = {};
+    (branches || []).forEach(function(b) { branchMap[b.id] = b.name; });
+
+    const canEdit = me?.isMaster || me?.is_owner;
+
+    function getRoleInfo(u) {
+        if (u.is_master || u.is_owner)
+            return { label: 'المدير العام', cls: 'bg-primary',   icon: 'fa-crown' };
+        if (u.role === 'ADMIN')
+            return { label: 'مدير فرع',    cls: 'bg-danger',    icon: 'fa-user-shield' };
+        return   { label: 'موظف',          cls: 'bg-secondary', icon: 'fa-user' };
+    }
+
+    container.innerHTML = users.map(function(u) {
+        var r      = getRoleInfo(u);
+        var branch = u.branch_id ? (branchMap[u.branch_id] || '\u2014') : '\u2014';
+        var showEdit = canEdit && !u.is_master && !u.is_owner;
+        var editBtn  = showEdit
+            ? '<button class="btn btn-sm btn-light border" onclick="openEditRole(\'' + u.email + '\',\'' + (u.name||u.email).replace(/'/g,"\\'") + '\')">'
+              + '<i class="fa fa-pen text-primary"></i></button>'
+            : '';
+        return '<div class="d-flex align-items-center p-2 mb-2 border rounded-3" style="direction:rtl;">'
+            + '<div style="width:45%;">'
+            +   '<div class="fw-bold small">' + (u.name || u.email) + '</div>'
+            +   '<div class="text-muted" style="font-size:11px;">' + u.email + '</div>'
+            +   '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">'
+            +     '<i class="fa fa-code-branch me-1"></i>' + branch
+            +   '</div>'
+            + '</div>'
+            + '<div style="width:30%;" class="text-center">'
+            +   '<span class="badge ' + r.cls + '">'
+            +     '<i class="fa ' + r.icon + ' me-1"></i>' + r.label
+            +   '</span>'
+            + '</div>'
+            + '<div style="width:25%;" class="text-end pe-2">' + editBtn + '</div>'
+            + '</div>';
+    }).join('');
 }
 
 // ---- تبديل فلتر التاريخ ----
@@ -333,11 +365,19 @@ function resetAdvancedSearch() {
 // ---- إعداد تبويبات إدارة النظام ----
 function showManageTab(el) {
     const tabId = el.dataset.tab;
-    document.querySelectorAll('.manage-tab-content').forEach(t => t.style.display = 'none');
-    document.querySelectorAll('.nav-pills .nav-link').forEach(l => l.classList.remove('active'));
-    const tab = document.getElementById(tabId);
+    document.querySelectorAll('.manage-tab-content').forEach(function(t) { t.style.display = 'none'; });
+    document.querySelectorAll('.nav-pills .nav-link').forEach(function(l) { l.classList.remove('active'); });
+    var tab = document.getElementById(tabId);
     if (tab) tab.style.display = 'block';
     el.classList.add('active');
+
+    if (!window.currentUserData?.company_id) {
+        var body = tab ? tab.querySelector('[id$="-body"]') : null;
+        if (body) body.innerHTML = '<div class="text-center text-muted small p-3"><i class="fa fa-circle-notch fa-spin me-1"></i>جاري التحميل...</div>';
+        setTimeout(function() { showManageTab(el); }, 600);
+        return;
+    }
+
     if      (tabId === 'clients-tab')  loadClientsTable();
     else if (tabId === 'accounts-tab') { if (typeof loadAccountsTable  === 'function') loadAccountsTable(); }
     else if (tabId === 'users-tab')    loadUsersList();
@@ -437,7 +477,7 @@ async function loadProfileSettings() {
         const { data: { user } } = await window.supa.auth.getUser();
         if (!user) return;
         const { data: dbUser } = await window.supa
-            .from('users').select('*').eq('id', user.id).maybeSingle();
+            .from('users').select('*').eq('email', user.email).maybeSingle();
 
         const nameEl  = document.getElementById('displayProfileName');
         const emailEl = document.getElementById('displayProfileEmail');

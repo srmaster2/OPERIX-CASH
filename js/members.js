@@ -119,11 +119,12 @@ async function loadInvitationsSection() {
     const _branchMap = {};
     (branchesData || []).forEach(b => { _branchMap[b.id] = b.name; });
 
-    // جلب الدعوات المرسلة
+    // جلب الدعوات المعلقة فقط (pending) — المقبولة تم حذفها
     const { data: invites } = await window.supa
         .from('invitations')
         .select('*')
         .eq('company_id', u.company_id)
+        .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -204,6 +205,15 @@ async function sendInvitation() {
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-circle-notch fa-spin me-1"></i>جاري الإرسال...'; }
 
     try {
+        // ── Phase 5: Subscription check ──
+        if (typeof canSendInvitation === 'function') {
+            const check = await canSendInvitation();
+            if (!check.allowed) {
+                showToast('⛔ ' + check.reason, false);
+                return;
+            }
+        }
+
         // التحقق من وجود دعوة سابقة pending لنفس البريد
         const { data: existing } = await window.supa
             .from('invitations')

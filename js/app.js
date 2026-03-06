@@ -24,6 +24,13 @@ async function initUserAccess() {
     // تحميل بيانات المستخدم مع الفرع — لازم يكون أول حاجة
     const userInfo = await loadCurrentUserWithBranch();
     if (!userInfo) throw new Error('لم يتم جلب بيانات المستخدم');
+    window.currentUserData = userInfo; // تخزين البيانات
+
+    // --- السطر المطلوب إضافته هنا ---
+    if (typeof loadStock === 'function') {
+        console.log("User data ready, triggering loadStock...");
+        loadStock(); 
+    }
 
     const isMaster = userInfo.isMaster || false;
     const isAdmin  = !isMaster && (userInfo.role || '').toUpperCase() === 'ADMIN' && !!userInfo.branch_id;
@@ -654,9 +661,9 @@ window.showView = function(viewName) {
                 renderCounter();
             }
         } else if (viewName === 'settings') {
-            if (typeof loadProfileSettings === 'function') {
-                loadProfileSettings();
-            }
+            if (typeof loadProfileSettings  === 'function') loadProfileSettings();
+            if (typeof loadSubscriptionPage === 'function') loadSubscriptionPage();
+            
         }
     }
 };

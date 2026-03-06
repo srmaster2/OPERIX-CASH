@@ -152,3 +152,37 @@
   100% { background-position: -200% 0; }
 }
 
+
+/* ========================================
+   VIEW SUBSCRIPTION — Responsive
+======================================== */
+
+#view-subscription {
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
+  padding: 16px 20px;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  #view-subscription {
+    max-width: 600px;
+    padding: 14px 18px;
+  }
+}
+
+/* Mobile L — 425px */
+@media (max-width: 480px) {
+  #view-subscription {
+    max-width: 100%;
+    padding: 12px 14px;
+  }
+}
+
+/* Mobile S/M — 375px وأقل */
+@media (max-width: 390px) {
+  #view-subscription {
+    padding: 10px 10px;
+  }
+}
