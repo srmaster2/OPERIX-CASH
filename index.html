@@ -62,7 +62,7 @@ async function generateKashierHash(orderId, amount) {
 async function buildKashierURL({ orderId, amount, planCode, customerEmail, customerName }) {
     const hash = await generateKashierHash(orderId, amount);
     const params = new URLSearchParams({
-        merchantId:       KASHIER_CONFIG.mid,
+        mid:              KASHIER_CONFIG.mid,
         orderId:          orderId,
         amount:           String(amount),
         currency:         KASHIER_CONFIG.currency,
