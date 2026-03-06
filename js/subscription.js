@@ -282,9 +282,9 @@ async function loadSubscriptionPage() {
         ];
         const planOrder2 = ['FREE','PRO','ENTERPRISE'];
         const currentIdx  = planOrder2.indexOf(sub.plan_code);
+        const isCurrent   = (plan) => plan.code === sub.plan_code;
 
         tbody.innerHTML = rows.map(row => {
-            const isCurrent = (plan) => plan.code === sub.plan_code;
             return '<tr>' +
                 '<td style="padding:9px 14px;font-size:12px;color:var(--text-muted,#94a3b8);">' + row.label + '</td>' +
                 sortedPlans.map(p =>
