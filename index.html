@@ -61,23 +61,29 @@ async function generateKashierHash(orderId, amount) {
 
 async function buildKashierURL({ orderId, amount, planCode, customerEmail, customerName }) {
     const hash = await generateKashierHash(orderId, amount);
-    const params = new URLSearchParams({
-        mid:              KASHIER_CONFIG.mid,
-        orderId:          orderId,
-        amount:           String(amount),
-        currency:         KASHIER_CONFIG.currency,
-        hash:             hash,
-        merchantRedirect: `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`,
-        failureRedirect:  `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`,
-        webhook:          `${KASHIER_CONFIG.supabaseUrl}/functions/v1/super-api`,
-        merchantOrderId:  orderId,
-        allowedMethods:   'card,wallet',
-        display:          'ar',
-        shopper_name:     customerName  || '',
-        shopper_email:    customerEmail || '',
-        metaData:         JSON.stringify({ planCode, company_id: window.currentUserData?.company_id }),
-    });
-    return `${KASHIER_CONFIG.iframeBase}/?${params.toString()}`;
+
+    const successUrl = `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`;
+    const failUrl    = `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`;
+
+    const base = `${KASHIER_CONFIG.iframeBase}/?`;
+    const params = [
+        `mid=${KASHIER_CONFIG.mid}`,
+        `orderId=${orderId}`,
+        `amount=${amount}`,
+        `currency=${KASHIER_CONFIG.currency}`,
+        `hash=${hash}`,
+        `merchantRedirect=${successUrl}`,
+        `failureRedirect=${failUrl}`,
+        `webhook=${KASHIER_CONFIG.supabaseUrl}/functions/v1/super-api`,
+        `merchantOrderId=${orderId}`,
+        `allowedMethods=card,wallet`,
+        `display=ar`,
+        `shopper_name=${encodeURIComponent(customerName || '')}`,
+        `shopper_email=${encodeURIComponent(customerEmail || '')}`,
+        `metaData=${encodeURIComponent(JSON.stringify({ planCode, company_id: window.currentUserData?.company_id }))}`,
+    ].join('&');
+
+    return base + params;
 }
 
 async function initiateKashierPayment(planCode) {
