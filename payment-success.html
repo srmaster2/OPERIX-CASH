@@ -97,7 +97,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/config.js"></script>
+<script>
+// inline config to avoid 404
+window._SUPABASE_URL  = 'https://hgzyjfsbqxqwzbdtuekh.supabase.co';
+window._SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenlqZnNicXhxd3piZHR1ZWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzI4NDAsImV4cCI6MjA4NTAwODg0MH0.eR8p2SM66S8TSKjSMNzNG8Ip2B5kZYLXWoOBYKMTRCQ';
+</script>
 <script src="js/payment.js"></script>
 <script>
 const supa = window.supabase.createClient(window._SUPABASE_URL, window._SUPABASE_ANON_KEY);
