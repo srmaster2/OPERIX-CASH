@@ -186,3 +186,33 @@
     padding: 10px 10px;
   }
 }
+/*-----------------*/
+#view-stock {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  padding: 16px 20px;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  #view-stock {
+    max-width: 600px;
+    padding: 14px 18px;
+  }
+}
+
+/* Mobile L — 425px */
+@media (max-width: 480px) {
+  #view-stock {
+    max-width: 100%;
+    padding: 12px 14px;
+  }
+}
+
+/* Mobile S/M — 375px وأقل */
+@media (max-width: 390px) {
+  #view-stock {
+    padding: 10px 10px;
+  }
+}
