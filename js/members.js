@@ -3,19 +3,34 @@
 // ============================================================
 
 // ══════════════════════════════════════════════════════════
+// 0. Helper — ينتظر لحد ما currentUserData.company_id يكون جاهز
+//    بيحل مشكلة: "company_id غير موجود" في reports.js و utils.js
+// ══════════════════════════════════════════════════════════
+async function waitForUserData(maxMs = 5000) {
+    const step = 200;
+    let elapsed = 0;
+    while (elapsed < maxMs) {
+        if (window.currentUserData?.company_id) return window.currentUserData;
+        await new Promise(r => setTimeout(r, step));
+        elapsed += step;
+    }
+    return null; // timeout
+}
+
+// ══════════════════════════════════════════════════════════
 // 1. اسم الشركة — يظهر في الهيدر والإعدادات
 // ══════════════════════════════════════════════════════════
 async function loadCompanyInfo() {
     const u = window.currentUserData;
     if (!u?.company_id) return;
 
-    const { data: company } = await window.supa
+    const { data: company, error } = await window.supa
         .from('companies')
         .select('name, is_active')
         .eq('id', u.company_id)
         .maybeSingle();
 
-    if (!company) return;
+    if (error || !company) return;
 
     // هيدر — tagline تحت OPERIX
     const tagline = document.querySelector('.brand-tagline');
@@ -25,8 +40,35 @@ async function loadCompanyInfo() {
     const companyNameEl = document.getElementById('displayCompanyName');
     if (companyNameEl) companyNameEl.textContent = company.name;
 
+    // تحديث اسم الشركة في الـ dashHeader
+    const dhCompany = document.getElementById('dhCompanyName');
+    if (dhCompany) dhCompany.textContent = company.name;
+
     // تخزين اسم الشركة في الـ currentUserData
     window.currentUserData.companyName = company.name;
+
+    // ══ إخفاء الاشتراكات لمدير الفرع (ADMIN) ══
+    const role = u?.isMaster ? 'MASTER' : u?.is_owner ? 'OWNER' : (u?.role || 'USER');
+    if (role === 'ADMIN') {
+        // إخفاء كل العناصر المتعلقة بالاشتراكات
+        const selectors = [
+            '[data-section="pricing"]',
+            '#pricing',
+            '.pricing-section',
+            '[data-tab="subscription"]',
+            '[data-section="subscription"]',
+            '.subscription-tab',
+            '#subscriptionTab',
+            '#tab-subscription',
+            '[onclick*="subscription"]',
+            '[onclick*="pricing"]',
+        ];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                el.style.display = 'none';
+            });
+        });
+    }
 }
 
 
@@ -44,7 +86,10 @@ async function loadAdminLogs() {
             <i class="fa fa-circle-notch fa-spin me-1"></i> جاري التحميل...
         </div>`;
 
-    const cid = window.currentUserData?.company_id || '';
+    // انتظر لحد ما company_id يكون جاهز (بيحل مشكلة الـ race condition)
+    const u = await waitForUserData();
+    const cid = u?.company_id;
+
     if (!cid) {
         container.innerHTML = '<div class="text-center text-danger p-3 small">خطأ: لم يتم تحديد الشركة</div>';
         return;
@@ -178,7 +223,7 @@ async function loadInvitationsSection() {
 
 // نسخ رابط الدعوة
 function copyInviteLink(token) {
-    const url = `${window.location.origin}/login.html?token=${token}`;
+    const url = `${window.location.origin}/index.html?token=${token}`;
     navigator.clipboard.writeText(url).then(() => {
         if (typeof showToast === 'function') showToast('✅ تم نسخ رابط الدعوة');
     }).catch(() => {
@@ -244,7 +289,7 @@ async function sendInvitation() {
         if (error) throw error;
 
         // نسخ الرابط تلقائياً
-        const url = `${window.location.origin}/login.html?token=${token}`;
+        const url = `${window.location.origin}/index.html?token=${token}`;
         navigator.clipboard.writeText(url).catch(() => {});
 
         showToast('✅ تم إنشاء الدعوة — تم نسخ الرابط تلقائياً');
@@ -267,7 +312,10 @@ async function sendInvitation() {
 // 4. تحديث loadUsersList — يضيف زر دعوة في أعلى القائمة
 // ══════════════════════════════════════════════════════════
 async function loadMembersTab() {
-    const u = window.currentUserData;
+    // انتظر لحد ما بيانات المستخدم تكون جاهزة
+    const u = await waitForUserData();
+    if (!u) return;
+
     const isOwner = u?.isMaster || u?.is_owner;
 
     // ملء select الفروع في فورم الدعوة
@@ -299,12 +347,9 @@ async function loadMembersTab() {
 // ══════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
     // تحميل اسم الشركة بعد ما currentUserData يكون جاهز
-    const _waitCompany = setInterval(() => {
-        if (window.currentUserData?.company_id) {
-            clearInterval(_waitCompany);
-            loadCompanyInfo();
-        }
-    }, 200);
+    waitForUserData().then(u => {
+        if (u) loadCompanyInfo();
+    });
 
     // Override showManageTab عشان نضيف loadMembersTab
     const _origShowManageTab = window.showManageTab;

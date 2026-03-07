@@ -392,14 +392,14 @@ let _cos=[],_role=null;
 
 async function init(){
   const{data:{user}}=await supa.auth.getUser();
-  if(!user)return(window.location.href='login.html');
+  if(!user)return(window.location.href='index.html');
 
   // جيب الـ role بدون join
   const{data:pa}=await supa.from('platform_admins').select('role').eq('user_id',user.id).maybeSingle();
   console.log('platform_admin check:', {pa, uid: user.id});
 
   if(!pa){
-    document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:Cairo,sans-serif;direction:rtl;"><i class="fa fa-lock" style="font-size:48px;color:#ef4444;"></i><h2 style="color:#f1f5f9;">غير مصرح</h2><p style="color:#94a3b8;">ليس لديك صلاحية الوصول</p><a href="login.html" style="color:#3b82f6;">العودة لتسجيل الدخول</a></div>`;
+    document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:Cairo,sans-serif;direction:rtl;"><i class="fa fa-lock" style="font-size:48px;color:#ef4444;"></i><h2 style="color:#f1f5f9;">غير مصرح</h2><p style="color:#94a3b8;">ليس لديك صلاحية الوصول</p><a href="index.html" style="color:#3b82f6;">العودة لتسجيل الدخول</a></div>`;
     return;
   }
   _role=pa.role;
@@ -719,7 +719,7 @@ function closeSidebar(){
   document.getElementById('sbOverlay').classList.remove('show');
 }
 
-window.doLogout=async function(){await supa.auth.signOut();window.location.href='login.html';}
+window.doLogout=async function(){await supa.auth.signOut();window.location.href='index.html';}
 document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>

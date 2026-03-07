@@ -1,4 +1,3 @@
-
 // ============================================================
 // subscription.js — Phase 5: Subscription Enforcement
 // يتحمّل بعد config.js وقبل أي ملف تاني

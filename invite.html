@@ -1,440 +1,524 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>قبول دعوة - OPERIX</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <style>
-:root {
-  --font: 'Cairo', sans-serif;
-  --bg:      #060d1a;
-  --surface: #111e35;
-  --surface2:#182844;
-  --border:  rgba(99,179,237,0.10);
-  --border2: rgba(99,179,237,0.22);
-  --text:    #ffffff;
-  --text2:   #8fa8c8;
-  --blue:    #3b82f6;
-  --cyan:    #06b6d4;
-  --purple:  #8b5cf6;
-  --error:   #f87171;
-  --success: #34d399;
-}
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OPERIX — قبول الدعوة</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="security.js"></script>
+<script src="config.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #060d1a;
+  --blue: #3b82f6;
+  --cyan: #06b6d4;
+  --green: #10b981;
+  --purple: #8b5cf6;
+}
+[data-theme="light"] {
+  --bg: #eef3ff;
+}
 
 body {
-  font-family: var(--font);
+  font-family: 'Cairo', sans-serif;
   background: var(--bg);
-  color: var(--text);
+  color: #f1f5f9;
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  padding: 20px; position: relative; overflow-x: hidden;
+  padding: 20px;
+  position: relative; overflow-x: hidden;
+  transition: background .35s, color .35s;
 }
+[data-theme="light"] body { color: #0f172a; }
 
+/* شبكة خلفية */
 body::before {
-  content: ''; position: fixed; inset: 0;
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background-image:
     linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
   background-size: 48px 48px;
-  pointer-events: none; z-index: 0;
+}
+[data-theme="light"] body::before {
+  background-image:
+    linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px);
 }
 
-.bg-orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
-.orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, rgba(139,92,246,0.14), transparent 70%); top: -100px; right: -80px; animation: orb-float 14s ease-in-out infinite; }
-.orb-2 { width: 380px; height: 380px; background: radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%); bottom: -60px; left: -60px; animation: orb-float 18s ease-in-out infinite reverse; }
-
-@keyframes orb-float {
-  0%,100% { transform: translate(0,0); }
-  50%      { transform: translate(25px,-20px); }
+/* glow خلفي */
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(139,92,246,0.1) 0%, transparent 60%);
 }
 
-.card {
-  position: relative; z-index: 10;
-  width: 100%; max-width: 440px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 26px;
-  padding: 38px 34px 34px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.28), 0 0 80px rgba(139,92,246,0.08);
-  animation: card-in 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
+/* ── الكارت ── */
+.invite-card {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 460px;
+  background: #111e35;
+  border: 1px solid rgba(99,179,237,0.13);
+  border-radius: 24px;
+  padding: 36px 32px 28px;
+  box-shadow: 0 28px 70px rgba(0,0,0,0.45), 0 0 80px rgba(139,92,246,0.08);
+  animation: cardIn .4s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+[data-theme="light"] .invite-card {
+  background: #ffffff;
+  border-color: rgba(139,92,246,0.15);
+  box-shadow: 0 20px 50px rgba(100,50,200,0.1);
+  color: #0f172a;
+}
+@keyframes cardIn {
+  from { opacity:0; transform:translateY(24px) scale(.97); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
 }
 
-@keyframes card-in {
-  from { opacity:0; transform: translateY(28px) scale(0.97); }
-  to   { opacity:1; transform: translateY(0) scale(1); }
-}
-
-.glow-bar {
+/* خط توهج علوي بنفسجي */
+.invite-glow-bar {
   position: absolute; top: -1px; right: 22%; left: 22%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--purple), var(--cyan), transparent);
+  background: linear-gradient(90deg, transparent, #8b5cf6, #06b6d4, transparent);
   border-radius: 2px;
-  animation: glow-bar 3.5s ease-in-out infinite;
+  animation: glowBar 3.5s ease-in-out infinite;
 }
-@keyframes glow-bar {
-  0%,100% { opacity:0.55; right:22%; left:22%; }
-  50%      { opacity:1; right:10%; left:10%; }
+@keyframes glowBar {
+  0%,100% { opacity:.5; right:22%; left:22%; }
+  50%      { opacity:1;  right:10%; left:10%; }
 }
 
-/* لوجو */
-.logo-box { margin-bottom: 24px; display: flex; flex-direction: column; align-items: center; }
-.brand-wordmark {
-  display: flex; align-items: baseline;
-  letter-spacing: 0.4em;
+/* ── اللوجو ── */
+.invite-logo-box { text-align: center; margin-bottom: 22px; }
+.invite-brand {
+  display: inline-flex; align-items: baseline;
+  letter-spacing: .42em;
   font-family: 'Orbitron', sans-serif;
   font-size: 28px; font-weight: 900;
-  color: #ffffff; text-transform: uppercase;
+  color: #fff; text-transform: uppercase; user-select: none;
 }
-.brand-wordmark .letter-x {
+[data-theme="light"] .invite-brand { color: #0f172a; }
+.invite-brand .lx {
   color: transparent;
-  -webkit-text-stroke: 1.8px #06b6d4;
-  font-size: 24px;
-  filter: drop-shadow(0 0 7px rgba(6,182,212,0.65));
+  -webkit-text-stroke: 1.6px #06b6d4;
+  font-size: 23px; line-height: 1;
+  filter: drop-shadow(0 0 7px rgba(6,182,212,.65));
   animation: xGlow 3s ease-in-out infinite;
 }
 @keyframes xGlow {
-  0%,100% { filter: drop-shadow(0 0 6px rgba(6,182,212,0.5)); }
-  50%      { filter: drop-shadow(0 0 13px rgba(6,182,212,0.85)); }
+  0%,100% { filter: drop-shadow(0 0 5px rgba(6,182,212,.5)); }
+  50%      { filter: drop-shadow(0 0 13px rgba(6,182,212,.9)); }
 }
-.brand-tagline {
-  font-family: 'Orbitron', sans-serif; font-size: 7px;
-  letter-spacing: 0.38em; color: rgba(139,92,246,0.6);
-  text-transform: uppercase; margin-top: 4px;
-}
-
-/* بطاقة الدعوة */
-.invite-card {
-  background: rgba(139,92,246,0.07);
-  border: 1px solid rgba(139,92,246,0.2);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 24px;
-  text-align: center;
-}
-.invite-card .company-name {
-  font-size: 17px; font-weight: 800;
-  color: var(--text); margin-bottom: 4px;
-}
-.invite-card .invite-role {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(139,92,246,0.15);
-  border: 1px solid rgba(139,92,246,0.3);
-  border-radius: 6px; padding: 3px 10px;
-  font-size: 11px; font-weight: 700; color: var(--purple);
-  margin-top: 6px;
-}
-.invite-card .invite-sub {
-  font-size: 11px; color: var(--text2); margin-top: 8px;
+.invite-tagline {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 7px; font-weight: 400;
+  letter-spacing: .4em; color: rgba(6,182,212,0.6);
+  text-transform: uppercase; margin-top: 4px; display: block;
 }
 
-/* states */
-#loadingState, #expiredState, #successState { display: none; text-align: center; padding: 20px 0; }
-#loadingState.active, #expiredState.active, #formState.active, #successState.active { display: block; }
-#formState { display: none; }
+/* ── Fields ── */
+.auth-field { margin-bottom: 12px; }
+.auth-field label {
+  display: block; font-size: 10.5px; font-weight: 800;
+  color: rgba(148,163,184,0.85); margin-bottom: 5px;
+  text-transform: uppercase; letter-spacing: .6px;
+}
+[data-theme="light"] .auth-field label { color: #475569; }
+.auth-inp-wrap { position: relative; }
+.auth-inp-wrap .ico {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  color: rgba(148,163,184,0.5); font-size: 12px; pointer-events: none;
+  transition: color .2s;
+}
+.auth-inp-wrap:focus-within .ico { color: #8b5cf6; }
+.auth-inp-wrap input {
+  width: 100%; padding: 11px 36px 11px 40px;
+  background: rgba(15,23,42,0.75);
+  border: 1.5px solid rgba(99,179,237,0.12);
+  border-radius: 11px; color: #f1f5f9;
+  font-family: 'Cairo', sans-serif; font-size: 14px; font-weight: 500;
+  outline: none; transition: all .2s;
+  direction: ltr; text-align: right;
+}
+.auth-inp-wrap input::placeholder { color: rgba(148,163,184,0.5); }
+.auth-inp-wrap input:focus {
+  border-color: #8b5cf6;
+  background: rgba(15,23,42,0.92);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.14);
+}
+.auth-inp-wrap input[readonly] { opacity: .65; cursor: not-allowed; }
+[data-theme="light"] .auth-inp-wrap input {
+  background: #f8faff; border-color: #cbd5e1; color: #0f172a;
+}
+[data-theme="light"] .auth-inp-wrap input::placeholder { color: #94a3b8; }
+[data-theme="light"] .auth-inp-wrap input:focus {
+  border-color: #8b5cf6; background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+}
+[data-theme="light"] .auth-inp-wrap .ico { color: #94a3b8; }
+[data-theme="light"] .auth-inp-wrap:focus-within .ico { color: #8b5cf6; }
+.auth-eye-btn {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: rgba(148,163,184,0.5);
+  cursor: pointer; font-size: 12px; padding: 0; transition: color .2s;
+}
+.auth-eye-btn:hover { color: #8b5cf6; }
 
-.state-icon {
-  width: 60px; height: 60px; border-radius: 50%;
+/* ── زر ── */
+.auth-btn {
+  width: 100%; padding: 13px; border: none; border-radius: 12px;
+  color: #fff; font-family: 'Cairo', sans-serif;
+  font-size: 14px; font-weight: 800;
+  cursor: pointer; margin-top: 14px;
+  position: relative; overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.auth-btn::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.13), transparent);
+  transform: translateX(-100%); transition: transform .5s;
+}
+.auth-btn:hover { transform: translateY(-2px); }
+.auth-btn:hover::after { transform: translateX(100%); }
+.auth-btn:active { transform: scale(.98); }
+.auth-btn:disabled { opacity: .6; pointer-events: none; }
+.ab-pur { background: linear-gradient(135deg,#a78bfa,#7c3aed); box-shadow: 0 8px 22px rgba(139,92,246,.35); }
+
+/* ── Success / Error ── */
+.auth-success {
+  text-align: center; padding: 20px 0;
+  animation: fadeUp .35s ease both;
+}
+.auth-success-icon {
+  width: 64px; height: 64px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; margin: 0 auto 16px;
-  animation: pop-in 0.4s cubic-bezier(0.34,1.4,0.64,1);
+  animation: popIn .45s cubic-bezier(0.34,1.4,0.64,1);
 }
-@keyframes pop-in {
-  from { transform: scale(0); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
-}
+.asi-purple { background:rgba(139,92,246,.1); border:2px solid #8b5cf6; color:#8b5cf6; }
+.auth-success h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
+.auth-success p  { font-size: 13px; color: rgba(148,163,184,0.7); line-height: 1.7; }
+[data-theme="light"] .auth-success h3 { color: #0f172a; }
+[data-theme="light"] .auth-success p  { color: #64748b; }
 
-/* الفورم */
-.field { margin-bottom: 14px; }
-.field label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
-.inp-wrap { position: relative; }
-.inp-wrap input {
-  width: 100%; padding: 12px 40px 12px 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border2);
-  border-radius: 12px;
-  color: var(--text); font-family: var(--font); font-size: 14px;
-  outline: none; transition: all 0.25s;
+.auth-error-state { text-align: center; padding: 20px 0; animation: fadeUp .3s ease both; }
+.auth-error-icon {
+  width: 58px; height: 58px; border-radius: 50%;
+  background: rgba(248,113,113,0.1); border: 2px solid rgba(248,113,113,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: #f87171; margin: 0 auto 14px;
 }
-.inp-wrap input:focus {
-  border-color: var(--purple);
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
-}
-.inp-wrap input::placeholder { color: rgba(143,168,200,0.45); }
-.ico { position: absolute; top: 50%; right: 13px; transform: translateY(-50%); color: var(--text2); font-size: 13px; pointer-events: none; }
+.auth-error-state h3 { font-size: 15px; font-weight: 800; margin-bottom: 7px; }
+.auth-error-state p  { font-size: 13px; color: rgba(148,163,184,0.7); line-height: 1.7; }
+[data-theme="light"] .auth-error-state h3 { color: #0f172a; }
+[data-theme="light"] .auth-error-state p  { color: #64748b; }
 
-.btn-go {
-  width: 100%; padding: 14px;
-  background: linear-gradient(135deg, var(--purple), #7c3aed);
-  border: none; border-radius: 13px;
-  color: #fff; font-family: var(--font);
-  font-size: 15px; font-weight: 800;
-  cursor: pointer; transition: all 0.3s;
-  box-shadow: 0 6px 20px rgba(139,92,246,0.35);
-  margin-top: 8px;
-}
-.btn-go:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(139,92,246,0.45); }
-.btn-go:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+/* loading */
+.auth-loading { text-align: center; padding: 32px 0; }
+.auth-loading i { font-size: 30px; color: #8b5cf6; }
+.auth-loading p { margin-top: 12px; color: rgba(148,163,184,0.7); font-size: 13px; }
+[data-theme="light"] .auth-loading p { color: #64748b; }
 
-/* Toast */
-.toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-  background: var(--surface2); border: 1px solid var(--border2);
-  border-radius: 12px; padding: 12px 20px;
-  font-size: 13px; font-weight: 600;
-  opacity: 0; transition: all 0.3s; z-index: 999; white-space: nowrap;
+/* ── Toast ── */
+#inviteToast {
+  position: fixed; top: 22px; left: 50%;
+  transform: translateX(-50%) translateY(-70px);
+  padding: 11px 20px; border-radius: 12px;
+  font-family: 'Cairo', sans-serif; font-weight: 700; font-size: 13px;
+  z-index: 9999; display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; box-shadow: 0 10px 28px rgba(0,0,0,.3);
+  transition: transform .4s cubic-bezier(0.34,1.4,0.64,1), opacity .3s;
+  opacity: 0; pointer-events: none;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast.ok  { border-color: rgba(52,211,153,0.4); color: var(--success); }
-.toast.err { border-color: rgba(248,113,113,0.4); color: var(--error); }
-  </style>
+#inviteToast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#inviteToast.ok  { background:#064e3b; color:#34d399; border:1px solid rgba(52,211,153,.28); }
+#inviteToast.err { background:#450a0a; color:#f87171; border:1px solid rgba(248,113,113,.28); }
+[data-theme="light"] #inviteToast.ok  { background:#f0fdf4; color:#166534; border-color:#86efac; }
+[data-theme="light"] #inviteToast.err { background:#fef2f2; color:#991b1b; border-color:#fca5a5; }
+
+/* ── footer ── */
+.invite-foot {
+  text-align: center; margin-top: 18px; padding-top: 14px;
+  border-top: 1px solid rgba(99,179,237,0.07);
+  font-size: 10px; color: rgba(148,163,184,0.4); font-weight: 600;
+}
+[data-theme="light"] .invite-foot { border-top-color: #e2e8f0; color: #94a3b8; }
+
+/* theme btn */
+.theme-btn-float {
+  position: fixed; top: 16px; left: 16px; z-index: 100;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 15px; color: rgba(255,255,255,0.6);
+  transition: all .2s;
+}
+[data-theme="light"] .theme-btn-float {
+  background: #f1f5f9; border-color: #e2e8f0; color: #64748b;
+}
+.theme-btn-float:hover { border-color: var(--blue); color: var(--blue); }
+[data-theme="light"] .icon-moon { display: none; }
+.icon-sun { display: none; }
+[data-theme="light"] .icon-sun { display: inline; }
+
+@keyframes popIn  { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+@media(max-width:480px) {
+  .invite-card { padding: 26px 18px 22px; }
+  .invite-brand { font-size: 22px; }
+}
+</style>
 </head>
 <body>
-<div class="bg-orb orb-1"></div>
-<div class="bg-orb orb-2"></div>
 
-<div class="card">
-  <div class="glow-bar"></div>
+<button class="theme-btn-float" onclick="toggleTheme()" title="تغيير المظهر">
+  <i class="fa fa-moon icon-moon"></i>
+  <i class="fa fa-sun icon-sun"></i>
+</button>
 
-  <div class="logo-box">
-    <div class="brand-wordmark">
-      <span class="letter-x">X</span><span>IREPO</span>
+<div class="invite-card">
+  <div class="invite-glow-bar"></div>
+
+  <div class="invite-logo-box">
+    <div class="invite-brand">
+      <span class="lx">X</span><span>I</span><span>R</span><span>E</span><span>P</span><span>O</span>
     </div>
-    <div class="brand-tagline">Team Invitation</div>
+    <span class="invite-tagline">Financial Operations Platform</span>
   </div>
 
-  <!-- Loading -->
-  <div id="loadingState" class="active">
-    <i class="fas fa-circle-notch fa-spin" style="font-size:32px; color:#8b5cf6;"></i>
-    <p style="margin-top:12px; color:var(--text2); font-size:13px;">جاري التحقق من الدعوة...</p>
+  <div id="inviteContent">
+    <div class="auth-loading">
+      <i class="fas fa-circle-notch fa-spin"></i>
+      <p>جاري التحقق من الدعوة...</p>
+    </div>
   </div>
 
-  <!-- منتهية أو غير صالحة -->
-  <div id="expiredState">
-    <div class="state-icon" style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171;">
-      <i class="fas fa-times"></i>
-    </div>
-    <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">رابط الدعوة غير صالح</h3>
-    <p style="font-size:12px; color:var(--text2); line-height:1.7;" id="expiredMsg">
-      هذا الرابط منتهي أو تم استخدامه من قبل.<br>يرجى التواصل مع مسؤول الشركة للحصول على دعوة جديدة.
-    </p>
-  </div>
-
-  <!-- الفورم -->
-  <div id="formState">
-    <div class="invite-card" id="inviteInfo">
-      <div style="font-size:11px; color:var(--text2); margin-bottom:6px;">
-        <i class="fas fa-envelope-open" style="color:#8b5cf6; margin-left:5px;"></i>دعوة للانضمام إلى
-      </div>
-      <div class="company-name" id="inviteCompanyName">—</div>
-      <div class="invite-role" id="inviteRoleBadge"><i class="fas fa-user"></i> موظف</div>
-      <div class="invite-sub" id="inviteBranchName"></div>
-    </div>
-
-    <div class="field">
-      <label><i class="fas fa-user" style="margin-left:5px; color:#8b5cf6;"></i>اسمك الكامل</label>
-      <div class="inp-wrap">
-        <input type="text" id="inviteName" placeholder="اسمك كما تريد ظهوره">
-        <i class="fas fa-user ico"></i>
-      </div>
-    </div>
-
-    <div class="field">
-      <label><i class="fas fa-envelope" style="margin-left:5px; color:#8b5cf6;"></i>البريد الإلكتروني</label>
-      <div class="inp-wrap">
-        <input type="email" id="inviteEmail" placeholder="بريدك الإلكتروني" readonly style="opacity:0.7;">
-        <i class="fas fa-envelope ico"></i>
-      </div>
-    </div>
-
-    <div class="field">
-      <label><i class="fas fa-lock" style="margin-left:5px; color:#8b5cf6;"></i>كلمة المرور</label>
-      <div class="inp-wrap">
-        <input type="password" id="invitePassword" placeholder="8 أحرف على الأقل">
-        <i class="fas fa-lock ico"></i>
-        <button type="button" onclick="toggleEye('invitePassword', this)"
-          style="position:absolute;top:50%;left:10px;transform:translateY(-50%);background:none;border:none;color:#8fa8c8;cursor:pointer;">
-          <i class="fas fa-eye"></i>
-        </button>
-      </div>
-    </div>
-
-    <div class="field">
-      <label><i class="fas fa-lock" style="margin-left:5px; color:#8b5cf6;"></i>تأكيد كلمة المرور</label>
-      <div class="inp-wrap">
-        <input type="password" id="invitePasswordConfirm" placeholder="أعد كتابة كلمة المرور">
-        <i class="fas fa-lock ico"></i>
-      </div>
-    </div>
-
-    <button class="btn-go" id="btnAccept" onclick="acceptInvitation()">
-      <i class="fas fa-user-check" style="margin-left:8px;"></i>قبول الدعوة والدخول
-    </button>
-  </div>
-
-  <!-- نجاح -->
-  <div id="successState">
-    <div class="state-icon" style="background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.3); color:#34d399;">
-      <i class="fas fa-check"></i>
-    </div>
-    <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">مرحباً بك في الفريق! 🎉</h3>
-    <p style="font-size:12px; color:var(--text2);">تم إنشاء حسابك بنجاح.<br>جاري تحويلك للنظام...</p>
-  </div>
+  <div class="invite-foot">OPERIX © 2025 — كل شغلك في نظام واحد</div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="inviteToast"></div>
 
 <script>
-let _inviteData = null;
-
-function toggleEye(id, btn) {
-  const inp = document.getElementById(id);
-  const ico = btn.querySelector('i');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-  ico.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+// ── Theme ──
+(function(){
+  const saved = localStorage.getItem('operix-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+function toggleTheme() {
+  const html = document.documentElement;
+  const light = html.getAttribute('data-theme') === 'light';
+  html.setAttribute('data-theme', light ? 'dark' : 'light');
+  localStorage.setItem('operix-theme', light ? 'dark' : 'light');
 }
 
+// ── Toast ──
 function toast(msg, ok = true) {
-  const el = document.getElementById('toast');
-  el.innerHTML = `<i class="fas fa-${ok ? 'check-circle' : 'circle-exclamation'}"></i> ${msg}`;
-  el.className = `toast ${ok ? 'ok' : 'err'} show`;
+  const el = document.getElementById('inviteToast');
+  el.innerHTML = `<i class="fa fa-${ok ? 'check-circle' : 'circle-exclamation'}"></i> ${msg}`;
+  el.className = `${ok ? 'ok' : 'err'} show`;
   setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-function showState(id) {
-  ['loadingState','expiredState','formState','successState'].forEach(s => {
-    document.getElementById(s).classList.remove('active');
-    document.getElementById(s).style.display = 'none';
-  });
-  document.getElementById(id).style.display = 'block';
-  document.getElementById(id).classList.add('active');
+function toggleEye(id, btn) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.querySelector('i').className = inp.type === 'password' ? 'fa fa-eye' : 'fa fa-eye-slash';
 }
 
-async function loadInvitation() {
-  const params = new URLSearchParams(window.location.search);
-  const token  = params.get('token');
+let _inviteData = null;
+
+// ── تحميل الدعوة ──
+async function loadInvite() {
+  const token = new URLSearchParams(window.location.search).get('token');
+  const cont  = document.getElementById('inviteContent');
 
   if (!token) {
-    showState('expiredState');
+    cont.innerHTML = `
+      <div class="auth-error-state">
+        <div class="auth-error-icon"><i class="fas fa-link-slash"></i></div>
+        <h3>رابط غير صالح</h3>
+        <p>لا يوجد رمز دعوة في هذا الرابط.<br>تواصل مع مسؤول الشركة للحصول على رابط صحيح.</p>
+      </div>`;
+    return;
+  }
+
+  if (!window.supa) {
+    cont.innerHTML = `<div class="auth-error-state"><div class="auth-error-icon"><i class="fas fa-times"></i></div><h3>خطأ في الإعداد</h3><p>لم يتم تهيئة الاتصال بقاعدة البيانات.</p></div>`;
     return;
   }
 
   try {
-    // جلب بيانات الدعوة مع اسم الشركة والفرع
     const { data: inv, error } = await window.supa
-      .from('invitations')
-      .select('*, companies(name), branches(name)')
-      .eq('token', token)
-      .eq('status', 'pending')
-      .maybeSingle();
+      .from('invitations').select('*').eq('token', token).maybeSingle();
 
     if (error || !inv) {
-      showState('expiredState');
+      cont.innerHTML = `
+        <div class="auth-error-state">
+          <div class="auth-error-icon"><i class="fas fa-times"></i></div>
+          <h3>رابط الدعوة غير صالح</h3>
+          <p>لم يتم العثور على هذه الدعوة.<br>تواصل مع مسؤول الشركة.</p>
+        </div>`;
       return;
     }
-
-    // التحقق من انتهاء الصلاحية
+    if (inv.status !== 'pending') {
+      cont.innerHTML = `
+        <div class="auth-error-state">
+          <div class="auth-error-icon" style="border-color:rgba(16,185,129,.3);">
+            <i class="fas fa-check-circle" style="color:#10b981;"></i>
+          </div>
+          <h3>تم استخدام هذه الدعوة</h3>
+          <p>تم قبول هذه الدعوة من قبل.<br>يمكنك <a href="index.html" style="color:#8b5cf6;font-weight:700;">تسجيل الدخول</a> مباشرة.</p>
+        </div>`;
+      return;
+    }
     if (new Date(inv.expires_at) < new Date()) {
-      document.getElementById('expiredMsg').innerHTML =
-        'انتهت صلاحية هذه الدعوة.<br>يرجى طلب دعوة جديدة من مسؤول الشركة.';
-      showState('expiredState');
+      cont.innerHTML = `
+        <div class="auth-error-state">
+          <div class="auth-error-icon" style="border-color:rgba(245,158,11,.3);">
+            <i class="fas fa-clock" style="color:#f59e0b;"></i>
+          </div>
+          <h3>انتهت صلاحية الدعوة</h3>
+          <p>هذا الرابط انتهت صلاحيته.<br>اطلب دعوة جديدة من مسؤول الشركة.</p>
+        </div>`;
       return;
     }
 
     _inviteData = inv;
 
-    // عرض بيانات الدعوة
-    document.getElementById('inviteCompanyName').textContent = inv.companies?.name || '—';
-    document.getElementById('inviteEmail').value = inv.email;
-    document.getElementById('inviteRoleBadge').innerHTML =
-      `<i class="fas fa-${inv.role === 'ADMIN' ? 'user-shield' : 'user'}"></i> ${inv.role === 'ADMIN' ? 'مدير فرع' : 'موظف'}`;
-    if (inv.branches?.name) {
-      document.getElementById('inviteBranchName').textContent = 'الفرع: ' + inv.branches.name;
-    }
+    let companyName = '—';
+    try {
+      const { data: co } = await window.supa
+        .from('companies').select('name').eq('id', inv.company_id).maybeSingle();
+      companyName = co?.name || '—';
+    } catch(e) {}
 
-    showState('formState');
+    const roleLabel = inv.role === 'ADMIN' ? 'مدير فرع' : 'موظف';
+    const roleIcon  = inv.role === 'ADMIN' ? 'fa-user-shield' : 'fa-user';
 
-  } catch (err) {
-    console.error(err);
-    showState('expiredState');
+    cont.innerHTML = `
+      <div style="background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:14px;padding:14px;margin-bottom:18px;text-align:center;animation:fadeUp .3s ease both;">
+        <div style="font-size:10px;color:#a78bfa;margin-bottom:5px;letter-spacing:.4px;">
+          <i class="fas fa-envelope-open" style="margin-left:5px;"></i>دعوة للانضمام إلى
+        </div>
+        <div style="font-size:17px;font-weight:900;">${companyName}</div>
+        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.3);border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;color:#a78bfa;margin-top:8px;">
+          <i class="fas ${roleIcon}"></i> ${roleLabel}
+        </span>
+      </div>
+
+      <div class="auth-field">
+        <label>الاسم الكامل</label>
+        <div class="auth-inp-wrap">
+          <input type="text" id="invName" placeholder="اسمك كما تريد ظهوره" autocomplete="name">
+          <i class="fas fa-user ico"></i>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>البريد الإلكتروني</label>
+        <div class="auth-inp-wrap">
+          <input type="email" id="invEmail" value="${inv.email}" readonly>
+          <i class="fas fa-envelope ico"></i>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>كلمة المرور</label>
+        <div class="auth-inp-wrap">
+          <input type="password" id="invPassword" placeholder="8 أحرف على الأقل" autocomplete="new-password">
+          <i class="fas fa-lock ico"></i>
+          <button class="auth-eye-btn" type="button" onclick="toggleEye('invPassword',this)"><i class="fa fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>تأكيد كلمة المرور</label>
+        <div class="auth-inp-wrap">
+          <input type="password" id="invPasswordConfirm" placeholder="أعد كتابة كلمة المرور" autocomplete="new-password">
+          <i class="fas fa-lock ico"></i>
+        </div>
+      </div>
+      <button class="auth-btn ab-pur" id="btnAccept" onclick="acceptInvite()">
+        <i class="fas fa-user-check"></i>قبول الدعوة والدخول
+      </button>`;
+
+  } catch(err) {
+    cont.innerHTML = `
+      <div class="auth-error-state">
+        <div class="auth-error-icon"><i class="fas fa-times"></i></div>
+        <h3>خطأ في التحقق</h3>
+        <p>${err.message}</p>
+      </div>`;
   }
 }
 
-async function acceptInvitation() {
+// ── قبول الدعوة ──
+async function acceptInvite() {
   if (!_inviteData) return;
+  const name     = document.getElementById('invName')?.value.trim();
+  const pass     = document.getElementById('invPassword')?.value;
+  const passConf = document.getElementById('invPasswordConfirm')?.value;
 
-  const name     = document.getElementById('inviteName').value.trim();
-  const pass     = document.getElementById('invitePassword').value;
-  const passConf = document.getElementById('invitePasswordConfirm').value;
-
-  if (!name)            return toast('يرجى إدخال اسمك', false);
-  if (pass.length < 8)  return toast('كلمة المرور 8 أحرف على الأقل', false);
-  if (pass !== passConf) return toast('كلمتا المرور غير متطابقتين', false);
+  if (!name)              return toast('يرجى إدخال اسمك', false);
+  if (pass.length < 8)   return toast('كلمة المرور 8 أحرف على الأقل', false);
+  if (pass !== passConf)  return toast('كلمتا المرور غير متطابقتين', false);
 
   const btn = document.getElementById('btnAccept');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-left:8px;"></i>جاري الإنشاء...';
+  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i>جاري الإنشاء...';
 
   try {
+    window.__registering = true;
     const email = _inviteData.email;
 
-    // 1. إنشاء المستخدم في Supabase Auth
     const { data: authData, error: authErr } = await window.supa.auth.signUp({
-      email,
-      password: pass,
-      options: { data: { name } }
+      email, password: pass, options: { data: { name } }
     });
-
     if (authErr) throw new Error(authErr.message);
-
     const userId = authData.user?.id;
     if (!userId) throw new Error('فشل إنشاء المستخدم');
 
-    // 2. إنشاء سجل في users مرتبط بالشركة والفرع
-    const { error: userErr } = await window.supa.from('users').insert({
-      id:         userId,
-      email:      email,
-      name:       name,
-      role:       _inviteData.role || 'USER',
-      is_master:  false,
-      is_owner:   false,
+    const { error: signInErr } = await window.supa.auth.signInWithPassword({ email, password: pass });
+    if (signInErr) throw new Error(signInErr.message);
+
+    const { error: userErr } = await window.supa.from('users').upsert({
+      id: userId, email, name,
+      role: _inviteData.role || 'USER',
+      is_master: false, is_owner: false,
       company_id: _inviteData.company_id,
       branch_id:  _inviteData.branch_id
-    });
-
+    }, { onConflict: 'id' });
     if (userErr) throw new Error(userErr.message);
 
-    // 3. تحديث حالة الدعوة
-    await window.supa.from('invitations')
-      .update({ status: 'accepted' })
-      .eq('id', _inviteData.id);
+    await window.supa.from('invitations').update({ status: 'accepted' }).eq('id', _inviteData.id);
 
-    // 4. تسجيل الدخول
-    await window.supa.auth.signInWithPassword({ email, password: pass });
+    document.getElementById('inviteContent').innerHTML = `
+      <div class="auth-success">
+        <div class="auth-success-icon asi-purple"><i class="fas fa-check"></i></div>
+        <h3>مرحباً بك في الفريق! 🎉</h3>
+        <p>تم إنشاء حسابك بنجاح.<br>جاري تحويلك للنظام...</p>
+      </div>`;
 
-    showState('successState');
-    setTimeout(() => window.location.href = 'index.html', 2000);
+    window.__registering = false;
+    setTimeout(() => window.location.href = 'dashboard.html', 2000);
 
-  } catch (err) {
-    console.error(err);
+  } catch(err) {
+    window.__registering = false;
     toast('خطأ: ' + err.message, false);
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-user-check" style="margin-left:8px;"></i>قبول الدعوة والدخول';
+    const btn = document.getElementById('btnAccept');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-check"></i>قبول الدعوة والدخول'; }
   }
 }
 
+// ── Enter key ──
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && _inviteData) acceptInvitation();
+  if (e.key === 'Enter' && _inviteData) acceptInvite();
 });
 
-// تشغيل عند التحميل
-loadInvitation();
+// ── تشغيل ──
+document.addEventListener('DOMContentLoaded', loadInvite);
 </script>
 </body>
 </html>

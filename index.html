@@ -9,8 +9,81 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 <link rel="stylesheet" href="css/landing.css"/>
+<script src="security.js"></script>
+<script src="config.js"></script>
 </head>
 <body>
+
+<!-- ════════════════════ LOADING SCREEN ════════════════════ -->
+<div id="appLoader">
+  <div class="loader-ring"></div>
+  <div class="loader-ring loader-ring-2"></div>
+  <div class="loader-brand">
+    <span class="lx">X</span><span>I</span><span>R</span><span>E</span><span>P</span><span>O</span>
+  </div>
+  <div class="loader-dots">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-text">جاري التحميل...</div>
+</div>
+
+<!-- ════════════════════ DASHBOARD HEADER ════════════════════ -->
+<header id="dashHeader">
+  <!-- اللوجو -->
+  <a href="dashboard.html" class="dh-logo">
+    <span class="lx">X</span><span>I</span><span>R</span><span>E</span><span>P</span><span>O</span>
+  </a>
+
+  <!-- الفاصل + اسم الشركة -->
+  <div class="dh-divider"></div>
+  <div class="dh-company" id="dhCompanyName">—</div>
+
+  <div class="dh-spacer"></div>
+
+  <!-- الأيقونات -->
+  <div class="dh-actions">
+    <!-- لوحة التحكم -->
+    <a href="dashboard.html" class="dh-icon-btn" title="لوحة التحكم">
+      <i class="fa fa-gauge-high"></i>
+    </a>
+
+    <!-- تغيير الثيم -->
+    <button class="dh-icon-btn" onclick="toggleTheme()" title="تغيير المظهر">
+      <i class="fa fa-moon icon-moon"></i>
+      <i class="fa fa-sun icon-sun" style="display:none"></i>
+    </button>
+
+    <!-- المستخدم -->
+    <div class="dh-user" id="dhUserBtn" onclick="toggleUserMenu()">
+      <div class="dh-avatar" id="dhAvatar">OP</div>
+      <div class="dh-user-info">
+        <div class="dh-user-name" id="dhUserName">—</div>
+        <div class="dh-user-role" id="dhUserRole">—</div>
+      </div>
+      <i class="fa fa-chevron-down" style="font-size:9px;color:rgba(148,163,184,0.4);margin-right:4px;"></i>
+
+      <!-- قائمة المستخدم -->
+      <div class="dh-user-menu" id="dhUserMenu">
+        <div style="padding:8px 10px 6px;border-bottom:1px solid rgba(99,179,237,0.08);margin-bottom:4px;">
+          <div style="font-family:'Cairo',sans-serif;font-size:11px;font-weight:800;color:rgba(226,232,240,0.9);" id="dhMenuName">—</div>
+          <div class="dh-role-badge dh-role-user" id="dhRoleBadge" style="margin-top:4px;">موظف</div>
+        </div>
+        <div class="dh-menu-item" onclick="window.location.href='dashboard.html'">
+          <i class="fa fa-gauge-high"></i> لوحة التحكم
+        </div>
+        <div class="dh-menu-divider"></div>
+        <div class="dh-menu-item" onclick="toggleTheme()">
+          <i class="fa fa-circle-half-stroke"></i> تغيير المظهر
+        </div>
+        <div class="dh-menu-divider"></div>
+        <div class="dh-menu-item danger" onclick="dashSignOut()">
+          <i class="fa fa-right-from-bracket"></i> تسجيل الخروج
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
 
 <!-- ════════════════════ NAVBAR ════════════════════ -->
 <nav id="navbar">
@@ -27,8 +100,12 @@
       <i class="fa fa-moon icon-moon"></i>
       <i class="fa fa-sun icon-sun"></i>
     </button>
-    <a href="#" class="btn-nav-login" onclick="openModal('loginModal')">تسجيل الدخول</a>
-    <a href="#" class="btn-nav-reg" onclick="openModal('registerModal')">ابدأ مجاناً</a>
+    <a href="#" class="btn-nav-login" onclick="openAuth('login');return false;">
+      <i class="fa fa-right-to-bracket"></i> تسجيل الدخول
+    </a>
+    <a href="#" class="btn-nav-reg" onclick="openAuth('register');return false;">
+      <i class="fa fa-rocket"></i> ابدأ مجاناً
+    </a>
     <button class="nav-hamburger" onclick="openDrawer()" aria-label="القائمة">
       <i class="fa fa-bars"></i>
     </button>
@@ -46,8 +123,8 @@
   <a href="#contact"  onclick="closeDrawer()"><i class="fa fa-envelope"></i> تواصل معنا</a>
   <div class="drawer-divider"></div>
   <div class="drawer-auth">
-    <a href="#" onclick="closeDrawer();openModal('loginModal')"><i class="fa fa-sign-in-alt"></i> تسجيل الدخول</a>
-    <a href="#" class="filled" onclick="closeDrawer();openModal('registerModal')"><i class="fa fa-rocket"></i> ابدأ مجاناً</a>
+    <a href="#" onclick="closeDrawer();openAuth('login');return false;"><i class="fa fa-sign-in-alt"></i> تسجيل الدخول</a>
+    <a href="#" class="filled" onclick="closeDrawer();openAuth('register');return false;"><i class="fa fa-rocket"></i> ابدأ مجاناً</a>
   </div>
 </div>
 
@@ -68,7 +145,7 @@
       فروع متعددة — فريق كامل — تقارير فورية
     </p>
     <div class="hero-btns">
-      <button class="btn-primary" onclick="openModal('registerModal')">
+      <button class="btn-primary" onclick="openAuth('register')">
         <i class="fa fa-rocket"></i> ابدأ تجربتك المجانية
       </button>
       <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
@@ -148,26 +225,10 @@
       <p class="sec-desc" style="margin:0 auto">من التسجيل لأول معاملة في أقل من 5 دقائق</p>
     </div>
     <div class="steps">
-      <div class="step reveal">
-        <div class="step-num">1</div>
-        <h4>سجّل شركتك</h4>
-        <p>اسم الشركة والإيميل وكلمة المرور — خلاص. Trial مجاني 7 أيام بدون كريدت كارد.</p>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">2</div>
-        <h4>أضف فروعك</h4>
-        <p>أنشئ فروعك وحدد المحافظ والحسابات لكل فرع حسب احتياجك.</p>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">3</div>
-        <h4>ادعو فريقك</h4>
-        <p>ابعت دعوات لموظفيك بالإيميل وحدد دور كل واحد — ADMIN أو مدير فرع أو موظف.</p>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">4</div>
-        <h4>ابدأ الشغل</h4>
-        <p>سجّل العمليات وتابع التقارير والإحصاءات لحظة بلحظة من أي جهاز.</p>
-      </div>
+      <div class="step reveal"><div class="step-num">1</div><h4>سجّل شركتك</h4><p>اسم الشركة والإيميل وكلمة المرور — خلاص. Trial مجاني 7 أيام بدون كريدت كارد.</p></div>
+      <div class="step reveal"><div class="step-num">2</div><h4>أضف فروعك</h4><p>أنشئ فروعك وحدد المحافظ والحسابات لكل فرع حسب احتياجك.</p></div>
+      <div class="step reveal"><div class="step-num">3</div><h4>ادعو فريقك</h4><p>ابعت دعوات لموظفيك بالإيميل وحدد دور كل واحد — ADMIN أو مدير فرع أو موظف.</p></div>
+      <div class="step reveal"><div class="step-num">4</div><h4>ابدأ الشغل</h4><p>سجّل العمليات وتابع التقارير والإحصاءات لحظة بلحظة من أي جهاز.</p></div>
     </div>
   </div>
 </section>
@@ -181,30 +242,10 @@
       <p class="sec-desc">نظام أدوار متكامل يضمن الأمان والرقابة على كل مستوى</p>
     </div>
     <div class="roles-grid">
-      <div class="role-card reveal">
-        <div class="role-icon">👑</div>
-        <h4>OWNER</h4>
-        <p>التحكم الكامل في كل شيء — الفروع والموظفين والاشتراك والتقارير والإعدادات.</p>
-        <span class="role-tag" style="background:rgba(245,158,11,.15);color:#f59e0b;">كامل الصلاحيات</span>
-      </div>
-      <div class="role-card reveal">
-        <div class="role-icon">🛠️</div>
-        <h4>ADMIN</h4>
-        <p>إدارة الفروع والموظفين ورؤية تقارير الشركة — بدون تغيير الاشتراك.</p>
-        <span class="role-tag" style="background:rgba(59,130,246,.15);color:#3b82f6;">صلاحيات عالية</span>
-      </div>
-      <div class="role-card reveal">
-        <div class="role-icon">🏪</div>
-        <h4>BRANCH MANAGER</h4>
-        <p>إدارة فرع محدد فقط — عملياته وموظفيه وتقاريره.</p>
-        <span class="role-tag" style="background:rgba(16,185,129,.15);color:#10b981;">صلاحيات الفرع</span>
-      </div>
-      <div class="role-card reveal">
-        <div class="role-icon">💼</div>
-        <h4>EMPLOYEE</h4>
-        <p>تسجيل العمليات اليومية ورؤية بيانات فرعه فقط.</p>
-        <span class="role-tag" style="background:rgba(148,163,184,.1);color:#94a3b8;">صلاحيات أساسية</span>
-      </div>
+      <div class="role-card reveal"><div class="role-icon">👑</div><h4>OWNER</h4><p>التحكم الكامل في كل شيء — الفروع والموظفين والاشتراك والتقارير والإعدادات.</p><span class="role-tag" style="background:rgba(245,158,11,.15);color:#f59e0b;">كامل الصلاحيات</span></div>
+      <div class="role-card reveal"><div class="role-icon">🛠️</div><h4>ADMIN</h4><p>إدارة الفروع والموظفين ورؤية تقارير الشركة — بدون تغيير الاشتراك.</p><span class="role-tag" style="background:rgba(59,130,246,.15);color:#3b82f6;">صلاحيات عالية</span></div>
+      <div class="role-card reveal"><div class="role-icon">🏪</div><h4>BRANCH MANAGER</h4><p>إدارة فرع محدد فقط — عملياته وموظفيه وتقاريره.</p><span class="role-tag" style="background:rgba(16,185,129,.15);color:#10b981;">صلاحيات الفرع</span></div>
+      <div class="role-card reveal"><div class="role-icon">💼</div><h4>EMPLOYEE</h4><p>تسجيل العمليات اليومية ورؤية بيانات فرعه فقط.</p><span class="role-tag" style="background:rgba(148,163,184,.1);color:#94a3b8;">صلاحيات أساسية</span></div>
     </div>
   </div>
 </section>
@@ -217,67 +258,7 @@
       <h2 class="sec-title">خطة مناسبة لكل حجم</h2>
       <p class="sec-desc" style="margin:0 auto">ابدأ مجاناً وكبّر مع شركتك</p>
     </div>
-    <div class="pricing-grid">
-
-      <div class="plan-card reveal">
-        <div class="plan-name">تجريبي</div>
-        <div class="plan-price">0<span> ج.م</span></div>
-        <div class="plan-duration">7 أيام مجاناً</div>
-        <ul class="plan-features">
-          <li><i class="fa fa-check"></i> فرع واحد</li>
-          <li><i class="fa fa-check"></i> 5 موظفين</li>
-          <li><i class="fa fa-check"></i> 100 معاملة/شهر</li>
-          <li><i class="fa fa-check"></i> تقارير أساسية</li>
-        </ul>
-        <button class="btn-plan btn-plan-outline" onclick="openModal('registerModal')">ابدأ مجاناً</button>
-      </div>
-
-      <div class="plan-card reveal">
-        <div class="plan-name">ستارتر</div>
-        <div class="plan-price">99<span> ج.م</span></div>
-        <div class="plan-duration">شهرياً</div>
-        <ul class="plan-features">
-          <li><i class="fa fa-check"></i> 2 فرع</li>
-          <li><i class="fa fa-check"></i> 10 موظفين</li>
-          <li><i class="fa fa-check"></i> 2,000 معاملة/شهر</li>
-          <li><i class="fa fa-check"></i> تقارير كاملة</li>
-          <li><i class="fa fa-check"></i> دعم أولوية</li>
-        </ul>
-        <button class="btn-plan btn-plan-outline" onclick="openModal('registerModal')">اشترك الآن</button>
-      </div>
-
-      <div class="plan-card popular reveal">
-        <div class="plan-popular-badge">الأكثر طلباً</div>
-        <div class="plan-name">برو</div>
-        <div class="plan-price">299<span> ج.م</span></div>
-        <div class="plan-duration">شهرياً</div>
-        <ul class="plan-features">
-          <li><i class="fa fa-check"></i> 5 فروع</li>
-          <li><i class="fa fa-check"></i> 25 موظف</li>
-          <li><i class="fa fa-check"></i> 2,000 معاملة/شهر</li>
-          <li><i class="fa fa-check"></i> تقارير متقدمة</li>
-          <li><i class="fa fa-check"></i> إشعارات فورية</li>
-          <li><i class="fa fa-check"></i> دعم مميز</li>
-        </ul>
-        <button class="btn-plan btn-plan-filled" onclick="openModal('registerModal')">اشترك الآن</button>
-      </div>
-
-      <div class="plan-card reveal">
-        <div class="plan-name">إنتربرايز</div>
-        <div class="plan-price">799<span> ج.م</span></div>
-        <div class="plan-duration">شهرياً</div>
-        <ul class="plan-features">
-          <li><i class="fa fa-check"></i> 20 فرع</li>
-          <li><i class="fa fa-check"></i> 100 موظف</li>
-          <li><i class="fa fa-check"></i> 10,000 معاملة/شهر</li>
-          <li><i class="fa fa-check"></i> كل مميزات Pro</li>
-          <li><i class="fa fa-check"></i> دعم مخصص 24/7</li>
-          <li><i class="fa fa-check"></i> API Access</li>
-        </ul>
-        <button class="btn-plan btn-plan-outline" onclick="openModal('registerModal')">تواصل معنا</button>
-      </div>
-
-    </div>
+    <div class="pricing-grid" id="pricingGrid"></div>
   </div>
 </section>
 
@@ -290,50 +271,17 @@
         <h2 class="sec-title">لماذا Operix Cash؟</h2>
         <p class="sec-desc">بنيناها لأن الشركات الصغيرة تستحق أدوات قوية بأسعار معقولة — بدون تعقيد، بدون سيرفرات، بدون التزامات.</p>
         <div class="about-points">
-          <div class="about-point">
-            <i class="fa fa-lock" style="color:#3b82f6;"></i>
-            <div>
-              <h5>أمان من المستوى الأول</h5>
-              <p>بياناتك محمية بـ Row Level Security على مستوى قاعدة البيانات — مش بس الكود. شركتك معزولة تماماً.</p>
-            </div>
-          </div>
-          <div class="about-point">
-            <i class="fa fa-bolt" style="color:#f59e0b;"></i>
-            <div>
-              <h5>سريع وخفيف</h5>
-              <p>يشتغل من أي جهاز وأي متصفح بدون تنزيل. Realtime updates بدون refresh.</p>
-            </div>
-          </div>
-          <div class="about-point">
-            <i class="fa fa-arrows-up-to-line" style="color:#10b981;"></i>
-            <div>
-              <h5>يكبر معك</h5>
-              <p>ابدأ بفرع واحد وموظف وكبّر لـ 20 فرع و100 موظف — بضغطة ترقية واحدة.</p>
-            </div>
-          </div>
+          <div class="about-point"><i class="fa fa-lock" style="color:#3b82f6;"></i><div><h5>أمان من المستوى الأول</h5><p>بياناتك محمية بـ Row Level Security على مستوى قاعدة البيانات — مش بس الكود.</p></div></div>
+          <div class="about-point"><i class="fa fa-bolt" style="color:#f59e0b;"></i><div><h5>سريع وخفيف</h5><p>يشتغل من أي جهاز وأي متصفح بدون تنزيل. Realtime updates بدون refresh.</p></div></div>
+          <div class="about-point"><i class="fa fa-arrows-up-to-line" style="color:#10b981;"></i><div><h5>يكبر معك</h5><p>ابدأ بفرع واحد وموظف وكبّر لـ 20 فرع و100 موظف — بضغطة ترقية واحدة.</p></div></div>
         </div>
       </div>
       <div class="about-visual reveal">
-        <div class="visual-row">
-          <i class="fa fa-shield-halved" style="color:#10b981;"></i>
-          <div><div class="v-text">Row Level Security</div><div class="v-sub">عزل كامل بين الشركات</div></div>
-        </div>
-        <div class="visual-row">
-          <i class="fa fa-server" style="color:#3b82f6;"></i>
-          <div><div class="v-text">Supabase + Vercel</div><div class="v-sub">بنية سحابية موثوقة</div></div>
-        </div>
-        <div class="visual-row">
-          <i class="fa fa-credit-card" style="color:#f59e0b;"></i>
-          <div><div class="v-text">Kashier Payments</div><div class="v-sub">دفع محلي آمن بالجنيه</div></div>
-        </div>
-        <div class="visual-row">
-          <i class="fa fa-bell" style="color:#8b5cf6;"></i>
-          <div><div class="v-text">Realtime Notifications</div><div class="v-sub">إشعارات فورية بدون refresh</div></div>
-        </div>
-        <div class="visual-row">
-          <i class="fa fa-mobile-screen" style="color:#06b6d4;"></i>
-          <div><div class="v-text">Mobile Ready</div><div class="v-sub">يشتغل على أي جهاز</div></div>
-        </div>
+        <div class="visual-row"><i class="fa fa-shield-halved" style="color:#10b981;"></i><div><div class="v-text">Row Level Security</div><div class="v-sub">عزل كامل بين الشركات</div></div></div>
+        <div class="visual-row"><i class="fa fa-server" style="color:#3b82f6;"></i><div><div class="v-text">Supabase + Vercel</div><div class="v-sub">بنية سحابية موثوقة</div></div></div>
+        <div class="visual-row"><i class="fa fa-credit-card" style="color:#f59e0b;"></i><div><div class="v-text">Kashier Payments</div><div class="v-sub">دفع محلي آمن بالجنيه</div></div></div>
+        <div class="visual-row"><i class="fa fa-bell" style="color:#8b5cf6;"></i><div><div class="v-text">Realtime Notifications</div><div class="v-sub">إشعارات فورية بدون refresh</div></div></div>
+        <div class="visual-row"><i class="fa fa-mobile-screen" style="color:#06b6d4;"></i><div><div class="v-text">Mobile Ready</div><div class="v-sub">يشتغل على أي جهاز</div></div></div>
       </div>
     </div>
   </div>
@@ -344,7 +292,7 @@
   <div class="reveal">
     <h2 class="cta-title">جاهز تبدأ؟<br/><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">7 أيام مجاناً</span></h2>
     <p class="cta-desc">لا كريدت كارد — لا التزامات — ابدأ دلوقتي وشوف الفرق بنفسك</p>
-    <button class="btn-primary" style="margin:0 auto;" onclick="openModal('registerModal')">
+    <button class="btn-primary" style="margin:0 auto;" onclick="openAuth('register')">
       <i class="fa fa-rocket"></i> سجّل شركتك مجاناً
     </button>
   </div>
@@ -359,21 +307,9 @@
       <p class="sec-desc" style="margin:0 auto">فريق الدعم جاهز للرد على أسئلتك</p>
     </div>
     <div class="contact-cards reveal">
-      <div class="contact-card">
-        <i class="fa fa-envelope" style="color:#3b82f6;"></i>
-        <h4>إيميل الدعم</h4>
-        <a href="mailto:support@operixcash.com">support@operixcash.com</a>
-      </div>
-      <div class="contact-card">
-        <i class="fab fa-whatsapp" style="color:#10b981;"></i>
-        <h4>واتساب</h4>
-        <a href="https://wa.me/201099736481">+20 109 973 6481</a>
-      </div>
-      <div class="contact-card">
-        <i class="fa fa-clock" style="color:#f59e0b;"></i>
-        <h4>ساعات الدعم</h4>
-        <p>السبت – الخميس<br/>9 صباحاً – 9 مساءً</p>
-      </div>
+      <div class="contact-card"><i class="fa fa-envelope" style="color:#3b82f6;"></i><h4>إيميل الدعم</h4><a href="/cdn-cgi/l/email-protection#d3a0a6a3a3bca1a793bca3b6a1baabb0b2a0bbfdb0bcbe"><span class="__cf_email__" data-cfemail="aad9dfdadac5d8deeac5dacfd8c3d2c9cbd9c284c9c5c7">[email&#160;protected]</span></a></div>
+      <div class="contact-card"><i class="fab fa-whatsapp" style="color:#10b981;"></i><h4>واتساب</h4><a href="https://wa.me/201099736481">+20 109 973 6481</a></div>
+      <div class="contact-card"><i class="fa fa-clock" style="color:#f59e0b;"></i><h4>ساعات الدعم</h4><p>السبت – الخميس<br/>9 صباحاً – 9 مساءً</p></div>
     </div>
   </div>
 </section>
@@ -391,166 +327,177 @@
         <a href="#" class="social-btn"><i class="fab fa-whatsapp"></i></a>
       </div>
     </div>
-    <div class="footer-col">
-      <h5>المنصة</h5>
-      <ul>
-        <li><a href="#features">المميزات</a></li>
-        <li><a href="#pricing">الأسعار</a></li>
-        <li><a href="#how">كيف يعمل</a></li>
-        <li><a href="#about">عن Operix</a></li>
-      </ul>
-    </div>
-    <div class="footer-col">
-      <h5>الحساب</h5>
-      <ul>
-        <li><a href="#" onclick="openModal('loginModal')">تسجيل الدخول</a></li>
-        <li><a href="#" onclick="openModal('registerModal')">إنشاء حساب</a></li>
-        <li><a href="#" onclick="openModal('termsModal')">الشروط والأحكام</a></li>
-        <li><a href="#" onclick="openModal('privacyModal')">سياسة الخصوصية</a></li>
-      </ul>
-    </div>
-    <div class="footer-col">
-      <h5>تواصل معنا</h5>
-      <div class="footer-contact-item"><i class="fa fa-envelope"></i> support@operixcash.com</div>
-      <div class="footer-contact-item"><i class="fab fa-whatsapp"></i> +20 109 973 6481</div>
-      <div class="footer-contact-item"><i class="fa fa-location-dot"></i> القاهرة، مصر</div>
-    </div>
+    <div class="footer-col"><h5>المنصة</h5><ul><li><a href="#features">المميزات</a></li><li><a href="#pricing">الأسعار</a></li><li><a href="#how">كيف يعمل</a></li><li><a href="#about">عن Operix</a></li></ul></div>
+    <div class="footer-col"><h5>الحساب</h5><ul><li><a href="#" onclick="openAuth('login');return false;">تسجيل الدخول</a></li><li><a href="#" onclick="openAuth('register');return false;">إنشاء حساب</a></li><li><a href="#" onclick="openModal('termsModal');return false;">الشروط والأحكام</a></li><li><a href="#" onclick="openModal('privacyModal');return false;">سياسة الخصوصية</a></li></ul></div>
+    <div class="footer-col"><h5>تواصل معنا</h5><div class="footer-contact-item"><i class="fa fa-envelope"></i> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a3d0d6d3d3ccd1d7e3ccd3c6d1cadbc0c2d0cb8dc0ccce">[email&#160;protected]</a></div><div class="footer-contact-item"><i class="fab fa-whatsapp"></i> +20 109 973 6481</div><div class="footer-contact-item"><i class="fa fa-location-dot"></i> القاهرة، مصر</div></div>
   </div>
   <div class="footer-bottom">
     <p>© 2026 Operix Cash — جميع الحقوق محفوظة</p>
     <div class="footer-bottom-links">
-      <a href="#" onclick="openModal('termsModal')">الشروط والأحكام</a>
-      <a href="#" onclick="openModal('privacyModal')">الخصوصية</a>
+      <a href="#" onclick="openModal('termsModal');return false;">الشروط والأحكام</a>
+      <a href="#" onclick="openModal('privacyModal');return false;">الخصوصية</a>
       <a href="#contact">تواصل معنا</a>
     </div>
   </div>
 </footer>
 
-<!-- ════════════════════ MODAL: LOGIN ════════════════════ -->
-<div class="modal-overlay" id="loginModal">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('loginModal')"><i class="fa fa-times"></i></button>
-    <div class="modal-logo">OPERIX</div>
-    <h2 class="modal-title">تسجيل الدخول</h2>
-    <p class="modal-subtitle">أهلاً بك — ادخل بياناتك للمتابعة</p>
-    <div class="form-error" id="loginError"></div>
-    <div class="form-group">
-      <label>البريد الإلكتروني</label>
-      <input type="email" id="loginEmail" placeholder="example@email.com" dir="ltr"/>
-    </div>
-    <div class="form-group">
-      <label>كلمة المرور</label>
-      <input type="password" id="loginPassword" placeholder="••••••••" dir="ltr"/>
-    </div>
-    <button class="btn-form" id="btnLogin" onclick="handleLogin()">
-      <i class="fa fa-sign-in-alt"></i> دخول
+<!-- ════════════════════════════════════════════════════
+     AUTH OVERLAY — دمج login.html كـ overlay كامل
+════════════════════════════════════════════════════ -->
+<div id="authOverlay">
+  <div class="auth-card" id="authCard">
+    <div class="auth-glow-bar" id="authGlowBar"></div>
+    <button class="auth-close-btn" onclick="closeAuth()" title="إغلاق">
+      <i class="fa fa-times"></i>
     </button>
-    <p class="form-footer">
-      مش عندك حساب؟
-      <a onclick="switchModal('loginModal','registerModal')">سجّل شركتك مجاناً</a>
-    </p>
+
+    <!-- اللوجو -->
+    <div class="auth-logo-box">
+      <div class="auth-brand">
+        <span class="lx">X</span><span>I</span><span>R</span><span>E</span><span>P</span><span>O</span>
+      </div>
+      <span class="auth-tagline">Financial Operations Platform</span>
+    </div>
+
+    <!-- التابات -->
+    <div class="auth-tabs">
+      <button class="auth-tab-btn active" id="atb-login" onclick="authSwitchTab('login')">
+        <i class="fa fa-right-to-bracket"></i>دخول
+      </button>
+      <button class="auth-tab-btn t-green" id="atb-register" onclick="authSwitchTab('register')">
+        <i class="fa fa-building"></i>شركة جديدة
+      </button>
+    </div>
+
+    <!-- ════ TAB: تسجيل الدخول ════ -->
+    <div class="auth-tab-pane active" id="atp-login">
+      <div class="auth-field">
+        <label>البريد الإلكتروني</label>
+        <div class="auth-inp-wrap">
+          <input type="email" id="loginEmail" placeholder="user@example.com" autocomplete="email">
+          <i class="fa fa-envelope ico"></i>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>كلمة المرور</label>
+        <div class="auth-inp-wrap">
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+          <i class="fa fa-lock ico"></i>
+          <button class="auth-eye-btn" type="button" onclick="authToggleEye('loginPassword',this)"><i class="fa fa-eye"></i></button>
+        </div>
+      </div>
+      <div class="forgot-row">
+        <span>هل نسيت كلمة المرور؟</span>
+        <button class="forgot-row-btn" type="button" onclick="authForgotPassword()">
+          <i class="fa fa-rotate-left"></i>إعادة التعيين
+        </button>
+      </div>
+      <button class="auth-btn ab-blue" id="btnLogin" onclick="authLogin()">
+        <i class="fa fa-bolt"></i>تسجيل الدخول
+      </button>
+      <div class="auth-switch">
+        شركة جديدة؟ <a onclick="authSwitchTab('register')">أنشئ حسابك مجاناً ←</a>
+      </div>
+    </div>
+
+    <!-- ════ TAB: شركة جديدة ════ -->
+    <div class="auth-tab-pane" id="atp-register">
+      <div style="text-align:center;margin-bottom:14px;">
+        <span class="auth-trial-badge">
+          <i class="fas fa-gift"></i>تجريبي مجاني 7 أيام · بدون بطاقة
+        </span>
+      </div>
+      <div class="auth-field">
+        <label>اسم الشركة</label>
+        <div class="auth-inp-wrap">
+          <input type="text" id="regCompanyName" placeholder="مثال: شركة الرياض للتجارة" class="g-focus" autocomplete="organization">
+          <i class="fas fa-building ico"></i>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>الاسم الكامل للمدير</label>
+        <div class="auth-inp-wrap">
+          <input type="text" id="regOwnerName" placeholder="الاسم كما سيظهر في النظام" class="g-focus" autocomplete="name">
+          <i class="fas fa-user-tie ico"></i>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>البريد الإلكتروني</label>
+        <div class="auth-inp-wrap">
+          <input type="email" id="regEmail" placeholder="owner@company.com" class="g-focus" autocomplete="email">
+          <i class="fas fa-envelope ico"></i>
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>كلمة المرور</label>
+        <div class="auth-inp-wrap">
+          <input type="password" id="regPassword" placeholder="8 أحرف على الأقل" class="g-focus" oninput="authStrength(this.value)" autocomplete="new-password">
+          <i class="fas fa-lock ico"></i>
+          <button class="auth-eye-btn" type="button" onclick="authToggleEye('regPassword',this)"><i class="fa fa-eye"></i></button>
+        </div>
+        <div class="str-bar"><div class="seg" id="s1"></div><div class="seg" id="s2"></div><div class="seg" id="s3"></div><div class="seg" id="s4"></div></div>
+        <div class="str-label" id="sLbl"></div>
+      </div>
+      <div class="auth-field">
+        <label>تأكيد كلمة المرور</label>
+        <div class="auth-inp-wrap">
+          <input type="password" id="regPasswordConfirm" placeholder="أعد كتابة كلمة المرور" class="g-focus" autocomplete="new-password">
+          <i class="fas fa-lock ico"></i>
+        </div>
+      </div>
+      <button class="auth-btn ab-green" id="btnRegister" onclick="authRegister()">
+        <i class="fas fa-rocket"></i>إنشاء الشركة مجاناً
+      </button>
+      <div class="auth-switch">لديك حساب؟ <a onclick="authSwitchTab('login')">← تسجيل الدخول</a></div>
+    </div>
+
+    <div class="auth-card-foot">OPERIX © 2025 — كل شغلك في نظام واحد</div>
   </div>
 </div>
 
-<!-- ════════════════════ MODAL: REGISTER ════════════════════ -->
-<div class="modal-overlay" id="registerModal">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('registerModal')"><i class="fa fa-times"></i></button>
-    <div class="modal-logo">OPERIX</div>
-    <h2 class="modal-title">سجّل شركتك</h2>
-    <p class="modal-subtitle">تجربة مجانية 7 أيام — لا كريدت كارد مطلوب</p>
-    <div class="form-error"   id="registerError"></div>
-    <div class="form-success" id="registerSuccess"></div>
-    <div class="form-group">
-      <label>اسم الشركة</label>
-      <input type="text" id="regCompany" placeholder="مثال: شركة النور للتجارة"/>
-    </div>
-    <div class="form-group">
-      <label>البريد الإلكتروني</label>
-      <input type="email" id="regEmail" placeholder="example@email.com" dir="ltr"/>
-    </div>
-    <div class="form-group">
-      <label>كلمة المرور</label>
-      <input type="password" id="regPassword" placeholder="8 أحرف على الأقل" dir="ltr"/>
-    </div>
-    <div class="form-group">
-      <label>تأكيد كلمة المرور</label>
-      <input type="password" id="regPasswordConfirm" placeholder="••••••••" dir="ltr"/>
-    </div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:16px;">
-      بالتسجيل أنت توافق على
-      <a style="color:var(--blue);cursor:pointer;" onclick="openModal('termsModal')">الشروط والأحكام</a>
-      و<a style="color:var(--blue);cursor:pointer;" onclick="openModal('privacyModal')">سياسة الخصوصية</a>
-    </p>
-    <button class="btn-form" id="btnRegister" onclick="handleRegister()">
-      <i class="fa fa-rocket"></i> إنشاء الحساب مجاناً
-    </button>
-    <p class="form-footer">
-      عندك حساب بالفعل؟
-      <a onclick="switchModal('registerModal','loginModal')">سجّل دخولك</a>
-    </p>
-  </div>
-</div>
+<!-- Toast -->
+<div id="authToast"></div>
 
-<!-- ════════════════════ MODAL: TERMS ════════════════════ -->
+<!-- ════════════════════ TERMS / PRIVACY MODALS ════════════════════ -->
 <div class="modal-overlay" id="termsModal">
   <div class="modal-box" style="max-width:600px;">
     <button class="modal-close" onclick="closeModal('termsModal')"><i class="fa fa-times"></i></button>
     <h2 class="modal-title">الشروط والأحكام</h2>
     <p class="modal-subtitle">آخر تحديث: مارس 2026</p>
     <div class="terms-content">
-      <h4>1. القبول بالشروط</h4>
-      <p>باستخدام منصة Operix Cash فأنت توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي من هذه الشروط، يرجى التوقف عن استخدام المنصة.</p>
-      <h4>2. وصف الخدمة</h4>
-      <p>Operix Cash منصة SaaS لإدارة العمليات المالية للشركات. توفر المنصة أدوات لتسجيل المعاملات المالية، وإدارة الفروع والموظفين، وعرض التقارير والإحصاءات.</p>
-      <h4>3. الاشتراك والدفع</h4>
-      <p>تبدأ الخدمة بتجربة مجانية لمدة 7 أيام. بعد انتهاء التجربة، يجب الاشتراك في إحدى الخطط المدفوعة للاستمرار في الاستخدام. الأسعار بالجنيه المصري وتخضع للتغيير مع إشعار مسبق.</p>
-      <h4>4. بيانات المستخدم</h4>
-      <p>أنت تملك بياناتك كاملاً. Operix Cash لا تبيع أو تشارك بياناتك مع أي طرف ثالث. البيانات محمية بتشفير كامل وعزل تام بين الشركات.</p>
-      <h4>5. الاستخدام المقبول</h4>
-      <p>يُحظر استخدام المنصة لأي أغراض غير قانونية أو مخالفة للآداب العامة. يُحظر محاولة الوصول لبيانات شركات أخرى أو اختراق أمان المنصة.</p>
-      <h4>6. إنهاء الخدمة</h4>
-      <p>يحق لك إلغاء اشتراكك في أي وقت. بعد الإلغاء، تبقى بياناتك محفوظة لمدة 30 يوماً يمكنك خلالها تصديرها.</p>
-      <h4>7. حدود المسؤولية</h4>
-      <p>Operix Cash غير مسؤولة عن أي خسائر مالية ناتجة عن استخدام المنصة أو انقطاع الخدمة لأسباب خارجة عن إرادتنا.</p>
-      <h4>8. التواصل</h4>
-      <p>لأي استفسارات تخص هذه الشروط، تواصل معنا على: support@operixcash.com</p>
+      <h4>1. القبول بالشروط</h4><p>باستخدام منصة Operix Cash فأنت توافق على الالتزام بهذه الشروط والأحكام.</p>
+      <h4>2. وصف الخدمة</h4><p>Operix Cash منصة SaaS لإدارة العمليات المالية للشركات.</p>
+      <h4>3. الاشتراك والدفع</h4><p>تبدأ الخدمة بتجربة مجانية 7 أيام. بعدها يجب الاشتراك في خطة مدفوعة.</p>
+      <h4>4. بيانات المستخدم</h4><p>أنت تملك بياناتك كاملاً. Operix Cash لا تبيع أو تشارك بياناتك.</p>
+      <h4>5. الاستخدام المقبول</h4><p>يُحظر استخدام المنصة لأي أغراض غير قانونية أو محاولة اختراق أمان المنصة.</p>
+      <h4>6. إنهاء الخدمة</h4><p>يحق لك إلغاء اشتراكك في أي وقت. بياناتك محفوظة 30 يوماً بعد الإلغاء.</p>
     </div>
   </div>
 </div>
 
-<!-- ════════════════════ MODAL: PRIVACY ════════════════════ -->
 <div class="modal-overlay" id="privacyModal">
   <div class="modal-box" style="max-width:600px;">
     <button class="modal-close" onclick="closeModal('privacyModal')"><i class="fa fa-times"></i></button>
     <h2 class="modal-title">سياسة الخصوصية</h2>
     <p class="modal-subtitle">آخر تحديث: مارس 2026</p>
     <div class="terms-content">
-      <h4>1. البيانات التي نجمعها</h4>
-      <p>نجمع البيانات الضرورية لتشغيل الخدمة فقط: اسم الشركة، البريد الإلكتروني، وبيانات العمليات المالية التي تدخلها أنت.</p>
-      <h4>2. كيف نستخدم البيانات</h4>
-      <p>البيانات تُستخدم حصراً لتشغيل خدمة Operix Cash وتحسينها. لا نستخدم بياناتك للإعلانات أو لأي أغراض تجارية أخرى.</p>
-      <h4>3. حماية البيانات</h4>
-      <p>بياناتك محمية بـ Row Level Security على مستوى قاعدة البيانات. كل شركة معزولة تماماً — لا يمكن لأي شركة أخرى الوصول لبياناتك.</p>
-      <h4>4. مشاركة البيانات</h4>
-      <p>لا نبيع أو نشارك بياناتك مع أي طرف ثالث. الاستثناء الوحيد هو مزودي الخدمة الضروريين (Supabase للتخزين، Kashier للدفع) وفق اتفاقيات سرية صارمة.</p>
-      <h4>5. حقوقك</h4>
-      <p>يحق لك طلب نسخة من بياناتك، تعديلها، أو حذفها في أي وقت. تواصل معنا على support@operixcash.com.</p>
-      <h4>6. ملفات الكوكيز</h4>
-      <p>نستخدم ملفات كوكيز أساسية فقط لتشغيل جلسة تسجيل الدخول. لا نستخدم كوكيز للتتبع أو الإعلانات.</p>
+      <h4>1. البيانات التي نجمعها</h4><p>نجمع البيانات الضرورية لتشغيل الخدمة فقط: اسم الشركة، البريد الإلكتروني، وبيانات العمليات المالية.</p>
+      <h4>2. كيف نستخدم البيانات</h4><p>البيانات تُستخدم حصراً لتشغيل خدمة Operix Cash وتحسينها.</p>
+      <h4>3. حماية البيانات</h4><p>بياناتك محمية بـ Row Level Security. كل شركة معزولة تماماً.</p>
+      <h4>4. مشاركة البيانات</h4><p>لا نبيع أو نشارك بياناتك مع أي طرف ثالث.</p>
+      <h4>5. حقوقك</h4><p>يحق لك طلب نسخة من بياناتك، تعديلها، أو حذفها في أي وقت.</p>
     </div>
   </div>
 </div>
 
 <!-- ════════════════════ JAVASCRIPT ════════════════════ -->
 <script>
-// ── Restore saved theme ───────────────────────────────
+// ── Restore theme ──────────────────────────────────────
 (function(){
   const saved = localStorage.getItem('operix-theme');
   if (saved) document.documentElement.setAttribute('data-theme', saved);
 })();
 
-// ── Theme Toggle ──────────────────────────────────────
 function toggleTheme() {
   const html  = document.documentElement;
   const light = html.getAttribute('data-theme') === 'light';
@@ -558,7 +505,7 @@ function toggleTheme() {
   localStorage.setItem('operix-theme', light ? 'dark' : 'light');
 }
 
-// ── Mobile Drawer ─────────────────────────────────────
+// ── Mobile Drawer ──────────────────────────────────────
 function openDrawer() {
   document.getElementById('navDrawer').classList.add('open');
   document.getElementById('drawerScrim').classList.add('open');
@@ -570,153 +517,466 @@ function closeDrawer() {
   document.body.style.overflow = '';
 }
 
-// ── Navbar shrink on scroll ───────────────────────────
+// ── Navbar shrink ──────────────────────────────────────
 window.addEventListener('scroll', () => {
-  const nav  = document.getElementById('navbar');
-  const mob  = window.innerWidth <= 600;
+  const nav = document.getElementById('navbar');
+  const mob = window.innerWidth <= 600;
   nav.style.padding = window.scrollY > 60
     ? (mob ? '10px 16px' : '10px 40px')
     : (mob ? '11px 16px' : '14px 40px');
 });
 
-// ── Scroll Reveal ─────────────────────────────────────
-const revealObserver = new IntersectionObserver((entries) => {
+// ── Scroll Reveal ──────────────────────────────────────
+const revealObs = new IntersectionObserver((entries) => {
   entries.forEach((entry, i) => {
-    if (entry.isIntersecting) {
+    if (entry.isIntersecting)
       setTimeout(() => entry.target.classList.add('visible'), i * 80);
-    }
   });
 }, { threshold: 0.1 });
-document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
 
-// ── Modals ────────────────────────────────────────────
+// ── Terms/Privacy Modals ───────────────────────────────
 function openModal(id) {
   document.getElementById(id).classList.add('active');
   document.body.style.overflow = 'hidden';
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('active');
-  document.body.style.overflow = '';
-}
-function switchModal(from, to) {
-  closeModal(from);
-  setTimeout(() => openModal(to), 200);
+  // لا تفتح الـ body لو الـ auth overlay لا يزال مفتوحاً
+  if (!document.getElementById('authOverlay').classList.contains('active'))
+    document.body.style.overflow = '';
 }
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
 });
+
+// ── ESC key ────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
     closeDrawer();
+    closeAuth();
   }
 });
 
-// ── Supabase ──────────────────────────────────────────
-const SUPA_URL = 'https://hgzyjfsbqxqwzbdtuekh.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenlqZnNicXhxd3piZHR1ZWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzI4NDAsImV4cCI6MjA4NTAwODg0MH0.eR8p2SM66S8TSKjSMNzNG8Ip2B5kZYLXWoOBYKMTRCQ';
-const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+// ════════════════════════════════════════════════════
+//  AUTH OVERLAY SYSTEM
+// ════════════════════════════════════════════════════
+let _authCurrentTab = 'login';
+let _inviteData     = null;
 
-// ── Login ─────────────────────────────────────────────
-async function handleLogin() {
+function openAuth(tab) {
+  const overlay = document.getElementById('authOverlay');
+  overlay.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  authSwitchTab(tab || 'login');
+}
+
+function closeAuth() {
+  document.getElementById('authOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// إغلاق بالنقر على الـ overlay خارج الكارت
+document.getElementById('authOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeAuth();
+});
+
+function authSwitchTab(tab) {
+  _authCurrentTab = tab;
+  document.querySelectorAll('.auth-tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.auth-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('atp-' + tab)?.classList.add('active');
+  document.getElementById('atb-' + tab)?.classList.add('active');
+  // تغيير لون الـ glow bar
+  const bar = document.getElementById('authGlowBar');
+  if (tab === 'register') bar.style.background = 'linear-gradient(90deg,transparent,#10b981,#06b6d4,transparent)';
+  else if (tab === 'invite') bar.style.background = 'linear-gradient(90deg,transparent,#8b5cf6,#06b6d4,transparent)';
+  else bar.style.background = 'linear-gradient(90deg,transparent,#3b82f6,#06b6d4,transparent)';
+}
+
+// ── Toast ──────────────────────────────────────────────
+function authToast(msg, ok = true) {
+  const el = document.getElementById('authToast');
+  el.innerHTML = `<i class="fa fa-${ok ? 'check-circle' : 'circle-exclamation'}"></i> ${msg}`;
+  el.className = `${ok ? 'ok' : 'err'} show`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+// ── Eye Toggle ─────────────────────────────────────────
+function authToggleEye(id, btn) {
+  const inp = document.getElementById(id);
+  const ico = btn.querySelector('i');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  ico.className = inp.type === 'password' ? 'fa fa-eye' : 'fa fa-eye-slash';
+}
+
+// ── Password Strength ──────────────────────────────────
+function authStrength(val) {
+  const segs = ['s1','s2','s3','s4'].map(id => document.getElementById(id));
+  const lbl  = document.getElementById('sLbl');
+  segs.forEach(s => s.className = 'seg');
+  if (!val) { lbl.textContent = ''; return; }
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val) || /[a-z]/.test(val)) score++;
+  if (/[0-9]/.test(val) && /[^a-zA-Z0-9]/.test(val)) score++;
+  const cls    = ['','weak','fair','good','strong'];
+  const labels = ['','⚠ ضعيفة','◔ مقبولة','◑ جيدة','● قوية'];
+  const colors = ['','#ef4444','#f59e0b','#3b82f6','#10b981'];
+  for (let i = 0; i < score; i++) segs[i].classList.add(cls[score]);
+  lbl.textContent = labels[score] || '';
+  lbl.style.color = colors[score] || '';
+}
+
+// ════ LOGIN ════════════════════════════════════════════
+async function authLogin() {
+  if (window.LoginSecurity) {
+    const blocked = window.LoginSecurity.isBlocked();
+    if (blocked) { authToast(`محظور مؤقتاً، حاول بعد ${blocked} دقيقة`, false); return; }
+  }
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPassword').value;
-  const errEl = document.getElementById('loginError');
-  const btn   = document.getElementById('btnLogin');
+  if (!email || !pass) return authToast('يرجى إدخال البريد وكلمة المرور', false);
 
-  errEl.style.display = 'none';
-  if (!email || !pass) {
-    errEl.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
-    errEl.style.display = 'block'; return;
-  }
+  const btn = document.getElementById('btnLogin');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> جاري الدخول...';
-  try {
-    const { error } = await supa.auth.signInWithPassword({ email, password: pass });
-    if (error) throw error;
-    window.location.href = 'dashboard.html';
-  } catch(e) {
-    errEl.textContent = e.message?.includes('Invalid')
-      ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
-      : (e.message || 'حدث خطأ، حاول مرة أخرى');
-    errEl.style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa fa-sign-in-alt"></i> دخول';
+  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i>جاري الدخول...';
+
+  const { error } = await window.supa.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fa fa-bolt"></i>تسجيل الدخول';
+
+  if (error) {
+    if (window.LoginSecurity) window.LoginSecurity.record();
+    authToast('بيانات خاطئة، حاول مرة أخرى', false);
+  } else {
+    if (window.LoginSecurity) window.LoginSecurity.reset();
+    authToast('تم تسجيل الدخول بنجاح ✓');
+    // _smartRedirect تتشغل من onAuthStateChange
   }
 }
 
-// ── Register ──────────────────────────────────────────
-async function handleRegister() {
-  const company = document.getElementById('regCompany').value.trim();
-  const email   = document.getElementById('regEmail').value.trim();
-  const pass    = document.getElementById('regPassword').value;
-  const confirm = document.getElementById('regPasswordConfirm').value;
-  const errEl   = document.getElementById('registerError');
-  const sucEl   = document.getElementById('registerSuccess');
-  const btn     = document.getElementById('btnRegister');
+// ════ FORGOT PASSWORD ══════════════════════════════════
+async function authForgotPassword() {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) return authToast('اكتب البريد الإلكتروني أولاً', false);
+  const { error } = await window.supa.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/reset-password.html'
+  });
+  error ? authToast('خطأ: ' + error.message, false) : authToast('تم إرسال رابط إعادة التعيين ✓');
+}
 
-  errEl.style.display = 'none';
-  sucEl.style.display = 'none';
+// ════ REGISTER ═════════════════════════════════════════
+async function authRegister() {
+  const companyName = document.getElementById('regCompanyName').value.trim();
+  const ownerName   = document.getElementById('regOwnerName').value.trim();
+  const email       = document.getElementById('regEmail').value.trim();
+  const pass        = document.getElementById('regPassword').value;
+  const passConf    = document.getElementById('regPasswordConfirm').value;
 
-  if (!company) { errEl.textContent = 'يرجى إدخال اسم الشركة';                          errEl.style.display='block'; return; }
-  if (!email)   { errEl.textContent = 'يرجى إدخال البريد الإلكتروني';                   errEl.style.display='block'; return; }
-  if (pass.length < 8) { errEl.textContent = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'; errEl.style.display='block'; return; }
-  if (pass !== confirm) { errEl.textContent = 'كلمتا المرور غير متطابقتين';              errEl.style.display='block'; return; }
+  if (!companyName)      return authToast('يرجى إدخال اسم الشركة', false);
+  if (!ownerName)        return authToast('يرجى إدخال اسم المدير', false);
+  if (!email)            return authToast('يرجى إدخال البريد الإلكتروني', false);
+  if (pass.length < 8)  return authToast('كلمة المرور 8 أحرف على الأقل', false);
+  if (pass !== passConf) return authToast('كلمتا المرور غير متطابقتين', false);
 
+  const btn = document.getElementById('btnRegister');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> جاري إنشاء الحساب...';
+  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i>جاري الإنشاء...';
+
+  // ⚠️ مهم: __registering = true يفضل شغال طول عملية الـ register كلها
+  // عشان _smartRedirect ما يشتغلش قبل ما الـ RPC تخلص وتعمل الـ user row
+  window.__registering = true;
 
   try {
-    // 1. إنشاء المستخدم
-    const { data: authData, error: authErr } = await supa.auth.signUp({ email, password: pass });
-    if (authErr) throw authErr;
+    const { data: authData, error: authErr } = await window.supa.auth.signUp({
+      email, password: pass,
+      options: { data: { name: ownerName } }
+    });
+    if (authErr) throw new Error(authErr.message);
     const userId = authData.user?.id;
-    if (!userId) throw new Error('فشل في إنشاء المستخدم');
+    if (!userId) throw new Error('فشل إنشاء المستخدم');
 
-    // 2. إنشاء الشركة
-    const { data: compData, error: compErr } = await supa
-      .from('companies').insert({ name: company, owner_id: userId }).select().single();
-    if (compErr) throw compErr;
-    const companyId = compData.id;
+    await new Promise(r => setTimeout(r, 800));
 
-    // 3. إنشاء الفرع الافتراضي
-    const { data: branchData, error: branchErr } = await supa
-      .from('branches').insert({ company_id: companyId, name: 'الفرع الرئيسي' }).select().single();
-    if (branchErr) throw branchErr;
-    const branchId = branchData.id;
+    const { error: signInErr } = await window.supa.auth.signInWithPassword({ email, password: pass });
+    if (signInErr) throw new Error('فشل تسجيل الدخول: ' + signInErr.message);
 
-    // 4. إنشاء سجل المستخدم
-    const { error: userErr } = await supa.from('users').insert({
-      id: userId, company_id: companyId, branch_id: branchId,
-      role: 'OWNER', email, name: company
+    // الـ RPC دي بتنشئ الـ company + user row — لازم تخلص قبل ما نعمل أي redirect
+    const { error: fnErr } = await window.supa.rpc('create_company_with_owner', {
+      p_company_name: companyName,
+      p_user_id:      userId,
+      p_user_email:   email,
+      p_user_name:    ownerName
     });
-    if (userErr) throw userErr;
+    if (fnErr) throw new Error(fnErr.message);
 
-    // 5. إنشاء الاشتراك التجريبي
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 7);
-    const { error: subErr } = await supa.from('subscriptions').insert({
-      company_id: companyId, plan_code: 'FREE', status: 'trial',
-      trial_ends_at: trialEnd.toISOString(),
-      max_branches: 1, max_employees: 5, max_transactions: 100
-    });
-    if (subErr) throw subErr;
+    // تأكيد إن الـ user row اتكتبت فعلاً في الـ DB قبل ما نروح
+    let confirmed = false;
+    for (let i = 0; i < 10; i++) {
+      const { data: check } = await window.supa
+        .from('users').select('id, company_id').eq('id', userId).maybeSingle();
+      if (check?.company_id) { confirmed = true; break; }
+      await new Promise(r => setTimeout(r, 300));
+    }
 
-    sucEl.textContent = '✅ تم إنشاء حسابك بنجاح! جاري التحويل...';
-    sucEl.style.display = 'block';
-    setTimeout(() => window.location.href = 'dashboard.html', 2000);
+    document.getElementById('atp-register').innerHTML = `
+      <div class="auth-success">
+        <div class="auth-success-icon asi-green"><i class="fas fa-check"></i></div>
+        <h3>🎉 تم إنشاء شركتك بنجاح!</h3>
+        <p>تم إنشاء حسابك وفرعك الرئيسي.<br>
+        <strong style="color:#10b981;">فترة تجريبية: 7 أيام مجانية</strong><br><br>
+        يتم تحويلك للنظام...</p>
+      </div>`;
 
-  } catch(e) {
-    let msg = e.message || 'حدث خطأ، حاول مرة أخرى';
-    if (msg.includes('already registered')) msg = 'البريد الإلكتروني مسجّل بالفعل';
-    if (msg.includes('Password'))           msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
-    errEl.textContent = msg;
-    errEl.style.display = 'block';
+    // دلوقتي بس نطفي الـ __registering ونروح dashboard
+    window.__registering = false;
+    setTimeout(() => window.location.href = 'dashboard.html', 1500);
+
+  } catch(err) {
+    window.__registering = false;
+    authToast('خطأ: ' + err.message, false);
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa fa-rocket"></i> إنشاء الحساب مجاناً';
+    btn.innerHTML = '<i class="fas fa-rocket"></i>إنشاء الشركة مجاناً';
   }
 }
+
+// ════ INVITE ═══════════════════════════════════════════
+async function authLoadInvitation() {
+  const token = new URLSearchParams(window.location.search).get('token');
+  if (!token) {
+    document.getElementById('atb-invite').style.display = 'none';
+    authSwitchTab('login');
+    return;
+  }
+  document.getElementById('atb-login').style.display    = 'none';
+  document.getElementById('atb-register').style.display = 'none';
+  openAuth('invite');
+  await _authFetchInvite(token);
+}
+
+async function _authFetchInvite(token) {
+  const cont = document.getElementById('inviteContent');
+  try {
+    const { data: inv, error } = await window.supa
+      .from('invitations').select('*').eq('token', token).maybeSingle();
+    if (error || !inv) {
+      cont.innerHTML = `<div class="auth-error-state"><div class="auth-error-icon"><i class="fas fa-times"></i></div><h3>رابط الدعوة غير صالح</h3><p>لم يتم العثور على هذه الدعوة.</p></div>`;
+      return;
+    }
+    if (inv.status !== 'pending') {
+      cont.innerHTML = `<div class="auth-error-state"><div class="auth-error-icon" style="border-color:rgba(16,185,129,.3);"><i class="fas fa-check-circle" style="color:#10b981;"></i></div><h3>تم استخدام هذه الدعوة</h3><p>يمكنك تسجيل الدخول مباشرة.</p></div>`;
+      return;
+    }
+    if (new Date(inv.expires_at) < new Date()) {
+      cont.innerHTML = `<div class="auth-error-state"><div class="auth-error-icon" style="border-color:rgba(245,158,11,.3);"><i class="fas fa-clock" style="color:#f59e0b;"></i></div><h3>انتهت صلاحية الدعوة</h3><p>اطلب دعوة جديدة من مسؤول الشركة.</p></div>`;
+      return;
+    }
+    _inviteData = inv;
+    let companyName = '—';
+    try {
+      const { data: co } = await window.supa.from('companies').select('name').eq('id', inv.company_id).maybeSingle();
+      companyName = co?.name || '—';
+    } catch(e) {}
+    const roleLabel = inv.role === 'ADMIN' ? 'مدير فرع' : 'موظف';
+    const roleIcon  = inv.role === 'ADMIN' ? 'fa-user-shield' : 'fa-user';
+    cont.innerHTML = `
+      <div style="background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.2);border-radius:13px;padding:13px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:10px;color:#a78bfa;margin-bottom:4px;"><i class="fas fa-envelope-open" style="margin-left:4px;"></i>دعوة للانضمام إلى</div>
+        <div style="font-size:15px;font-weight:800;">${companyName}</div>
+        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.3);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;color:#a78bfa;margin-top:6px;">
+          <i class="fas ${roleIcon}"></i> ${roleLabel}
+        </span>
+      </div>
+      <div class="auth-field"><label>الاسم الكامل</label><div class="auth-inp-wrap"><input type="text" id="invName" placeholder="اسمك كما تريد ظهوره"><i class="fas fa-user ico"></i></div></div>
+      <div class="auth-field"><label>البريد الإلكتروني</label><div class="auth-inp-wrap"><input type="email" id="invEmail" value="${inv.email}" readonly><i class="fas fa-envelope ico"></i></div></div>
+      <div class="auth-field"><label>كلمة المرور</label><div class="auth-inp-wrap"><input type="password" id="invPassword" placeholder="8 أحرف على الأقل"><i class="fas fa-lock ico"></i><button class="auth-eye-btn" type="button" onclick="authToggleEye('invPassword',this)"><i class="fa fa-eye"></i></button></div></div>
+      <div class="auth-field"><label>تأكيد كلمة المرور</label><div class="auth-inp-wrap"><input type="password" id="invPasswordConfirm" placeholder="أعد كتابة كلمة المرور"><i class="fas fa-lock ico"></i></div></div>
+      <button class="auth-btn ab-pur" id="btnAccept" onclick="authAcceptInvitation()"><i class="fas fa-user-check"></i>قبول الدعوة والدخول</button>`;
+  } catch(err) {
+    cont.innerHTML = `<div class="auth-error-state"><div class="auth-error-icon"><i class="fas fa-times"></i></div><h3>خطأ في التحقق</h3><p>${err.message}</p></div>`;
+  }
+}
+
+async function authAcceptInvitation() {
+  if (!_inviteData) return;
+  const name     = document.getElementById('invName')?.value.trim();
+  const pass     = document.getElementById('invPassword')?.value;
+  const passConf = document.getElementById('invPasswordConfirm')?.value;
+  if (!name)             return authToast('يرجى إدخال اسمك', false);
+  if (pass.length < 8)  return authToast('كلمة المرور 8 أحرف على الأقل', false);
+  if (pass !== passConf) return authToast('كلمتا المرور غير متطابقتين', false);
+
+  const btn = document.getElementById('btnAccept');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i>جاري الإنشاء...';
+
+  try {
+    window.__registering = true;
+    const email = _inviteData.email;
+    const { data: authData, error: authErr } = await window.supa.auth.signUp({ email, password: pass, options: { data: { name } } });
+    if (authErr) throw new Error(authErr.message);
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('فشل إنشاء المستخدم');
+
+    const { error: signInErr } = await window.supa.auth.signInWithPassword({ email, password: pass });
+    if (signInErr) throw new Error(signInErr.message);
+
+    const { error: userErr } = await window.supa.from('users').upsert({
+      id: userId, email, name,
+      role: _inviteData.role || 'USER',
+      is_master: false, is_owner: false,
+      company_id: _inviteData.company_id,
+      branch_id:  _inviteData.branch_id
+    }, { onConflict: 'id' });
+    if (userErr) throw new Error(userErr.message);
+
+    await window.supa.from('invitations').update({ status: 'accepted' }).eq('id', _inviteData.id);
+
+    document.getElementById('atp-invite').innerHTML = `
+      <div class="auth-success">
+        <div class="auth-success-icon asi-purple"><i class="fas fa-check"></i></div>
+        <h3>مرحباً بك في الفريق! 🎉</h3>
+        <p>تم إنشاء حسابك بنجاح.<br>جاري تحويلك للنظام...</p>
+      </div>`;
+
+    window.__registering = false;
+    setTimeout(() => window.location.href = 'dashboard.html', 2000);
+  } catch(err) {
+    window.__registering = false;
+    authToast('خطأ: ' + err.message, false);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-user-check"></i>قبول الدعوة والدخول';
+  }
+}
+
+// ════ SMART REDIRECT ═══════════════════════════════════
+async function _smartRedirect() {
+  if (window.__r || window.__registering) return;
+  let user;
+  try {
+    const { data } = await window.supa.auth.getUser();
+    user = data?.user;
+  } catch(e) { return; }
+  if (!user) return;
+  window.__r = true;
+
+  // platform admin؟
+  try {
+    const { data: pa, error: paErr } = await window.supa
+      .from('platform_admins').select('role').eq('user_id', user.id).maybeSingle();
+    if (!paErr && pa?.role) {
+      window.location.replace('platform_admin.html');
+      return;
+    }
+  } catch(e) {}
+
+  // جيب بيانات المستخدم مع retry loop لحل مشكلة الـ race condition
+  // (بيحصل لما authRegister تعمل signIn قبل ما الـ RPC تخلص إنشاء الـ user row)
+  try {
+    let userData = null;
+    const MAX_RETRIES = 15;      // 15 × 300ms = 4.5 ثانية كحد أقصى
+    const RETRY_DELAY = 300;
+
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      const { data, error } = await window.supa
+        .from('users').select('*').eq('id', user.id).maybeSingle();
+
+      // لو فيه خطأ حقيقي (مش مجرد row مش موجودة) — وقف فوراً
+      if (error && error.code !== 'PGRST116') throw new Error(error.message);
+
+      if (data) { userData = data; break; }
+
+      // لو لسه مفيش row — انتظر وحاول تاني
+      await new Promise(r => setTimeout(r, RETRY_DELAY));
+    }
+
+    if (!userData) {
+      // بعد كل المحاولات مفيش بيانات — روح dashboard وهو يتعامل معاها
+      window.location.replace('dashboard.html');
+      return;
+    }
+
+    let companyName = '';
+    if (userData.company_id) {
+      const { data: co } = await window.supa
+        .from('companies').select('name').eq('id', userData.company_id).maybeSingle();
+      companyName = co?.name || '';
+    }
+    window.currentUserData = { ...userData, companyName };
+    showDashHeader(window.currentUserData);
+    closeAuth();
+  } catch(e) {
+    window.__r = false; // reset عشان يقدر يحاول تاني
+    window.location.replace('dashboard.html');
+  }
+}
+
+// تشغيل عند تحميل الصفحة وعند تغيير حالة الـ auth
+window.supa?.auth.getUser().then(({ data }) => {
+  if (data?.user && !window.__r && !window.__registering) _smartRedirect();
+});
+window.supa?.auth.onAuthStateChange((event, session) => {
+  if (session && !window.__r && !window.__registering) _smartRedirect();
+});
+
+// Enter key
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !document.getElementById('authOverlay')?.classList.contains('active')) return;
+  if (_authCurrentTab === 'login')         authLogin();
+  else if (_authCurrentTab === 'register') authRegister();
+});
+
+// ════ HIDE LOADER ════
+function _hideLoader() {
+  var loader = document.getElementById('appLoader');
+  if (!loader) return;
+  loader.style.transition = 'opacity .4s ease';
+  loader.style.opacity    = '0';
+  setTimeout(function() { loader.style.display = 'none'; }, 420);
+}
+window.addEventListener('load', function() { setTimeout(_hideLoader, 500); });
+setTimeout(_hideLoader, 2000); // fallback
 </script>
 
+<script>
+(function waitAndLoad() {
+  if (!window.supa) { setTimeout(waitAndLoad, 100); return; }
+  window.supa
+    .from('plans')
+    .select('code,name,price,max_branches,max_employees,max_transactions,duration_days')
+    .order('price', { ascending: true })
+    .then(function(res) {
+      var grid = document.getElementById('pricingGrid');
+      if (!grid || res.error || !res.data || !res.data.length) return;
+      var plans = res.data;
+      var paid  = plans.filter(function(p) { return p.price > 0; });
+      var pop   = paid.length >= 2 ? paid[Math.floor(paid.length / 2)].code : (paid[0] ? paid[0].code : null);
+      grid.innerHTML = plans.map(function(plan) {
+        var free    = plan.price === 0;
+        var popular = plan.code === pop;
+        var feats   = [
+          plan.max_branches === 1 ? 'فرع واحد' : plan.max_branches + ' فروع',
+          plan.max_employees + ' موظف',
+          Number(plan.max_transactions).toLocaleString('ar-EG') + ' معاملة/شهر'
+        ].map(function(f) { return '<li><i class="fa fa-check"></i> ' + f + '</li>'; }).join('');
+        var h = '<div class="plan-card' + (popular ? ' popular' : '') + ' reveal">';
+        h += popular ? '<div class="plan-popular-badge">الأكثر طلباً</div>' : '';
+        h += '<div class="plan-name">' + plan.name + '</div>';
+        h += '<div class="plan-price">' + (free ? '0' : Number(plan.price).toLocaleString('ar-EG')) + '<span> ج.م</span></div>';
+        h += '<div class="plan-duration">' + (free ? plan.duration_days + ' يوم مجاناً' : 'شهرياً') + '</div>';
+        h += '<ul class="plan-features">' + feats + '</ul>';
+        h += '<button class="btn-plan ' + (popular ? 'btn-plan-filled' : 'btn-plan-outline') + '" onclick="openAuth(&apos;register&apos;)">' + (free ? 'ابدأ مجاناً' : 'اشترك الآن') + '</button>';
+        h += '</div>';
+        return h;
+      }).join('');
+      grid.querySelectorAll('.reveal').forEach(function(el, i) {
+        setTimeout(function() { el.classList.add('visible'); }, i * 100);
+      });
+    });
+})();
+</script>
 </body>
 </html>

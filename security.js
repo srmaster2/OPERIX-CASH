@@ -47,20 +47,20 @@
   }
 
   // ============================================================
-  // 2. Global Error Handler — يمنع أخطاء الـ JS من الظهور للمستخدم
+  // 2. Global Error Handler — يسجّل الأخطاء بدون ما يظهرها للمستخدم
   // ============================================================
+  window._errorLog = [];   // buffer للأخطاء — ممكن ترسلها لسيرفر لوجينج لو حبيت
+
   window.onerror = function (message, source, lineno, colno, error) {
-    // في بيئة Dev: أظهر الخطأ، في الإنتاج: ابتلعه بصمت
-    if (IS_DEV) {
-      return false; // المتصفح يعرض الخطأ كالمعتاد
-    }
-    return true; // منع الخطأ من الظهور في الكونسول/الواجهة
+    if (IS_DEV) return false; // DEV: المتصفح يعرض الخطأ كالمعتاد
+    window._errorLog.push({ message, source, lineno, ts: Date.now() });
+    return true; // production: مش بيظهر للمستخدم
   };
 
   window.addEventListener('unhandledrejection', function (event) {
-    if (!IS_DEV) {
-      event.preventDefault();
-    }
+    if (IS_DEV) return;
+    window._errorLog.push({ message: String(event.reason), ts: Date.now() });
+    event.preventDefault();
   });
 
   // ============================================================
@@ -184,14 +184,17 @@
       // امسح البيانات الحساسة من الذاكرة
       window.currentUserData = null;
       // أعد للدخول
-      if (!window.location.pathname.includes('login')) {
-        window.location.replace('login.html?timeout=1');
+      if (!window.location.pathname.includes('index')) {
+        window.location.replace('index.html?timeout=1');
+      } else {
+        window.location.reload();
       }
     }, SESSION_TIMEOUT_MS);
   }
 
-  // فعّل مراقبة الخمول فقط في الصفحات الداخلية
-  if (!window.location.pathname.includes('login') && !window.location.pathname.includes('reset')) {
+  // فعّل مراقبة الخمول فقط في الداشبورد — مش في اللاندينج
+  const isDashboard = window.location.pathname.includes('dashboard');
+  if (isDashboard) {
     ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'].forEach(evt => {
       document.addEventListener(evt, resetIdleTimer, { passive: true });
     });

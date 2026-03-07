@@ -5,35 +5,27 @@
 if (!window.CONFIG) {
   window.CONFIG = {
     SUPABASE_URL: 'https://hgzyjfsbqxqwzbdtuekh.supabase.co',
+    // ⚠️ الـ KEY ده غلط — روح Supabase Dashboard → Project Settings → API → anon public
+    // الـ key الصح بيبدأ بـ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     SUPABASE_KEY: 'sb_publishable_cYK-ahWLrRzvrf_OC9K8DQ_aWlzObD5',
     MASTER_EMAIL: 'srmaster2@gmail.com',
     TABLES: {
-      accounts: 'accounts',
+      accounts:     'accounts',
       transactions: 'transactions',
-      users: 'users'
-      // Add other tables like 'clients' if needed
+      users:        'users'
     }
   };
 }
 
-// 2) Supabase client (bind directly to window to avoid lexical const conflicts)
-// Do NOT redeclare const/let; use properties on window only
+// 2) Supabase client (create once)
 if (!window.supa) {
-  // This will overwrite the SDK namespace only if assigned to window.supabase, so we keep the SDK function on window._supabaseNS
   if (!window._supabaseNS) {
-    window._supabaseNS = window.supabase; // keep original namespace function
+    window._supabaseNS = window.supabase;
   }
-  // Create client once
-  const client = window._supabaseNS.createClient(
-    window.CONFIG.SUPABASE_URL,
-    window.CONFIG.SUPABASE_KEY
-  );
-  // Expose client globally
-  window.supa = client;
-  // Also expose as `supabase` (common usage) by assigning to window property (not lexical const)
-  window.supabase = client;
+  window.supa     = window._supabaseNS.createClient(window.CONFIG.SUPABASE_URL, window.CONFIG.SUPABASE_KEY);
+  window.supabase = window.supa;
 }
 
-// 3) Globals for compatibility (assign once, avoid const re-declare)
+// 3) Globals
 if (typeof window.MASTER_EMAIL === 'undefined') window.MASTER_EMAIL = window.CONFIG.MASTER_EMAIL;
-if (typeof window.TABLES === 'undefined') window.TABLES = window.CONFIG.TABLES;
+if (typeof window.TABLES       === 'undefined') window.TABLES       = window.CONFIG.TABLES;

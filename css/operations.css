@@ -675,6 +675,7 @@ body.dark-mode .txd-flow-node {
   height: 6px; /* ارتفاع السكرول الأفقي */
 }
 
+
 ::-webkit-scrollbar-track {
   background: transparent; /* خلفية المسار */
 }
