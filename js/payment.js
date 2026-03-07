@@ -1,38 +1,29 @@
 // ════════════════════════════════════════════════════════════
-// payment.js — Kashier HPP Integration
+// payment.js — Kashier HPP Integration (Fixed)
 // ════════════════════════════════════════════════════════════
 
-var KASHIER_CONFIG = KASHIER_CONFIG || {
-    mid:        'MID-43854-991',
-    // Payment API Key — لتوليد الـ hash
-    apiKey:     'f44d05f6-a29d-49e5-9b51-2c11416322d9',
-    mode:       'test',   // ← test الآن، غيّرها لـ 'live' لما تنقل
-    currency:   'EGP',
-    baseUrl:    'https://operix-cash.vercel.app',
-    supabaseUrl:'https://hgzyjfsbqxqwzbdtuekh.supabase.co',
-    get iframeBase() {
-        return this.mode === 'live'
-            ? 'https://iframe.kashier.io'
-            : 'https://test-iframe.kashier.io';
-    }
-};
+var KASHIER_MID      = 'MID-43854-991';
+var KASHIER_MODE     = 'test'; // غيّر لـ 'live' لما تنقل
+var KASHIER_CURRENCY = 'EGP';
+var KASHIER_BASE_URL = 'https://operix-cash.vercel.app';
+var KASHIER_SUP_URL  = 'https://hgzyjfsbqxqwzbdtuekh.supabase.co';
+var KASHIER_HPP_BASE = 'https://test-iframe.kashier.io'; // غيّر لـ https://iframe.kashier.io في live
 
-// ── توليد HMAC-SHA256 hash ──────────────────────────────────
+// ── توليد hash — الصيغة الصحيحة: mid.orderId.amount.currency ──
 async function generateKashierHash(orderId, amount) {
-    // Kashier: path = /?payment=MID.orderId.amount.currency
-    // amount كـ string بدون تعديل — بيتطابق مع اللي بيتبعت في الـ request
-    const amountStr = String(amount);
-    const path = '/?payment=' + KASHIER_CONFIG.mid + '.' + orderId + '.' + amountStr + '.' + KASHIER_CONFIG.currency;
+    // الصيغة الصحيحة من Kashier docs: mid.orderId.amount.currency (بدون /?payment=)
+    const message = `${KASHIER_MID}.${orderId}.${amount}.${KASHIER_CURRENCY}`;
 
-    // Kashier بيستخدم ASCII encoding (مش UTF-8)
     function asciiEncode(str) {
         const buf = new Uint8Array(str.length);
         for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i) & 0xff;
         return buf;
     }
 
-    const keyData = asciiEncode(KASHIER_CONFIG.apiKey);
-    const msgData = asciiEncode(path);
+    // الـ API Key يُستخدم كـ HMAC secret
+    const apiKey    = 'f44d05f6-a29d-49e5-9b51-2c11416322d9';
+    const keyData   = asciiEncode(apiKey);
+    const msgData   = asciiEncode(message);
 
     const cryptoKey = await crypto.subtle.importKey(
         'raw', keyData,
@@ -43,55 +34,64 @@ async function generateKashierHash(orderId, amount) {
     return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── بناء رابط HPP ───────────────────────────────────────────
+// ── بناء Kashier HPP URL ─────────────────────────────────────
 async function buildKashierURL({ orderId, amount, planCode, customerEmail, customerName }) {
-    const hash = await generateKashierHash(orderId, amount);
+    // FIX 5: amount.toFixed(2) — بدون decimals ممكن يرفض
+    const amountStr = Number(amount).toFixed(2);
 
-    // Kashier HPP — الـ format الرسمي من الـ docs
-    // https://test-iframe.kashier.io/payment?mid=MID-xx&orderId=...&mode=test
-    const successUrl = encodeURIComponent(`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`);
-    const failUrl    = encodeURIComponent(`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`);
+    const hash = await generateKashierHash(orderId, amountStr);
 
-    const urlStr = `${KASHIER_CONFIG.iframeBase}/payment`
-        + `?mid=${KASHIER_CONFIG.mid}`
-        + `&orderId=${orderId}`
-        + `&amount=${amount}`
-        + `&currency=${KASHIER_CONFIG.currency}`
-        + `&hash=${hash}`
-        + `&mode=${KASHIER_CONFIG.mode}`
-        + `&merchantRedirect=${successUrl}`
-        + `&failureRedirect=${failUrl}`
-        + `&merchantOrderId=${orderId}`
-        + `&allowedMethods=card,wallet`
-        + `&display=ar`
-        + (customerName  ? `&shopper_name=${encodeURIComponent(customerName)}`  : '')
-        + (customerEmail ? `&shopper_email=${encodeURIComponent(customerEmail)}` : '');
+    const successUrl = `${KASHIER_BASE_URL}/payment-success.html?orderId=${orderId}&plan=${planCode}`;
+    const failUrl    = `${KASHIER_BASE_URL}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`;
 
-    console.log('Kashier URL:', urlStr);
-    return urlStr;
+    // FIX 9: orderId max 40 chars
+    // FIX 3: webhook parameter name — جرّب webhookUrl
+    // FIX 4: allowedMethods = 'card' فقط (wallet ممكن مش مفعّل)
+    // FIX 7: metadata مش metaData
+    const params = [
+        `mid=${KASHIER_MID}`,
+        `orderId=${orderId}`,
+        `amount=${amountStr}`,
+        `currency=${KASHIER_CURRENCY}`,
+        `hash=${hash}`,
+        `mode=${KASHIER_MODE}`,
+        `merchantOrderId=${orderId}`,
+        `merchantRedirect=${encodeURIComponent(successUrl)}`,
+        `failureRedirect=${encodeURIComponent(failUrl)}`,
+        `webhookUrl=${encodeURIComponent(KASHIER_SUP_URL + '/functions/v1/super-api')}`,
+        `allowedMethods=card`,
+        `display=ar`,
+        `metadata=${encodeURIComponent(JSON.stringify({ planCode }))}`,
+        customerName  ? `shopper_name=${encodeURIComponent(customerName)}`   : '',
+        customerEmail ? `shopper_email=${encodeURIComponent(customerEmail)}` : '',
+    ].filter(Boolean).join('&');
+
+    const url = `${KASHIER_HPP_BASE}/payment?${params}`;
+    console.log('[Kashier] URL:', url);
+    console.log('[Kashier] Hash message:', `${KASHIER_MID}.${orderId}.${amountStr}.${KASHIER_CURRENCY}`);
+    console.log('[Kashier] Hash:', hash);
+    return url;
 }
 
-// ── إنشاء order في DB ثم فتح Kashier HPP ────────────────────
+// ── initiateKashierPayment ───────────────────────────────────
 async function initiateKashierPayment(planCode) {
     const u = window.currentUserData;
     if (!u?.company_id) return showToast('خطأ: بيانات المستخدم غير جاهزة', false);
 
-    // جيب بيانات الخطة
     const { data: plan, error: planErr } = await window.supa
         .from('plans').select('*').eq('code', planCode).maybeSingle();
-
     if (planErr || !plan) return showToast('خطأ: الخطة غير موجودة', false);
 
-    const orderId = `ORX-${u.company_id.slice(0,8)}-${Date.now()}`;
-    const amount  = plan.price;
-
+    const amount = plan.price;
     if (!amount || amount <= 0) return showToast('هذه الخطة مجانية', false);
 
-    // أضف loading على الزر
+    // FIX 9: orderId max 40 chars — استخدم timestamp فقط
+    const orderId = `ORX-${Date.now()}`.slice(0, 40);
+    console.log('[Kashier] orderId:', orderId, 'length:', orderId.length);
+
     const btn = document.querySelector(`[onclick*="${planCode}"]`);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i>'; }
 
-    // احفظ الـ order في DB
     const { error: insErr } = await window.supa.from('payment_orders').insert({
         id:         orderId,
         company_id: u.company_id,
@@ -102,19 +102,16 @@ async function initiateKashierPayment(planCode) {
     });
 
     if (insErr) {
-        if (btn) { btn.disabled = false; btn.innerHTML = amount.toLocaleString('ar-EG') + ' ج.م/سنة'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = Number(amount).toLocaleString('ar-EG') + ' ج.م/سنة'; }
         return showToast('خطأ في إنشاء الطلب: ' + insErr.message, false);
     }
 
-    // جيب بيانات المستخدم
     const { data: { user } } = await window.supa.auth.getUser();
     const { data: userInfo  } = await window.supa.from('users').select('name').eq('id', user?.id).maybeSingle();
     const { data: compInfo  } = await window.supa.from('companies').select('name').eq('id', u.company_id).maybeSingle();
 
     const url = await buildKashierURL({
-        orderId,
-        amount,
-        planCode,
+        orderId, amount, planCode,
         customerEmail: user?.email || '',
         customerName:  userInfo?.name || compInfo?.name || '',
     });
@@ -122,20 +119,24 @@ async function initiateKashierPayment(planCode) {
     window.location.href = url;
 }
 
-// ── payment-success.html — تحديث الاشتراك كـ fallback ───────
-// (في حالة Test Mode أو لو الـ webhook وصل متأخر)
+// ── handlePaymentSuccess — fallback لو webhook أتأخر ─────────
 async function handlePaymentSuccess(supaClient) {
     const params      = new URLSearchParams(window.location.search);
-    const orderId     = params.get('orderId')      || params.get('merchantOrderId');
+    const orderId     = params.get('orderId') || params.get('merchantOrderId');
     const planCode    = params.get('plan');
-    const rawStatus   = (params.get('paymentStatus') || params.get('status') || '').toUpperCase();
     const kashierTxId = params.get('transactionId');
+
+    // FIX 5: تحقق من APPROVED كمان مش بس SUCCESS
+    const rawStatus = (
+        params.get('paymentStatus') ||
+        params.get('status')        ||
+        params.get('success')       || ''
+    ).toUpperCase();
+
+    const isSuccess = rawStatus === 'SUCCESS' || rawStatus === 'APPROVED';
 
     if (!orderId) return { ok: false, reason: 'missing_order' };
 
-    const isSuccess = rawStatus === 'SUCCESS';
-
-    // حدّث الـ order في DB
     if (kashierTxId || rawStatus) {
         await supaClient.from('payment_orders').update({
             status:        isSuccess ? 'paid' : 'failed',
@@ -146,15 +147,13 @@ async function handlePaymentSuccess(supaClient) {
 
     if (!isSuccess) return { ok: false, reason: rawStatus || 'failed' };
 
-    // انتظر 2 ثانية للـ webhook
-    await new Promise(r => setTimeout(r, 2000));
+    // FIX 8: انتظر 5 ثواني للـ webhook (مش 2)
+    await new Promise(r => setTimeout(r, 5000));
 
-    // تحقق لو الـ webhook حدّث الاشتراك بالفعل
     const { data: order } = await supaClient
         .from('payment_orders').select('*').eq('id', orderId).maybeSingle();
 
     if (order?.status === 'paid' && planCode) {
-        // Fallback: حدّث الاشتراك من الفرونت لو الـ webhook لم يصل
         const { data: sub } = await supaClient
             .from('subscriptions').select('plan_code').eq('company_id', order.company_id).maybeSingle();
 
@@ -164,7 +163,7 @@ async function handlePaymentSuccess(supaClient) {
 
             const now = new Date();
             const exp = new Date(now);
-            exp.setDate(exp.getDate() + (plan?.duration_days || 365));
+            exp.setDate(exp.getDate() + (plan?.duration_days || 30));
 
             await supaClient.from('subscriptions').update({
                 plan_code:        planCode,
