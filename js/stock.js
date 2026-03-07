@@ -285,10 +285,39 @@ async function saveProduct() {
       branch_id: user.branch_id||null, company_id: user.company_id||null,
       created_by: user.name||user.email||''
     };
-    if (id) { const { error } = await _db().from('products').update(payload).eq('id', id); if (error) throw error; showToast('تم تحديث المنتج ✅', true); }
-    else    { const { error } = await _db().from('products').insert([payload]); if (error) throw error; showToast('تمت الإضافة ✅', true); }
+    if (id) {
+      // تعديل منتج موجود — بدون خصم من الخزنة
+      const { error } = await _db().from('products').update(payload).eq('id', id);
+      if (error) throw error;
+      showToast('تم تحديث المنتج ✅', true);
+    } else {
+      // إضافة منتج جديد
+      const { error } = await _db().from('products').insert([payload]);
+      if (error) throw error;
+
+      // لو في سعر شراء وكمية → اخصم قيمة التوريد من الخزنة فوراً
+      const totalCost = payload.cost_price * payload.quantity;
+      if (totalCost > 0) {
+        await _updateVault(
+          totalCost,
+          'subtract',
+          `إضافة منتج جديد | ${payload.name} ×${payload.quantity}`
+        );
+        await _db().from('admin_logs').insert([{
+          action: 'توريد - استوك',
+          details: `${payload.name} ×${payload.quantity} | ${_fmt(totalCost)} ج.م`,
+          created_by: payload.created_by,
+          branch_id: payload.branch_id || null,
+          company_id: payload.company_id || null
+        }]);
+        showToast(`تمت الإضافة ✅ — خُصم ${_fmt(totalCost)} ج.م من الخزنة`, true);
+      } else {
+        showToast('تمت الإضافة ✅', true);
+      }
+    }
     closeProductModal();
     await loadStock();
+    if (typeof fetchVaultBalance === 'function') fetchVaultBalance();
   } catch (err) { showToast('خطأ: ' + err.message, false); }
   finally { setLoading('btnSaveProduct', false); }
 }

@@ -26,6 +26,13 @@ async function initUserAccess() {
     if (!userInfo) throw new Error('لم يتم جلب بيانات المستخدم');
     window.currentUserData = userInfo; // تخزين البيانات
 
+    // Phase 7: Notifications
+    if (typeof loadNotifications === 'function') {
+        loadNotifications();
+        subscribeToNotifications();
+        checkSubscriptionExpiry();
+    }
+
     // --- السطر المطلوب إضافته هنا ---
     if (typeof loadStock === 'function') {
         console.log("User data ready, triggering loadStock...");

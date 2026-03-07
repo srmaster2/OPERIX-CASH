@@ -695,14 +695,7 @@ async function saveUserRole() {
     } finally {
         setLoading('btnSaveRole', false);
     }
-}// نافذة التنبيهات
-function showNotifications() {
-    document.getElementById('notificationModal').style.display = 'flex';
-}
-
-function closeNotificationModal() {
-    document.getElementById('notificationModal').style.display = 'none';
-}
+}// showNotifications moved to notifications.js
 
 // نافذة تأكيد العملية
 function closeConfirmModal() {

@@ -1,1381 +1,722 @@
 <!DOCTYPE html>
-		<html dir="rtl">
-		  <head>
-			<base target="_top">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-			<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
-			<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-			<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">  
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-      <title>Operix Cash</title>
-			<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Operix Cash — نظام إدارة مالية سحابي</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="stylesheet" href="css/main.css">
-<script src="security.js"></script>
-<script src="config.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/accounts.js"></script>
-<script src="js/transactions.js"></script>
-<script src="js/reports.js"></script>
-<script src="js/branches.js"></script>
-<script src="js/stock.js"></script>
-<script src="js/app.js"></script>
-<script src="js/layout.js"></script>
-<script src="js/members.js"></script>
-<script src="js/subscription.js"></script>
-<script src="js/payment.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="css/landing.css"/>
+</head>
+<body>
+
+<!-- ════════════════════ NAVBAR ════════════════════ -->
+<nav id="navbar">
+  <div class="nav-logo">OPERIX<span>Cash Management</span></div>
+  <div class="nav-center">
+    <a href="#features">المميزات</a>
+    <a href="#how">كيف يعمل</a>
+    <a href="#pricing">الأسعار</a>
+    <a href="#about">عن المنصة</a>
+    <a href="#contact">تواصل معنا</a>
+  </div>
+  <div class="nav-actions">
+    <button class="theme-btn" onclick="toggleTheme()" title="تغيير المظهر">
+      <i class="fa fa-moon icon-moon"></i>
+      <i class="fa fa-sun icon-sun"></i>
+    </button>
+    <a href="#" class="btn-nav-login" onclick="openModal('loginModal')">تسجيل الدخول</a>
+    <a href="#" class="btn-nav-reg" onclick="openModal('registerModal')">ابدأ مجاناً</a>
+    <button class="nav-hamburger" onclick="openDrawer()" aria-label="القائمة">
+      <i class="fa fa-bars"></i>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Drawer -->
+<div class="nav-drawer-scrim" id="drawerScrim" onclick="closeDrawer()"></div>
+<div class="nav-drawer" id="navDrawer">
+  <button class="drawer-close" onclick="closeDrawer()"><i class="fa fa-times"></i></button>
+  <a href="#features" onclick="closeDrawer()"><i class="fa fa-star"></i> المميزات</a>
+  <a href="#how"      onclick="closeDrawer()"><i class="fa fa-list-check"></i> كيف يعمل</a>
+  <a href="#pricing"  onclick="closeDrawer()"><i class="fa fa-tag"></i> الأسعار</a>
+  <a href="#about"    onclick="closeDrawer()"><i class="fa fa-info-circle"></i> عن المنصة</a>
+  <a href="#contact"  onclick="closeDrawer()"><i class="fa fa-envelope"></i> تواصل معنا</a>
+  <div class="drawer-divider"></div>
+  <div class="drawer-auth">
+    <a href="#" onclick="closeDrawer();openModal('loginModal')"><i class="fa fa-sign-in-alt"></i> تسجيل الدخول</a>
+    <a href="#" class="filled" onclick="closeDrawer();openModal('registerModal')"><i class="fa fa-rocket"></i> ابدأ مجاناً</a>
+  </div>
+</div>
+
+<!-- ════════════════════ HERO ════════════════════ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-badge">
+      <i class="fa fa-circle-check"></i>
+      منصة سحابية — لا تنزيل — لا سيرفر
+    </div>
+    <h1 class="hero-title">
+      أدر شركتك بذكاء<br/>
+      <span class="grad">من أي مكان</span>
+    </h1>
+    <p class="hero-sub">
+      نظام إدارة مالية متكامل للشركات الصغيرة والمتوسطة<br/>
+      فروع متعددة — فريق كامل — تقارير فورية
+    </p>
+    <div class="hero-btns">
+      <button class="btn-primary" onclick="openModal('registerModal')">
+        <i class="fa fa-rocket"></i> ابدأ تجربتك المجانية
+      </button>
+      <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">
+        <i class="fa fa-play-circle"></i> اكتشف المميزات
+      </button>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="num">7</div><div class="lbl">أيام تجريب مجاني</div></div>
+      <div class="hero-stat"><div class="num">99%</div><div class="lbl">أمان البيانات</div></div>
+      <div class="hero-stat"><div class="num">4</div><div class="lbl">خطط مرنة</div></div>
+      <div class="hero-stat"><div class="num">∞</div><div class="lbl">قابلية للتوسع</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ FEATURES ════════════════════ -->
+<section id="features">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-badge blue"><i class="fa fa-star"></i> المميزات</div>
+      <h2 class="sec-title">كل ما تحتاجه في مكان واحد</h2>
+      <p class="sec-desc">من تسجيل أول معاملة لمتابعة كل فرع ومقارنة الأداء الشهري</p>
+    </div>
+    <div class="features-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:rgba(59,130,246,.12);">
+          <i class="fa fa-wallet" style="color:#3b82f6;"></i>
+        </div>
+        <h3>إدارة مالية متكاملة</h3>
+        <p>سجّل كل دخل وخروج وتحويل بين الفروع. محافظ متعددة، حسابات بنكية وكاش، كل شيء واضح لحظة بلحظة.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:rgba(16,185,129,.12);">
+          <i class="fa fa-building" style="color:#10b981;"></i>
+        </div>
+        <h3>فروع متعددة</h3>
+        <p>أضف فروع بلا حدود حسب خطتك. كل فرع بياناته المستقلة، ومدير الفرع يشوف فرعه بس والأونر يشوف الكل.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:rgba(139,92,246,.12);">
+          <i class="fa fa-users" style="color:#8b5cf6;"></i>
+        </div>
+        <h3>إدارة الفريق</h3>
+        <p>ادعو موظفيك عبر إيميل بنظام دعوات آمن. 4 أدوار واضحة بصلاحيات محددة — من الأونر للموظف.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:rgba(245,158,11,.12);">
+          <i class="fa fa-chart-line" style="color:#f59e0b;"></i>
+        </div>
+        <h3>تقارير وإحصاءات</h3>
+        <p>تقارير شهرية مقارنة، إحصاءات الأداء بين الفروع، أرباح وخسائر واضحة — بدون Excel بدون حسابات يدوية.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:rgba(6,182,212,.12);">
+          <i class="fa fa-users-between-lines" style="color:#06b6d4;"></i>
+        </div>
+        <h3>إدارة العملاء والديون</h3>
+        <p>تتبع ديون العملاء وسداداتهم، سجل كامل لكل عميل، تنبيهات فورية عند أي دين جديد أو سداد.</p>
+      </div>
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:rgba(239,68,68,.12);">
+          <i class="fa fa-bell" style="color:#ef4444;"></i>
+        </div>
+        <h3>إشعارات فورية</h3>
+        <p>تنبيهات realtime عند انتهاء الاشتراك، تجاوز حد المعاملات، دخول موظف جديد، أو أي تغيير مهم.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ HOW IT WORKS ════════════════════ -->
+<section id="how" class="how-section">
+  <div class="container">
+    <div class="reveal" style="text-align:center">
+      <div class="sec-badge green"><i class="fa fa-list-check"></i> كيف يعمل</div>
+      <h2 class="sec-title">ابدأ في 4 خطوات</h2>
+      <p class="sec-desc" style="margin:0 auto">من التسجيل لأول معاملة في أقل من 5 دقائق</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <h4>سجّل شركتك</h4>
+        <p>اسم الشركة والإيميل وكلمة المرور — خلاص. Trial مجاني 7 أيام بدون كريدت كارد.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">2</div>
+        <h4>أضف فروعك</h4>
+        <p>أنشئ فروعك وحدد المحافظ والحسابات لكل فرع حسب احتياجك.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">3</div>
+        <h4>ادعو فريقك</h4>
+        <p>ابعت دعوات لموظفيك بالإيميل وحدد دور كل واحد — ADMIN أو مدير فرع أو موظف.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">4</div>
+        <h4>ابدأ الشغل</h4>
+        <p>سجّل العمليات وتابع التقارير والإحصاءات لحظة بلحظة من أي جهاز.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ ROLES ════════════════════ -->
+<section id="roles">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-badge purple"><i class="fa fa-shield-halved"></i> الصلاحيات</div>
+      <h2 class="sec-title">كل دور له صلاحياته</h2>
+      <p class="sec-desc">نظام أدوار متكامل يضمن الأمان والرقابة على كل مستوى</p>
+    </div>
+    <div class="roles-grid">
+      <div class="role-card reveal">
+        <div class="role-icon">👑</div>
+        <h4>OWNER</h4>
+        <p>التحكم الكامل في كل شيء — الفروع والموظفين والاشتراك والتقارير والإعدادات.</p>
+        <span class="role-tag" style="background:rgba(245,158,11,.15);color:#f59e0b;">كامل الصلاحيات</span>
+      </div>
+      <div class="role-card reveal">
+        <div class="role-icon">🛠️</div>
+        <h4>ADMIN</h4>
+        <p>إدارة الفروع والموظفين ورؤية تقارير الشركة — بدون تغيير الاشتراك.</p>
+        <span class="role-tag" style="background:rgba(59,130,246,.15);color:#3b82f6;">صلاحيات عالية</span>
+      </div>
+      <div class="role-card reveal">
+        <div class="role-icon">🏪</div>
+        <h4>BRANCH MANAGER</h4>
+        <p>إدارة فرع محدد فقط — عملياته وموظفيه وتقاريره.</p>
+        <span class="role-tag" style="background:rgba(16,185,129,.15);color:#10b981;">صلاحيات الفرع</span>
+      </div>
+      <div class="role-card reveal">
+        <div class="role-icon">💼</div>
+        <h4>EMPLOYEE</h4>
+        <p>تسجيل العمليات اليومية ورؤية بيانات فرعه فقط.</p>
+        <span class="role-tag" style="background:rgba(148,163,184,.1);color:#94a3b8;">صلاحيات أساسية</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ PRICING ════════════════════ -->
+<section id="pricing">
+  <div class="container">
+    <div class="reveal">
+      <div class="sec-badge orange"><i class="fa fa-tag"></i> الأسعار</div>
+      <h2 class="sec-title">خطة مناسبة لكل حجم</h2>
+      <p class="sec-desc" style="margin:0 auto">ابدأ مجاناً وكبّر مع شركتك</p>
+    </div>
+    <div class="pricing-grid">
+
+      <div class="plan-card reveal">
+        <div class="plan-name">تجريبي</div>
+        <div class="plan-price">0<span> ج.م</span></div>
+        <div class="plan-duration">7 أيام مجاناً</div>
+        <ul class="plan-features">
+          <li><i class="fa fa-check"></i> فرع واحد</li>
+          <li><i class="fa fa-check"></i> 5 موظفين</li>
+          <li><i class="fa fa-check"></i> 100 معاملة/شهر</li>
+          <li><i class="fa fa-check"></i> تقارير أساسية</li>
+        </ul>
+        <button class="btn-plan btn-plan-outline" onclick="openModal('registerModal')">ابدأ مجاناً</button>
+      </div>
+
+      <div class="plan-card reveal">
+        <div class="plan-name">ستارتر</div>
+        <div class="plan-price">99<span> ج.م</span></div>
+        <div class="plan-duration">شهرياً</div>
+        <ul class="plan-features">
+          <li><i class="fa fa-check"></i> 2 فرع</li>
+          <li><i class="fa fa-check"></i> 10 موظفين</li>
+          <li><i class="fa fa-check"></i> 2,000 معاملة/شهر</li>
+          <li><i class="fa fa-check"></i> تقارير كاملة</li>
+          <li><i class="fa fa-check"></i> دعم أولوية</li>
+        </ul>
+        <button class="btn-plan btn-plan-outline" onclick="openModal('registerModal')">اشترك الآن</button>
+      </div>
+
+      <div class="plan-card popular reveal">
+        <div class="plan-popular-badge">الأكثر طلباً</div>
+        <div class="plan-name">برو</div>
+        <div class="plan-price">299<span> ج.م</span></div>
+        <div class="plan-duration">شهرياً</div>
+        <ul class="plan-features">
+          <li><i class="fa fa-check"></i> 5 فروع</li>
+          <li><i class="fa fa-check"></i> 25 موظف</li>
+          <li><i class="fa fa-check"></i> 2,000 معاملة/شهر</li>
+          <li><i class="fa fa-check"></i> تقارير متقدمة</li>
+          <li><i class="fa fa-check"></i> إشعارات فورية</li>
+          <li><i class="fa fa-check"></i> دعم مميز</li>
+        </ul>
+        <button class="btn-plan btn-plan-filled" onclick="openModal('registerModal')">اشترك الآن</button>
+      </div>
+
+      <div class="plan-card reveal">
+        <div class="plan-name">إنتربرايز</div>
+        <div class="plan-price">799<span> ج.م</span></div>
+        <div class="plan-duration">شهرياً</div>
+        <ul class="plan-features">
+          <li><i class="fa fa-check"></i> 20 فرع</li>
+          <li><i class="fa fa-check"></i> 100 موظف</li>
+          <li><i class="fa fa-check"></i> 10,000 معاملة/شهر</li>
+          <li><i class="fa fa-check"></i> كل مميزات Pro</li>
+          <li><i class="fa fa-check"></i> دعم مخصص 24/7</li>
+          <li><i class="fa fa-check"></i> API Access</li>
+        </ul>
+        <button class="btn-plan btn-plan-outline" onclick="openModal('registerModal')">تواصل معنا</button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ ABOUT ════════════════════ -->
+<section id="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="reveal">
+        <div class="sec-badge blue"><i class="fa fa-info-circle"></i> عن المنصة</div>
+        <h2 class="sec-title">لماذا Operix Cash؟</h2>
+        <p class="sec-desc">بنيناها لأن الشركات الصغيرة تستحق أدوات قوية بأسعار معقولة — بدون تعقيد، بدون سيرفرات، بدون التزامات.</p>
+        <div class="about-points">
+          <div class="about-point">
+            <i class="fa fa-lock" style="color:#3b82f6;"></i>
+            <div>
+              <h5>أمان من المستوى الأول</h5>
+              <p>بياناتك محمية بـ Row Level Security على مستوى قاعدة البيانات — مش بس الكود. شركتك معزولة تماماً.</p>
+            </div>
+          </div>
+          <div class="about-point">
+            <i class="fa fa-bolt" style="color:#f59e0b;"></i>
+            <div>
+              <h5>سريع وخفيف</h5>
+              <p>يشتغل من أي جهاز وأي متصفح بدون تنزيل. Realtime updates بدون refresh.</p>
+            </div>
+          </div>
+          <div class="about-point">
+            <i class="fa fa-arrows-up-to-line" style="color:#10b981;"></i>
+            <div>
+              <h5>يكبر معك</h5>
+              <p>ابدأ بفرع واحد وموظف وكبّر لـ 20 فرع و100 موظف — بضغطة ترقية واحدة.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="about-visual reveal">
+        <div class="visual-row">
+          <i class="fa fa-shield-halved" style="color:#10b981;"></i>
+          <div><div class="v-text">Row Level Security</div><div class="v-sub">عزل كامل بين الشركات</div></div>
+        </div>
+        <div class="visual-row">
+          <i class="fa fa-server" style="color:#3b82f6;"></i>
+          <div><div class="v-text">Supabase + Vercel</div><div class="v-sub">بنية سحابية موثوقة</div></div>
+        </div>
+        <div class="visual-row">
+          <i class="fa fa-credit-card" style="color:#f59e0b;"></i>
+          <div><div class="v-text">Kashier Payments</div><div class="v-sub">دفع محلي آمن بالجنيه</div></div>
+        </div>
+        <div class="visual-row">
+          <i class="fa fa-bell" style="color:#8b5cf6;"></i>
+          <div><div class="v-text">Realtime Notifications</div><div class="v-sub">إشعارات فورية بدون refresh</div></div>
+        </div>
+        <div class="visual-row">
+          <i class="fa fa-mobile-screen" style="color:#06b6d4;"></i>
+          <div><div class="v-text">Mobile Ready</div><div class="v-sub">يشتغل على أي جهاز</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ CTA ════════════════════ -->
+<section class="cta-section">
+  <div class="reveal">
+    <h2 class="cta-title">جاهز تبدأ؟<br/><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">7 أيام مجاناً</span></h2>
+    <p class="cta-desc">لا كريدت كارد — لا التزامات — ابدأ دلوقتي وشوف الفرق بنفسك</p>
+    <button class="btn-primary" style="margin:0 auto;" onclick="openModal('registerModal')">
+      <i class="fa fa-rocket"></i> سجّل شركتك مجاناً
+    </button>
+  </div>
+</section>
+
+<!-- ════════════════════ CONTACT ════════════════════ -->
+<section id="contact">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:48px;" class="reveal">
+      <div class="sec-badge blue"><i class="fa fa-envelope"></i> تواصل معنا</div>
+      <h2 class="sec-title">نحن هنا لمساعدتك</h2>
+      <p class="sec-desc" style="margin:0 auto">فريق الدعم جاهز للرد على أسئلتك</p>
+    </div>
+    <div class="contact-cards reveal">
+      <div class="contact-card">
+        <i class="fa fa-envelope" style="color:#3b82f6;"></i>
+        <h4>إيميل الدعم</h4>
+        <a href="mailto:support@operixcash.com">support@operixcash.com</a>
+      </div>
+      <div class="contact-card">
+        <i class="fab fa-whatsapp" style="color:#10b981;"></i>
+        <h4>واتساب</h4>
+        <a href="https://wa.me/201099736481">+20 109 973 6481</a>
+      </div>
+      <div class="contact-card">
+        <i class="fa fa-clock" style="color:#f59e0b;"></i>
+        <h4>ساعات الدعم</h4>
+        <p>السبت – الخميس<br/>9 صباحاً – 9 مساءً</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ FOOTER ════════════════════ -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="nav-logo">OPERIX<span>Cash Management</span></div>
+      <p>نظام إدارة مالية سحابي للشركات الصغيرة والمتوسطة. فروع متعددة، فريق كامل، تقارير فورية.</p>
+      <div class="footer-social">
+        <a href="#" class="social-btn"><i class="fab fa-facebook-f"></i></a>
+        <a href="#" class="social-btn"><i class="fab fa-instagram"></i></a>
+        <a href="#" class="social-btn"><i class="fab fa-linkedin-in"></i></a>
+        <a href="#" class="social-btn"><i class="fab fa-whatsapp"></i></a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h5>المنصة</h5>
+      <ul>
+        <li><a href="#features">المميزات</a></li>
+        <li><a href="#pricing">الأسعار</a></li>
+        <li><a href="#how">كيف يعمل</a></li>
+        <li><a href="#about">عن Operix</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>الحساب</h5>
+      <ul>
+        <li><a href="#" onclick="openModal('loginModal')">تسجيل الدخول</a></li>
+        <li><a href="#" onclick="openModal('registerModal')">إنشاء حساب</a></li>
+        <li><a href="#" onclick="openModal('termsModal')">الشروط والأحكام</a></li>
+        <li><a href="#" onclick="openModal('privacyModal')">سياسة الخصوصية</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>تواصل معنا</h5>
+      <div class="footer-contact-item"><i class="fa fa-envelope"></i> support@operixcash.com</div>
+      <div class="footer-contact-item"><i class="fab fa-whatsapp"></i> +20 109 973 6481</div>
+      <div class="footer-contact-item"><i class="fa fa-location-dot"></i> القاهرة، مصر</div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 Operix Cash — جميع الحقوق محفوظة</p>
+    <div class="footer-bottom-links">
+      <a href="#" onclick="openModal('termsModal')">الشروط والأحكام</a>
+      <a href="#" onclick="openModal('privacyModal')">الخصوصية</a>
+      <a href="#contact">تواصل معنا</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ════════════════════ MODAL: LOGIN ════════════════════ -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('loginModal')"><i class="fa fa-times"></i></button>
+    <div class="modal-logo">OPERIX</div>
+    <h2 class="modal-title">تسجيل الدخول</h2>
+    <p class="modal-subtitle">أهلاً بك — ادخل بياناتك للمتابعة</p>
+    <div class="form-error" id="loginError"></div>
+    <div class="form-group">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="loginEmail" placeholder="example@email.com" dir="ltr"/>
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" dir="ltr"/>
+    </div>
+    <button class="btn-form" id="btnLogin" onclick="handleLogin()">
+      <i class="fa fa-sign-in-alt"></i> دخول
+    </button>
+    <p class="form-footer">
+      مش عندك حساب؟
+      <a onclick="switchModal('loginModal','registerModal')">سجّل شركتك مجاناً</a>
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════ MODAL: REGISTER ════════════════════ -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('registerModal')"><i class="fa fa-times"></i></button>
+    <div class="modal-logo">OPERIX</div>
+    <h2 class="modal-title">سجّل شركتك</h2>
+    <p class="modal-subtitle">تجربة مجانية 7 أيام — لا كريدت كارد مطلوب</p>
+    <div class="form-error"   id="registerError"></div>
+    <div class="form-success" id="registerSuccess"></div>
+    <div class="form-group">
+      <label>اسم الشركة</label>
+      <input type="text" id="regCompany" placeholder="مثال: شركة النور للتجارة"/>
+    </div>
+    <div class="form-group">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="regEmail" placeholder="example@email.com" dir="ltr"/>
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="regPassword" placeholder="8 أحرف على الأقل" dir="ltr"/>
+    </div>
+    <div class="form-group">
+      <label>تأكيد كلمة المرور</label>
+      <input type="password" id="regPasswordConfirm" placeholder="••••••••" dir="ltr"/>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px;">
+      بالتسجيل أنت توافق على
+      <a style="color:var(--blue);cursor:pointer;" onclick="openModal('termsModal')">الشروط والأحكام</a>
+      و<a style="color:var(--blue);cursor:pointer;" onclick="openModal('privacyModal')">سياسة الخصوصية</a>
+    </p>
+    <button class="btn-form" id="btnRegister" onclick="handleRegister()">
+      <i class="fa fa-rocket"></i> إنشاء الحساب مجاناً
+    </button>
+    <p class="form-footer">
+      عندك حساب بالفعل؟
+      <a onclick="switchModal('registerModal','loginModal')">سجّل دخولك</a>
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════ MODAL: TERMS ════════════════════ -->
+<div class="modal-overlay" id="termsModal">
+  <div class="modal-box" style="max-width:600px;">
+    <button class="modal-close" onclick="closeModal('termsModal')"><i class="fa fa-times"></i></button>
+    <h2 class="modal-title">الشروط والأحكام</h2>
+    <p class="modal-subtitle">آخر تحديث: مارس 2026</p>
+    <div class="terms-content">
+      <h4>1. القبول بالشروط</h4>
+      <p>باستخدام منصة Operix Cash فأنت توافق على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافق على أي من هذه الشروط، يرجى التوقف عن استخدام المنصة.</p>
+      <h4>2. وصف الخدمة</h4>
+      <p>Operix Cash منصة SaaS لإدارة العمليات المالية للشركات. توفر المنصة أدوات لتسجيل المعاملات المالية، وإدارة الفروع والموظفين، وعرض التقارير والإحصاءات.</p>
+      <h4>3. الاشتراك والدفع</h4>
+      <p>تبدأ الخدمة بتجربة مجانية لمدة 7 أيام. بعد انتهاء التجربة، يجب الاشتراك في إحدى الخطط المدفوعة للاستمرار في الاستخدام. الأسعار بالجنيه المصري وتخضع للتغيير مع إشعار مسبق.</p>
+      <h4>4. بيانات المستخدم</h4>
+      <p>أنت تملك بياناتك كاملاً. Operix Cash لا تبيع أو تشارك بياناتك مع أي طرف ثالث. البيانات محمية بتشفير كامل وعزل تام بين الشركات.</p>
+      <h4>5. الاستخدام المقبول</h4>
+      <p>يُحظر استخدام المنصة لأي أغراض غير قانونية أو مخالفة للآداب العامة. يُحظر محاولة الوصول لبيانات شركات أخرى أو اختراق أمان المنصة.</p>
+      <h4>6. إنهاء الخدمة</h4>
+      <p>يحق لك إلغاء اشتراكك في أي وقت. بعد الإلغاء، تبقى بياناتك محفوظة لمدة 30 يوماً يمكنك خلالها تصديرها.</p>
+      <h4>7. حدود المسؤولية</h4>
+      <p>Operix Cash غير مسؤولة عن أي خسائر مالية ناتجة عن استخدام المنصة أو انقطاع الخدمة لأسباب خارجة عن إرادتنا.</p>
+      <h4>8. التواصل</h4>
+      <p>لأي استفسارات تخص هذه الشروط، تواصل معنا على: support@operixcash.com</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ MODAL: PRIVACY ════════════════════ -->
+<div class="modal-overlay" id="privacyModal">
+  <div class="modal-box" style="max-width:600px;">
+    <button class="modal-close" onclick="closeModal('privacyModal')"><i class="fa fa-times"></i></button>
+    <h2 class="modal-title">سياسة الخصوصية</h2>
+    <p class="modal-subtitle">آخر تحديث: مارس 2026</p>
+    <div class="terms-content">
+      <h4>1. البيانات التي نجمعها</h4>
+      <p>نجمع البيانات الضرورية لتشغيل الخدمة فقط: اسم الشركة، البريد الإلكتروني، وبيانات العمليات المالية التي تدخلها أنت.</p>
+      <h4>2. كيف نستخدم البيانات</h4>
+      <p>البيانات تُستخدم حصراً لتشغيل خدمة Operix Cash وتحسينها. لا نستخدم بياناتك للإعلانات أو لأي أغراض تجارية أخرى.</p>
+      <h4>3. حماية البيانات</h4>
+      <p>بياناتك محمية بـ Row Level Security على مستوى قاعدة البيانات. كل شركة معزولة تماماً — لا يمكن لأي شركة أخرى الوصول لبياناتك.</p>
+      <h4>4. مشاركة البيانات</h4>
+      <p>لا نبيع أو نشارك بياناتك مع أي طرف ثالث. الاستثناء الوحيد هو مزودي الخدمة الضروريين (Supabase للتخزين، Kashier للدفع) وفق اتفاقيات سرية صارمة.</p>
+      <h4>5. حقوقك</h4>
+      <p>يحق لك طلب نسخة من بياناتك، تعديلها، أو حذفها في أي وقت. تواصل معنا على support@operixcash.com.</p>
+      <h4>6. ملفات الكوكيز</h4>
+      <p>نستخدم ملفات كوكيز أساسية فقط لتشغيل جلسة تسجيل الدخول. لا نستخدم كوكيز للتتبع أو الإعلانات.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ JAVASCRIPT ════════════════════ -->
 <script>
-// إظهار nav item الاشتراك بعد ما currentUserData يجهز
-document.addEventListener('DOMContentLoaded', function() {
-  const navItem = document.getElementById('nav-subscription');
-  if (!navItem) return;
-  let attempts = 0;
-  const timer = setInterval(function() {
-    attempts++;
-    if (window.currentUserData?.company_id) {
-      clearInterval(timer);
-      navItem.style.display = 'block';
-    } else if (attempts > 40) {
-      clearInterval(timer);
-    }
-  }, 250);
+// ── Restore saved theme ───────────────────────────────
+(function(){
+  const saved = localStorage.getItem('operix-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+// ── Theme Toggle ──────────────────────────────────────
+function toggleTheme() {
+  const html  = document.documentElement;
+  const light = html.getAttribute('data-theme') === 'light';
+  html.setAttribute('data-theme', light ? 'dark' : 'light');
+  localStorage.setItem('operix-theme', light ? 'dark' : 'light');
+}
+
+// ── Mobile Drawer ─────────────────────────────────────
+function openDrawer() {
+  document.getElementById('navDrawer').classList.add('open');
+  document.getElementById('drawerScrim').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+  document.getElementById('navDrawer').classList.remove('open');
+  document.getElementById('drawerScrim').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── Navbar shrink on scroll ───────────────────────────
+window.addEventListener('scroll', () => {
+  const nav  = document.getElementById('navbar');
+  const mob  = window.innerWidth <= 600;
+  nav.style.padding = window.scrollY > 60
+    ? (mob ? '10px 16px' : '10px 40px')
+    : (mob ? '11px 16px' : '14px 40px');
 });
-</script>
 
-<script>
-/* ══ Stock UI Helpers (inline) ══ */
-function filterInvoiceProducts(q) {
-  const container = document.getElementById('invoiceProductsList');
-  if (!container) return;
-  const all = typeof stockProducts !== 'undefined' ? stockProducts : [];
-  const filtered = all.filter(p => p.quantity > 0 && (!q || (p.name||'').toLowerCase().includes(q.toLowerCase()) || (p.brand||'').toLowerCase().includes(q.toLowerCase())));
-  if (!filtered.length) { container.innerHTML = '<div class="text-muted small text-center p-2">لا توجد نتائج</div>'; return; }
-  const colors = { mobile:'rgba(59,130,246,.12)', accessory:'rgba(139,92,246,.12)', tablet:'rgba(6,182,212,.12)', spare:'rgba(245,158,11,.12)' };
-  const icols  = { mobile:'var(--primary-blue)', accessory:'#8b5cf6', tablet:'var(--primary-cyan)', spare:'var(--warning-orange)' };
-  const icons  = { mobile:'fa-mobile-screen', accessory:'fa-headphones', tablet:'fa-tablet-screen-button', spare:'fa-screwdriver-wrench' };
-  container.innerHTML = filtered.slice(0,8).map(p => `
-    <div class="inv-product-row" onclick="addInvoiceItem(stockProducts.find(x=>x.id==${p.id}));filterInvoiceProducts('')">
-      <div class="inv-product-icon" style="background:${colors[p.category]||'rgba(59,130,246,.12)'};color:${icols[p.category]||'var(--primary-blue)'}">
-        <i class="fa ${icons[p.category]||'fa-box'}"></i>
-      </div>
-      <div class="flex-grow-1">
-        <div style="font-size:12px;font-weight:800;">${p.name}</div>
-        <div style="font-size:10px;color:var(--text-muted);">${[p.brand,p.model].filter(Boolean).join(' · ')}</div>
-      </div>
-      <div style="text-align:left;">
-        <div style="font-size:13px;font-weight:900;color:var(--success-green);" class="english-num">${Number(p.sell_price).toLocaleString()}</div>
-        <div style="font-size:9px;color:var(--text-muted);">${p.quantity} متاح</div>
-      </div>
-      <button class="btn btn-primary btn-sm" style="pointer-events:none;"><i class="fa fa-plus"></i></button>
-    </div>`).join('');
+// ── Scroll Reveal ─────────────────────────────────────
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// ── Modals ────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
-
-function updateSupplyCost() {
-  const qty  = Number(document.getElementById('supplyQty')?.value)      || 0;
-  const cost = Number(document.getElementById('supplyCostPrice')?.value) || 0;
-  const el   = document.getElementById('supplyTotalCost');
-  if (el) el.textContent = (qty * cost).toLocaleString('en-US') + ' ج.م';
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  document.body.style.overflow = '';
 }
+function switchModal(from, to) {
+  closeModal(from);
+  setTimeout(() => openModal(to), 200);
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
+    closeDrawer();
+  }
+});
 
-function onSupplySelectChange(sel) {
-  const all = typeof stockProducts !== 'undefined' ? stockProducts : [];
-  const p   = all.find(x => x.id == sel.value);
-  if (p) {
-    document.getElementById('supplyProductId').value    = p.id;
-    document.getElementById('supplyProductName').textContent = p.name;
-    document.getElementById('supplyCostPrice').value   = p.cost_price || 0;
-    updateSupplyCost();
+// ── Supabase ──────────────────────────────────────────
+const SUPA_URL = 'https://hgzyjfsbqxqwzbdtuekh.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenlqZnNicXhxd3piZHR1ZWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzI4NDAsImV4cCI6MjA4NTAwODg0MH0.eR8p2SM66S8TSKjSMNzNG8Ip2B5kZYLXWoOBYKMTRCQ';
+const supa = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+
+// ── Login ─────────────────────────────────────────────
+async function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  const btn   = document.getElementById('btnLogin');
+
+  errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
+    errEl.style.display = 'block'; return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> جاري الدخول...';
+  try {
+    const { error } = await supa.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    window.location.href = 'dashboard.html';
+  } catch(e) {
+    errEl.textContent = e.message?.includes('Invalid')
+      ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+      : (e.message || 'حدث خطأ، حاول مرة أخرى');
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-sign-in-alt"></i> دخول';
   }
 }
 
-// Override openNewInvoice to init product list
-const _stockOrigOpen = window.openNewInvoice;
-window.openNewInvoice = function(productId) {
-  if (typeof invoiceItems !== 'undefined') invoiceItems.length = 0; else window.invoiceItems = [];
-  ['invClientName','invClientPhone','invNotes'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
-  const w = document.getElementById('invWarranty'); if(w) w.value='0';
-  document.getElementById('invoiceView').style.display = 'block';
-  document.getElementById('stockView').style.display   = 'none';
-  if (productId) { const p = (typeof stockProducts!=='undefined'?stockProducts:[]).find(x=>x.id===productId); if(p) addInvoiceItem(p); }
-  if (typeof renderInvoiceItems === 'function') renderInvoiceItems();
-  filterInvoiceProducts('');
-};
+// ── Register ──────────────────────────────────────────
+async function handleRegister() {
+  const company = document.getElementById('regCompany').value.trim();
+  const email   = document.getElementById('regEmail').value.trim();
+  const pass    = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regPasswordConfirm').value;
+  const errEl   = document.getElementById('registerError');
+  const sucEl   = document.getElementById('registerSuccess');
+  const btn     = document.getElementById('btnRegister');
+
+  errEl.style.display = 'none';
+  sucEl.style.display = 'none';
+
+  if (!company) { errEl.textContent = 'يرجى إدخال اسم الشركة';                          errEl.style.display='block'; return; }
+  if (!email)   { errEl.textContent = 'يرجى إدخال البريد الإلكتروني';                   errEl.style.display='block'; return; }
+  if (pass.length < 8) { errEl.textContent = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'; errEl.style.display='block'; return; }
+  if (pass !== confirm) { errEl.textContent = 'كلمتا المرور غير متطابقتين';              errEl.style.display='block'; return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> جاري إنشاء الحساب...';
+
+  try {
+    // 1. إنشاء المستخدم
+    const { data: authData, error: authErr } = await supa.auth.signUp({ email, password: pass });
+    if (authErr) throw authErr;
+    const userId = authData.user?.id;
+    if (!userId) throw new Error('فشل في إنشاء المستخدم');
+
+    // 2. إنشاء الشركة
+    const { data: compData, error: compErr } = await supa
+      .from('companies').insert({ name: company, owner_id: userId }).select().single();
+    if (compErr) throw compErr;
+    const companyId = compData.id;
+
+    // 3. إنشاء الفرع الافتراضي
+    const { data: branchData, error: branchErr } = await supa
+      .from('branches').insert({ company_id: companyId, name: 'الفرع الرئيسي' }).select().single();
+    if (branchErr) throw branchErr;
+    const branchId = branchData.id;
+
+    // 4. إنشاء سجل المستخدم
+    const { error: userErr } = await supa.from('users').insert({
+      id: userId, company_id: companyId, branch_id: branchId,
+      role: 'OWNER', email, name: company
+    });
+    if (userErr) throw userErr;
+
+    // 5. إنشاء الاشتراك التجريبي
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7);
+    const { error: subErr } = await supa.from('subscriptions').insert({
+      company_id: companyId, plan_code: 'FREE', status: 'trial',
+      trial_ends_at: trialEnd.toISOString(),
+      max_branches: 1, max_employees: 5, max_transactions: 100
+    });
+    if (subErr) throw subErr;
+
+    sucEl.textContent = '✅ تم إنشاء حسابك بنجاح! جاري التحويل...';
+    sucEl.style.display = 'block';
+    setTimeout(() => window.location.href = 'dashboard.html', 2000);
+
+  } catch(e) {
+    let msg = e.message || 'حدث خطأ، حاول مرة أخرى';
+    if (msg.includes('already registered')) msg = 'البريد الإلكتروني مسجّل بالفعل';
+    if (msg.includes('Password'))           msg = 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa fa-rocket"></i> إنشاء الحساب مجاناً';
+  }
+}
 </script>
-</head>
-<body>
-<header class="app-header-main">
-    <div class="header-container">
-<div class="header-right">
-<button class="mobile-menu-btn d-md-none" id="sidebarToggleBtn">
-            <i class="fa-solid fa-bars-staggered"></i>
-    </button>
 
-    <div class="brand-wrapper">
-        <div class="brand-wrapper-inner">
-            <div class="brand-wordmark">
-                <span class="letter letter-x">X</span>
-                <span class="letter">I</span>
-                <span class="letter">R</span>
-                <span class="letter">E</span>
-                <span class="letter">P</span>
-                <span class="letter">O</span>
-            </div>
-            <div class="brand-tagline">Financial Operations</div>
-        </div>
-    </div>     
-</div>       
-     <div class="header-left">
-                <div class="header-buttons">
-                    <div class="user-info-box d-none d-md-flex">
-                        <span class="welcome-tag">أهلاً بك،</span>
-                        <span id="user-display-name" class="user-name-text">...</span>
-                        <div id="current-branch-badge" class="me-2"></div>
-
-                    </div>
-                    <div class="icon-btn" onclick="showNotifications()"><i class="fa-regular fa-bell"></i></div>
-                    <div class="icon-btn" onclick="toggleTheme()"><i class="fa fa-moon"></i></div>
-                    <div class="icon-btn logout-special" onclick="signOut()"><i class="fa-solid fa-right-from-bracket"></i></div>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <div id="toastMsg" class="custom-toast"></div>
-    
-    <!-- Sidebar Navigation -->
-<nav class="sidebar" id="sidebar">
-  <div class="sidebar-notch">
-    <button class="sidebar-toggle-floating" onclick="toggleSidebar()">
-      <i class="fas fa-chevron-right"></i>
-    </button>
-  </div>
-  <ul class="sidebar-menu-list">
-    <li class="nav-item" id="nav-dash">
-        <a class="nav-link sidebar-link" onclick="showView('dash')">
-            <i class="fa fa-chart-pie"></i>
-            <span class="link-text">التقرير العام</span>
-        </a>
-    </li>
-
-    <li class="nav-item nav-parent">
-        <a class="nav-link sidebar-link" onclick="toggleSubMenu(this)">
-            <i class="fa fa-calculator"></i>
-            <span class="link-text">العمليات</span>
-            <i class="fa fa-chevron-down submenu-toggle ms-auto"></i>
-        </a>
-        <ul class="nav-submenu">
-            <li><a onclick="showView('op'); switchOpTab('new')" class="submenu-link" data-op-tab="new-op-tab"><i class="fa fa-plus-circle"></i> عملية جديدة</a></li>
-            <li><a onclick="showView('counter')" class="submenu-link"><i class="fa fa-money-bill-1"></i> عد النقدية</a></li>
-        </ul>
-    </li>
-
-    <li class="nav-item" id="nav-manage" style="display:none">
-        <a class="nav-link sidebar-link" onclick="showView('manage')">
-            <i class="fa fa-sliders"></i>
-            <span class="link-text">إدارة النظام</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link sidebar-link" onclick="showView('stock')">
-            <i class="fa fa-boxes-stacked"></i>
-            <span class="link-text">الاستوك</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link sidebar-link" onclick="showView('settings')">
-            <i class="fa fa-cog"></i>
-            <span class="link-text">الإعدادات</span>
-        </a>
-    </li>
-
-    <li class="nav-item" id="nav-subscription" style="display:none;">
-        <a class="nav-link sidebar-link" onclick="showView('subscription'); loadSubscriptionPage();">
-            <i class="fa fa-credit-card"></i>
-            <span class="link-text">الاشتراك والخطة</span>
-        </a>
-    </li>
-  </ul>
-</nav>
-
-<main class="content-area">
-    <div id="view-dash" class="view-section active">
-        <div id="dashBranchFilter" style="display:none;"></div>
-        <div id="dashContent">
-            <div class="text-center p-5 text-muted"><i class="fa fa-circle-notch fa-spin fa-2x mb-3"></i><br>جاري جلب التقارير...</div>
-        </div>
-    </div>
-
-    <!-- العمليات - العمليات الجديدة وسجل العمليات -->
-    <div id="view-op" class="view-section">
-
-    <!-- Tabs bar (layout: tabs) -->
-    <div class="lyt-tabs-bar">
-        <div class="lyt-tabs-inner">
-            <button class="lyt-tab-btn active" id="lyt-tab-new-btn" onclick="switchLayoutTab('new')">
-                <i class="fa fa-plus-circle"></i> عملية جديدة
-            </button>
-            <button class="lyt-tab-btn lyt-tab-log" id="lyt-tab-log-btn" onclick="switchLayoutTab('log')">
-                <i class="fa fa-history"></i> سجل العمليات
-            </button>
-        </div>
-    </div>
-
-    <!-- تابات موبايل: عملية جديدة | سجل العمليات -->
-    <div class="op-tabs-bar mb-3 d-md-none">
-        <div class="btn-group w-100" role="group">
-            <button class="btn flex-fill active" id="mob-tab-new" onclick="switchMobileTab('new')">
-                <i class="fa fa-plus-circle me-1"></i> عملية جديدة
-            </button>
-            <button class="btn flex-fill" id="mob-tab-log" onclick="switchMobileTab('log')">
-                <i class="fa fa-history me-1"></i> سجل العمليات
-            </button>
-        </div>
-    </div>
-
-    <!-- العرض المدمج: عمودين على الديسكتوب، تابات على الموبايل -->
-    <div class="row g-3">
-
-        <!-- العمود الأيسر: عملية جديدة -->
-        <div class="col-lg-5" id="col-new-op">
-            <div class="new-op-panel h-100">
-
-                <div class="op-group-title"><i class="fas fa-layer-group text-primary"></i> الخدمات الرئيسية</div>
-                <div class="services-grid services-grid-compact cols-4">
-                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('client_withdraw')"><i class="fas fa-arrow-up-from-bracket text-primary"></i><span>سحب من عميل</span></div></div>
-                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('pay_bill')"><i class="fa fa-file-invoice text-success"></i><span>دفع فواتير</span></div></div>
-                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('cash_supply')"><i class="fas fa-money-bill-transfer text-warning"></i><span>تزويد</span></div></div>
-                    <div class="service-col"><div class="op-card card-fawry" onclick="openProviderSelect('visa_withdraw')"><i class="fas fa-credit-card text-danger"></i><span>سحب فيزا</span></div></div>
-                </div>
-
-                <div class="op-group-title"><i class="fa fa-vault text-secondary"></i> الخزنة والعملاء</div>
-                <div class="services-grid services-grid-compact">
-                    <div class="service-col"><div class="op-card card-safe" onclick="setOp('مصروفات', 'SAFE', this)"><i class="fa fa-coins"></i><span>مصاريف</span></div></div>
-                    <div class="service-col"><div class="op-card card-safe" onclick="setOp('سحب دين', 'SAFE', this)"><i class="fa fa-user-minus"></i><span>سحب دين ( عليه )</span></div></div>
-                    <div class="service-col"><div class="op-card card-safe" onclick="setOp('سداد مديونية', 'SAFE', this)"><i class="fa fa-user-check"></i><span>سداد دين ( له )</span></div></div>
-                </div>
-
-                <div class="op-group-title"><i class="fa fa-mobile-screen text-info"></i> المحافظ الإلكترونية</div>
-                <div class="services-grid services-grid-compact cols-2">
-                    <div class="service-col"><div class="op-card card-wallets" onclick="setOp('إيداع لمحفظة', 'WALLET', this)"><i class="fa fa-upload text-primary"></i><span>إيداع لمحفظة</span></div></div>
-                    <div class="service-col"><div class="op-card card-wallets" onclick="setOp('سحب من محفظة', 'WALLET', this)"><i class="fa fa-download text-success"></i><span>سحب من محفظة</span></div></div>
-                </div>
-
-                <input type="hidden" id="type" value="">
-                <div id="pinnedWallets" class="mb-2 d-flex flex-wrap gap-2 justify-content-center"></div>
-
-                <div class="card-box mt-2">
-                    <label class="small fw-bold text-muted mb-1"><i class="fa fa-wallet me-1"></i> المحفظة / الخزنة</label>
-                    <div class="input-group mb-2">
-                        <select id="wallet" class="form-select form-select-sm english-num" onchange="updateLimitDisplay()">
-                            <option>...</option>
-                        </select>
-                        <button class="btn btn-outline-secondary" onclick="loadWallets()"><i class="fa fa-sync"></i></button>
-                    </div>
-
-                    <div class="row g-2 mb-2">
-                        <div class="col-7">
-                            <label class="small fw-bold text-muted mb-1">المبلغ</label>
-                            <input type="text" id="amount" class="form-control form-control-sm text-center english-num" placeholder="0.00" onkeyup="formatNumberInput(this)">
-                        </div>
-                        <div class="col-5">
-                            <label class="small fw-bold text-muted mb-1">العمولة</label>
-                            <input type="text" id="comm" class="form-control form-control-sm text-center english-num" placeholder="0" value="0" onkeyup="formatNumberInput(this)">
-                        </div>
-                    </div>
-
-                    <div id="commDestinationContainer" class="mb-2" style="display:none;">
-                        <label class="small fw-bold mb-1"><i class="fas fa-hand-holding-usd me-1"></i> وجهة العمولة/الربح</label>
-                        <select id="commDestination" class="form-select form-select-sm">
-                            <option value="CASH" selected>💰 الخزنة (الكاش) - افتراضي</option>
-                            <option value="WALLET">📱 المحفظة المختارة</option>
-                        </select>
-                    </div>
-
-                    <div id="deductCommContainer" class="mb-2 form-check form-switch px-4" style="display:none;">
-                        <input class="form-check-input" type="checkbox" id="deductCommFromAmount">
-                        <label class="form-check-label small fw-bold text-danger" for="deductCommFromAmount">
-                            خصم العمولة من كاش الخزنة
-                        </label>
-                    </div>
-
-                    <div id="clientFieldContainer" class="mb-2" style="display:none;">
-                        <label class="small fw-bold">العميل</label>
-                        <select id="client" class="form-select form-select-sm" onchange="fetchClientBalance()">
-                            <option value="">اختار العميل...</option>
-                        </select>
-                        <div id="clientBalanceStatus" class="small fw-bold mt-1 text-center"></div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="small fw-bold text-muted mb-1">ملاحظات</label>
-                        <input type="text" id="note" class="form-control form-control-sm" placeholder="أي تفاصيل إضافية...">
-                    </div>
-                    <button type="button" id="btnRun" class="btn-main w-100" onclick="runTransaction()">تنفيذ العملية</button>
-
-                    <!-- زرار سجل العمليات (drawer) -->
-                    <button class="lyt-float-btn" onclick="openLayoutDrawer()">
-                        <i class="fa fa-history"></i> سجل العمليات
-                        <span class="lyt-badge">←</span>
-                    </button>
-
-                    <!-- زرار سجل العمليات (sheet) -->
-                    <button class="lyt-float-sheet" onclick="openLayoutSheet()">
-                        <i class="fa fa-table-list"></i> عرض السجل
-                        <span class="lyt-badge">↑</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- العمود الأيمن: سجل العمليات -->
-        <div class="col-lg-7" id="col-log-op">
-            <div class="log-op-panel h-100">
-
-                <div class="card-box mb-2 p-2 sticky-top" style="z-index: 99; border-bottom: 3px solid #3b82f6;">
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <div class="flex-grow-1 position-relative" style="min-width: 150px;">
-                            <input type="text" id="advSearchText" class="form-control form-control-sm ps-4 rounded-pill border-0 search-input" placeholder="بحث سريع..." onkeyup="executeAdvancedSearch()">
-                            <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2"></i>
-                        </div>
-                        <select id="advSearchType" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" onchange="executeAdvancedSearch()" style="width: auto; min-width: 120px; border-radius: 10px;">
-                            <option value="">📂 كل العمليات</option>
-                            <option value="وارد">🟢 وارد</option>
-                            <option value="صادر">🔴 صادر</option>
-                            <option value="مصروفات">🟠 مصروفات</option>
-                            <option value="سحب من عميل">👤 سحب من عميل</option>
-                            <option value="دفع فاتورة">🧾 دفع فواتير</option>
-                            <option value="إيداع لمحفظة">📱 إيداع محفظة</option>
-                            <option value="سحب من محفظة">📲 سحب محفظة</option>
-                        </select>
-                        <button class="btn btn-sm btn-light border-0 rounded-circle text-muted" onclick="toggleDateFilters()" title="بحث بالتاريخ">
-                            <i class="fa-regular fa-calendar-alt"></i>
-                        </button>
-                        <button class="btn btn-sm btn-light border-0 rounded-circle text-danger" onclick="resetAdvancedSearch()" title="إلغاء الفلاتر">
-                            <i class="fa fa-rotate-right"></i>
-                        </button>
-                    </div>
-                    <div id="dateFilterSection" class="row g-2 mt-2 pt-2 border-top" style="display:none;">
-                        <div class="col-6">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-transparent border-0 text-muted">من</span>
-                                <input type="date" id="advDateFrom" class="form-control border-0 rounded" onchange="executeAdvancedSearch()">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-transparent border-0 text-muted">إلى</span>
-                                <input type="date" id="advDateTo" class="form-control border-0 rounded" onchange="executeAdvancedSearch()">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-box p-0 shadow-sm border-0">
-                    <div class="table-responsive" style="max-height: calc(100vh - 280px); overflow-y: auto;">
-                        <table class="table table-bordered table-sm table-custom text-center small" id="transactionTableModern">
-                            <thead class="bg-light sticky-top" style="top: 0; z-index: 1;">
-                                <tr>
-                                    <th width="30">#</th>
-                                    <th>التاريخ</th>
-                                    <th>العملية / الحساب</th>
-                                    <th>المبلغ / الربح</th>
-                                    <th>الرصيد بعد</th>
-                                    <th>ملاحظات</th>
-                                    <th>بواسطة</th>
-                                    <th width="50">إجراء</th>
-                                </tr>
-                            </thead>
-                            <tbody id="timelineContainer"></tbody>
-                        </table>
-                    </div>
-                    <div id="rowsCountDisplay" class="text-center text-muted small py-2 border-top bg-light"></div>
-                </div>
-
-            </div>
-        </div>
-
-    </div><!-- end row -->
-
-</div><!-- end view-op -->
-
-<!-- Drawer overlay (layout) -->
-<div id="layoutDrawerOverlay" class="layout-drawer-overlay" onclick="closeLayoutDrawer()">
-    <div id="layoutDrawerPanel" class="layout-drawer-panel" onclick="event.stopPropagation()">
-        <div class="layout-panel-head">
-            <span><i class="fa fa-history text-success me-2"></i> سجل العمليات</span>
-            <button class="layout-xbtn" onclick="closeLayoutDrawer()"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="layout-panel-body">
-            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-                <div class="flex-grow-1 position-relative" style="min-width: 130px;">
-                    <input type="text" id="advSearchText2" class="form-control form-control-sm ps-4 rounded-pill border-0 search-input" placeholder="بحث سريع..." onkeyup="syncSearch(this,'advSearchText')">
-                    <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2"></i>
-                </div>
-                <select id="advSearchType2" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" onchange="syncSearch(this,'advSearchType')" style="width:auto;min-width:120px;border-radius:10px;">
-                    <option value="">📂 كل العمليات</option>
-                    <option value="وارد">🟢 وارد</option>
-                    <option value="صادر">🔴 صادر</option>
-                    <option value="مصروفات">🟠 مصروفات</option>
-                    <option value="سحب من عميل">👤 سحب من عميل</option>
-                    <option value="دفع فاتورة">🧾 دفع فواتير</option>
-                    <option value="إيداع لمحفظة">📱 إيداع محفظة</option>
-                    <option value="سحب من محفظة">📲 سحب محفظة</option>
-                </select>
-            </div>
-            <div class="card-box p-0 shadow-sm border-0">
-                <div class="table-responsive" style="max-height: calc(80vh - 140px); overflow-y: auto;">
-                    <table class="table table-bordered table-sm table-custom text-center small" id="transactionTableDrawer">
-                        <thead class="bg-light sticky-top" style="top:0;z-index:1;">
-                            <tr><th>#</th><th>التاريخ</th><th>العملية / الحساب</th><th>المبلغ</th><th>الرصيد بعد</th><th>ملاحظات</th><th>بواسطة</th><th width="50">إجراء</th></tr>
-                        </thead>
-                        <tbody id="timelineContainerDrawer"></tbody>
-                    </table>
-                </div>
-                <div id="rowsCountDrawer" class="text-center text-muted small py-2 border-top bg-light"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Sheet overlay (layout) -->
-<div id="layoutSheetOverlay" class="layout-sheet-overlay" onclick="closeLayoutSheet()">
-    <div id="layoutSheetPanel" class="layout-sheet-panel" onclick="event.stopPropagation()">
-        <div class="layout-sheet-handle"></div>
-        <div class="layout-panel-head">
-            <span><i class="fa fa-table-list text-purple me-2"></i> سجل العمليات</span>
-            <button class="layout-xbtn" onclick="closeLayoutSheet()"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="layout-panel-body">
-            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-                <div class="flex-grow-1 position-relative" style="min-width: 130px;">
-                    <input type="text" id="advSearchText3" class="form-control form-control-sm ps-4 rounded-pill border-0 search-input" placeholder="بحث سريع..." onkeyup="syncSearch(this,'advSearchText')">
-                    <i class="fa fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-2"></i>
-                </div>
-                <select id="advSearchType3" class="form-select form-select-sm border-0 bg-light fw-bold text-primary" onchange="syncSearch(this,'advSearchType')" style="width:auto;min-width:120px;border-radius:10px;">
-                    <option value="">📂 كل العمليات</option>
-                    <option value="وارد">🟢 وارد</option>
-                    <option value="صادر">🔴 صادر</option>
-                    <option value="مصروفات">🟠 مصروفات</option>
-                    <option value="سحب من عميل">👤 سحب من عميل</option>
-                    <option value="دفع فاتورة">🧾 دفع فواتير</option>
-                    <option value="إيداع لمحفظة">📱 إيداع محفظة</option>
-                    <option value="سحب من محفظة">📲 سحب محفظة</option>
-                </select>
-            </div>
-            <div class="card-box p-0 shadow-sm border-0">
-                <div class="table-responsive" style="max-height: calc(68vh - 120px); overflow-y: auto;">
-                    <table class="table table-bordered table-sm table-custom text-center small" id="transactionTableSheet">
-                        <thead class="bg-light sticky-top" style="top:0;z-index:1;">
-                            <tr><th>#</th><th>التاريخ</th><th>العملية / الحساب</th><th>المبلغ</th><th>الرصيد بعد</th><th>ملاحظات</th><th>بواسطة</th><th width="50">إجراء</th></tr>
-                        </thead>
-                        <tbody id="timelineContainerSheet"></tbody>
-                    </table>
-                </div>
-                <div id="rowsCountSheet" class="text-center text-muted small py-2 border-top bg-light"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: اختيار الشركة المنفذة -->
-<div id="providerModal" class="modal-overlay" style="display:none; z-index: 10000;">
-    <div class="modal-box" style="max-width: 320px;">
-        <h6 class="text-center fw-bold mb-4">اختر الشركة المنفذة</h6>
-        <input type="hidden" id="selectedServiceKey">
-        <div id="providerButtonsGrid" class="d-grid gap-2"></div>
-        <button class="btn btn-light w-100 mt-3 border" onclick="closeProviderModal()">إلغاء</button>
-    </div>
-</div>
-
-
-        <!-- Modal: تفاصيل العملية -->
-<div id="txDetailsModal" class="details-modal-overlay" style="display:none;" onclick="closeTxDetails()">
-    <div class="details-modal-box" onclick="event.stopPropagation()">
-        <div class="details-modal-head">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <div style="width:32px;height:32px;border-radius:10px;background:rgba(59,130,246,.12);
-                            display:flex;align-items:center;justify-content:center;">
-                    <i class="fa fa-receipt" style="color:#3b82f6;font-size:13px;"></i>
-                </div>
-                <span>تفاصيل العملية</span>
-            </div>
-            <button class="layout-xbtn" onclick="closeTxDetails()"><i class="fa fa-times"></i></button>
-        </div>
-        <div class="details-modal-content" id="txd-content">
-            <div class="txd-loading">
-                <div class="txd-spinner"></div>
-                <span>جاري التحميل...</span>
-            </div>
-        </div>
-    </div>
-</div>
-	
-					<div id="view-manage" class="view-section">
-				
-				<ul class="nav nav-pills nav-fill mb-3 bg-card p-2 rounded-3 border">
-					<li class="nav-item"><a class="nav-link active" data-tab="clients-tab" onclick="showManageTab(this)"><i class="fa fa-users"></i> العملاء</a></li>
-					<li class="nav-item"><a class="nav-link" data-tab="accounts-tab" onclick="showManageTab(this)"><i class="fa fa-cogs"></i> الحسابات</a></li>
-					<li class="nav-item master-only"><a class="nav-link" data-tab="users-tab" onclick="showManageTab(this)"><i class="fa fa-user-friends"></i> الأعضاء</a></li>
-					<li class="nav-item"><a class="nav-link" data-tab="logs-tab" onclick="showManageTab(this)"><i class="fa fa-clipboard-list"></i> السجل</a></li>
-                    <li class="nav-item admin-only-section"><a class="nav-link" data-tab="branches-tab" onclick="showManageTab(this)"> <i class="fa fa-building"></i> الفروع </a></li></ul>
-
-<div id="clients-tab" class="manage-tab-content">
-    <div class="card-box mb-3 shadow-sm border-0">
-        <h6 class="text-primary fw-bold mb-3 small"><i class="fa fa-user-plus me-1"></i> إضافة عميل</h6>
-        <div class="row g-2 mb-2">
-            <div class="col-7"><input type="text" id="newClName" class="form-control form-control-sm" placeholder="الاسم"></div>
-            <div class="col-5"><input type="text" id="newClPhone" class="form-control form-control-sm english-num" placeholder="الموبايل"></div>
-        </div>
-        <button id="btnAddClient" class="btn-main w-100" onclick="addClient()">إضافة</button>
-    </div>
-
-    <div class="card-box shadow-sm border-0 p-2">
-        <div class="d-flex text-center mb-2 px-2 pb-2 border-bottom fw-bold text-muted" style="font-size: 10px;">
-            <div style="width: 25%;" class="text-start">الاسم</div>
-            <div style="width: 30%;">رقم الهاتف</div>
-            <div style="width: 30%;">الرصيد الحالي</div>
-            <div style="width: 10%;">الاجراء</div>
-        </div>
-        
-        <div id="manage-clients-body" style="max-height: 400px; overflow-y: auto;">
-            <div class="text-center p-4 text-muted small">جاري التحميل...</div>
-        </div>
-    </div>
-</div>
-<div id="accounts-tab" class="manage-tab-content" style="display:none;">
-    <div class="card-box shadow-sm border-0 mb-3" style="border-top: 4px solid #10b981 !important;">
-        <h6 class="fw-bold mb-3 text-success small"><i class="fa fa-wallet me-2"></i>إضافة محفظة أو شركة</h6>
-        <div class="input-group input-group-sm mb-3">
-            <select id="newAccType" class="form-select fw-bold" style="max-width: 100px;">
-                <option value="محفظة">محفظة</option>
-                <option value="شركة">شركة</option>
-            </select>
-            <input type="text" id="newAccName" class="form-control english-num" placeholder="الاسم أو الرقم">
-        </div>
-        <button id="btnAddWallet" class="btn-main w-100" onclick="addWallet()">
-            <i class="fa fa-plus-circle me-1"></i> حفظ الحساب
-        </button>
-    </div>
-<div class="px-2 mb-3">
-    <div class="search-wrapper d-flex align-items-center border rounded-pill px-3 py-2 bg-light">
-        <i class="fa fa-search text-muted me-2"></i>
-        <input type="text" id="accSearchInput" 
-               class="form-control border-0 shadow-none p-0 small" 
-               style="background:transparent!important;" 
-               placeholder="ابحث بالاسم أو الرقم أو الوسم..." 
-               oninput="filterAccounts()">
-        <span class="badge bg-primary-subtle text-primary rounded-pill px-2" id="countBadge" style="font-size: 10px;">0 حساب</span>
-    </div>
-</div>
-<div id="filterBtnGroup" class="d-flex flex-wrap gap-1 mb-2 px-2">
-    <button type="button" class="btn btn-sm btn-secondary active" onclick="setFilterType('all', this)">الكل</button>
-    
-    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('pinned', this)">
-        <i class="fa fa-thumbtack me-1 text-warning"></i>المثبت
-    </button>
-    
-    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('company', this)">
-        <i class="fa fa-building me-1 text-success"></i>الشركات
-    </button>
-
-    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('wallet', this)">
-        <i class="fa fa-mobile-alt me-1 text-danger"></i>المحافظ
-    </button>
-
-    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setFilterType('tagged', this)">
-        <i class="fa fa-tag me-1 text-info"></i>الموشم
-    </button>
-</div>
-<div class="card-box shadow-sm border-0 p-2">
-<div class="d-flex text-center mb-2 px-3 pb-2 border-bottom fw-bold text-muted" style="font-size: 11px; direction: rtl;">
-    <div style="width: 40%;" class="text-start ps-2">اسم الحساب / الوسم</div>
-    <div style="width: 30%;">الرصيد الحالي</div>
-    <div style="width: 30%;" class="text-end pe-4">⚙️ الإجراءات</div>
-</div>
-        <div id="accList" style="max-height: 400px; overflow-y: auto;">
-            <div class="text-center p-4 text-muted small">جاري تحميل الحسابات...</div>
-        </div>
-    </div>
-</div>
-<div id="users-tab" class="manage-tab-content" style="display:none;">
-
-    <!-- قسم إرسال دعوة — للمدير العام فقط -->
-    <div id="invitationsSection" style="display:none;">
-        <div class="card-box mb-3" style="border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.05);">
-            <h6 class="fw-bold mb-3 small" style="color:#8b5cf6;">
-                <i class="fa fa-envelope-open-text me-1"></i> إرسال دعوة لموظف جديد
-            </h6>
-            <div class="row g-2 mb-2">
-                <div class="col-12">
-                    <input type="email" id="inviteEmail" class="form-control form-control-sm"
-                        placeholder="البريد الإلكتروني للموظف" style="direction:rtl;">
-                </div>
-                <div class="col-6">
-                    <select id="inviteRole" class="form-select form-select-sm" style="direction:rtl;">
-                        <option value="USER">موظف</option>
-                        <option value="ADMIN">مدير فرع</option>
-                    </select>
-                </div>
-                <div class="col-6">
-                    <select id="inviteBranch" class="form-select form-select-sm" style="direction:rtl;">
-                        <option value="">— اختر الفرع —</option>
-                    </select>
-                </div>
-            </div>
-            <button id="btnSendInvite" class="btn btn-sm w-100 fw-bold"
-                    style="background:#8b5cf6;color:#fff;border-radius:10px;padding:8px;"
-                    onclick="sendInvitation()">
-                <i class="fa fa-paper-plane me-1"></i>إرسال الدعوة
-            </button>
-            <div class="mt-3 pt-2" style="border-top:1px solid rgba(139,92,246,0.2);">
-                <div class="small fw-bold text-muted mb-2">
-                    <i class="fa fa-list me-1"></i> الدعوات المرسلة
-                </div>
-                <div id="invitesList">
-                    <div class="text-center text-muted small py-2">جاري التحميل...</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- قائمة الأعضاء -->
-    <div class="d-flex text-muted fw-bold mb-2 px-3 small" style="direction: rtl; opacity: 0.8;">
-        <div style="width: 50%;">العضو</div>
-        <div style="width: 25%;" class="text-center">الصلاحية</div>
-        <div style="width: 25%;" class="text-end pe-3">الإجراءات</div>
-    </div>
-    <div id="usersList" style="max-height: 350px; overflow-y: auto; padding: 2px;">
-        <div class="text-center p-4 text-muted small">جاري التحميل...</div>
-    </div>
-</div>				<div id="logs-tab" class="manage-tab-content" style="display:none;">
-				  <div class="card-box p-0">
-					<div id="adminLogsDiv" style="max-height: 400px; overflow-y: auto;">
-						<div class="text-center p-5 text-muted"><i class="fa fa-circle-notch fa-spin fa-2x mb-3"></i><br>جاري تحميل السجل...</div>
-					</div>
-				  </div>
-				</div>
-<div id="branches-tab" class="manage-tab-content" style="display:none;">
-
-    <!-- هيدر الفروع -->
-    <div class="d-flex justify-content-between align-items-center mb-3" style="direction:rtl;">
-        <h6 class="fw-bold m-0 small" style="color:var(--card-text);">
-            <i class="fa fa-building text-primary me-1"></i> الفروع المسجلة
-        </h6>
-        <button id="addBranchBtn" class="btn-main px-3"
-                style="width:auto;font-size:12px;padding:6px 14px;border-radius:10px;display:none;"
-                onclick="openAddBranchModal()">
-            <i class="fa fa-plus me-1"></i> فرع جديد
-        </button>
-    </div>
-
-    <!-- قائمة الفروع -->
-    <div id="branchesList" class="mb-3">
-        <div class="text-center p-4 text-muted small">جاري التحميل...</div>
-    </div>
-
-    <!-- تعيين موظف لفرع (مدير عام + مدير فرع) -->
-    <div id="assignSection" class="card-box shadow-sm border-0 mb-3" style="display:none;">
-        <h6 class="fw-bold mb-3 small" style="color:var(--card-text);">
-            <i class="fa fa-user-tag text-primary me-1"></i> تعيين موظف لفرع
-        </h6>
-        <div class="row g-2">
-            <div class="col-12">
-                <label class="form-label small fw-bold text-muted mb-1">اختر الموظف</label>
-                <select id="assignUserSelect" class="form-select form-select-sm">
-                    <option value="">-- اختر موظف --</option>
-                </select>
-            </div>
-            <div class="col-12">
-                <label class="form-label small fw-bold text-muted mb-1">اختر الفرع</label>
-                <select id="assignBranchSelect" class="form-select form-select-sm">
-                    <option value="">-- اختر فرع --</option>
-                </select>
-            </div>
-            <div class="col-12 mt-1">
-                <button class="btn-main" onclick="handleAssignUserToBranch()">
-                    <i class="fa fa-check me-1"></i> تعيين
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ملخص الفروع (مدير عام فقط) -->
-        <div id="branchesSummarySection" class="card-box shadow-sm border-0" style="display:none;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold m-0 small" style="color:var(--card-text);">
-                    <i class="fa fa-chart-bar text-primary me-1"></i> ملخص الفروع
-            </h6>
-            <button class="btn btn-sm btn-light border" onclick="renderBranchesSummary()"
-                    style="font-size:11px;border-radius:8px;">
-                <i class="fa fa-rotate-right me-1"></i> تحديث
-            </button>
-        </div>
-        <div id="branches-summary-container">
-            <div class="text-center p-3 text-muted small">
-                <i class="fa fa-chart-bar me-1 opacity-50"></i>
-                اضغط تحديث لعرض الإحصائيات
-            </div>
-        </div>
-    </div>
-
-</div>
-</div>
-
-<div id="view-counter" class="view-section">
-    
-<div class="d-flex gap-2 mb-3 px-2">
-    <button id="tab-btn-counter" class="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-white text-primary border" onclick="switchInventoryTab('counter')">
-        <i class="fas fa-calculator me-1"></i> حاسبة النقدية
-    </button>
-    <button id="tab-btn-logs" class="btn btn-sm flex-fill rounded-pill fw-bold shadow-sm py-2 bg-light text-muted border-0" onclick="switchInventoryTab('logs')">
-        <i class="fas fa-history me-1"></i> سجل الجرد
-    </button>
-</div>
-
-<div id="inventory-tab-counter">
-    <div class="card-box shadow-sm border-0 mb-3 text-center" 
-         style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 20px; padding: 25px; color: white;">
-        
-        <div class="small opacity-75 fw-bold mb-1">إجمالي النقدية الفعلي</div>
-        <div class="h1 fw-bold m-0 english-num" style="font-size: 45px;">
-            <span id="total-cash">0</span> <small class="fs-6">ج.م</small>
-        </div>
-        
-        <div id="reconciliation-badge" class="mt-3 p-3 rounded-3" style="display:none; background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3);">
-            <div class="d-flex justify-content-between align-items-center">
-                <span id="diff-label" class="small fw-bold">النتيجة:</span>
-                <span id="diff-value" class="fw-bold english-num" style="font-size: 20px;">0</span>
-            </div>
-        </div>
-
-        <div class="mt-3">
-            <span class="badge rounded-pill bg-black bg-opacity-25 p-2 px-3 border border-white border-opacity-25">
-                <i class="fa fa-vault me-1 text-info"></i> رصيد الخزنة بالسيستم: 
-                <span id="system-vault-val" class="english-num fw-bold">0</span> ج.م
-                <i class="fas fa-sync-alt ms-2" id="refresh-vault-icon" style="cursor: pointer;" onclick="refreshVaultWithToast()"></i>
-            </span>
-        </div>
-    </div>
-
-    <button id="submit-inventory-btn" class="btn btn-warning w-100 rounded-pill fw-bold py-3 mb-3 shadow-sm border-0 text-dark" onclick="submitInventory()">
-        <i class="fas fa-save me-1"></i> اعتماد وحفظ نتيجة الجرد
-    </button>
-
-    <div class="card-box shadow-sm border-0 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold m-0 text-main small"><i class="fas fa-cash-register me-2 text-primary"></i>توزيع الفئات النقدية</h6>
-            <button class="btn btn-sm btn-light rounded-pill px-3 text-muted" onclick="resetCounter()">تصفير</button>
-        </div>
-        <div id="denominations-container" class="row g-2"></div>
-    </div>
-	    </div>
-<div id="inventory-tab-logs" style="display: none;">
-    <div class="card-box shadow-sm border-0 mb-3 bg-light">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold m-0 text-main"><i class="fas fa-history me-2 text-warning"></i>سجل العمليات</h6>
-            <button class="btn btn-sm btn-white shadow-sm rounded-pill px-3 border" onclick="loadInventoryLogs()">
-                <i class="fas fa-sync-alt text-muted me-1" id="log-refresh-icon"></i> تحديث
-            </button>
-        </div>
-        <div class="row g-0 px-3 mb-2 small fw-bold text-muted text-center border-bottom pb-2">
-            <div class="col-4 text-start">التاريخ</div>
-            <div class="col-5">الحالة</div>
-            <div class="col-3 text-end">إجراءات</div>
-        </div>
-        <div id="inventory-logs-list" style="max-height: 400px; overflow-y: auto;"></div>
-    </div>
-</div>
-	    </div>
-
-<div id="logDetailsModal" class="log-modal-overlay" style="display:none;" onclick="closeLogModalOutside(event)">
-    <div class="log-modal-content">
-        <div class="log-modal-header d-flex justify-content-between border-bottom pb-2 mb-3">
-            <h6 class="m-0 fw-bold text-primary">تفاصيل الجرد</h6>
-            <button class="btn-close" onclick="closeLogModal()" style="border:none; background:none; font-size:22px;">&times;</button>
-        </div>
-        <div class="log-modal-body">
-            <div class="d-flex justify-content-between mb-2 small text-muted"><span>التاريخ:</span> <span id="modal-date-head" class="text-dark fw-bold"></span></div>
-            <div class="d-flex justify-content-between mb-2 small text-muted"><span>المسؤول:</span> <span id="modal-user" class="text-dark fw-bold"></span></div>
-            <hr>
-            <div class="d-flex justify-content-between mb-2"><span>الرصيد الدفتري:</span> <span id="modal-system" class="english-num fw-bold"></span></div>
-            <div class="d-flex justify-content-between mb-2"><span>الرصيد الفعلي:</span> <span id="modal-actual" class="english-num fw-bold"></span></div>
-            <div id="modal-details-list" class="d-flex flex-wrap gap-2 mt-3"></div>
-        </div>
-        <button class="btn btn-primary w-100 rounded-pill mt-4 fw-bold" onclick="closeLogModal()">إغلاق</button>
-    </div>
-</div>
-<div id="view-settings" class="view-section"> 
-    <h6 class="text-muted small fw-bold mb-3"><i class="fa fa-wrench"></i> إعدادات الواجهة</h6>
-    <div class="card-box mb-3 d-flex justify-content-between align-items-center">
-        <label class="fw-bold">الوضع الداكن (Dark Mode)</label>
-        <button class="btn btn-sm btn-light border text-muted" onclick="toggleTheme()"><i class="fa fa-toggle-off" id="darkModeToggleIcon"></i></button>
-    </div>
-
-<h6 class="text-muted small fw-bold mb-2 mt-4"><i class="fa fa-table-columns me-1"></i> طريقة عرض صفحة العمليات</h6>
-<div class="card-box mb-3">
-    <p class="small text-muted mb-3">اختار الطريقة الأريحلك — بيتحفظ تلقائياً في المتصفح</p>
-    <div class="layout-opts-grid" id="layoutSettingsContainer"></div>
-</div>
-
-<h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-user-gear"></i> معلومات الحساب الشخصي</h6>
-<div class="card-box mb-3">
-    <div class="row g-2 mb-3">
-        <div class="col-6">
-            <label class="small text-muted mb-1">الاسم الحالي</label>
-            <div id="displayProfileName" class="form-control form-control-sm border-0 fw-bold">-</div>
-        </div>
-        <div class="col-6">
-            <label class="small text-muted mb-1">الرتبة/الصلاحية</label>
-            <div id="displayProfileRole" class="form-control form-control-sm border-0 fw-bold text-primary">-</div>
-        </div>
-        <div class="col-12 mt-2">
-            <label class="small text-muted mb-1">البريد الإلكتروني</label>
-            <div id="displayProfileEmail" class="form-control form-control-sm border-0">-</div>
-        </div>
-        <div class="col-12 mt-2">
-            <label class="small text-muted mb-1">الشركة</label>
-            <div id="displayCompanyName" class="form-control form-control-sm border-0 fw-bold" style="color:var(--primary,#3b82f6);">-</div>
-        </div>
-    </div>
-
-    <div class="pt-3 border-top">
-        <label class="small fw-bold mb-2 text-warning"><i class="fa fa-shield-halved me-1"></i> تغيير كلمة المرور</label>
-        
-        <div id="passwordFieldsSection">
-            <div class="mb-2">
-                <input type="password" id="newPass" class="form-control form-control-sm mb-2" placeholder="كلمة المرور الجديدة">
-                <input type="password" id="confirmPass" class="form-control form-control-sm" placeholder="تأكيد كلمة المرور">
-            </div>
-            <button class="btn btn-sm btn-success w-100 fw-bold" onclick="handleUpdatePassword()">
-                <i class="fa fa-save me-1"></i> حفظ كلمة المرور الجديدة
-            </button>
-        </div>
-    </div>
-</div>
-		<div id="adminSettingsSection" style="display: none;">
-			<h6 class="text-muted small fw-bold mb-3 mt-4"><i class="fa fa-chart-bar"></i> إعدادات النظام</h6>
-			<div class="card-box">
-				<div class="mb-3">
-					<label class="fw-bold d-block mb-1">تحديث لوحة التحكم يدوياً</label>
-					<button class="btn-main" id="btnDrawDashboard" onclick="runDrawDashboard()">تحديث رسومات الداشبورد</button>
-				</div>
-				<div class="small text-muted text-center mb-3">يستخدم هذه الخاصية فقط في حالة ظهور رسومات الداشبورد (الرئيسية) في الشيت غير واضحة.</div>
-
-				<div class="mb-3">
-					<label class="fw-bold d-block mb-1">فحص وإصلاح جداول البيانات</label>
-					<button class="btn-main" id="btnCheckSheets" onclick="runCheckSheets()">فحص وإصلاح الشيتات</button>
-				</div>
-				<div class="small text-muted text-center">يقوم بإنشاء أي جدول مفقود أو إصلاح الأعمدة الرئيسية.</div>
-
-				</div><!-- end card-box -->
-			</div><!-- end adminSettingsSection -->
-</div><!-- end view-settings -->
-
-<!-- ══ قسم الاشتراك — view مستقل ══ -->
-<div id="view-subscription" class="view-section">
-<div id="subscriptionSection">
-    <h6 class="text-muted small fw-bold mb-3 mt-2">
-        <i class="fa fa-credit-card me-1"></i> الاشتراك والخطة
-    </h6>
-
-    <div class="card-box mb-3">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-                <div class="fw-bold" style="font-size:15px;" id="planName">—</div>
-                <div class="small text-muted mt-1" id="planStatus">—</div>
-            </div>
-            <span id="planBadge" class="badge bg-primary" style="font-size:13px;padding:6px 12px;">—</span>
-        </div>
-        <div class="d-flex align-items-center gap-2 mb-3 p-2 rounded-3" style="background:var(--bg-secondary,rgba(255,255,255,.05));">
-            <i class="fa fa-calendar-days text-warning"></i>
-            <div>
-                <div class="small text-muted">تاريخ انتهاء الاشتراك</div>
-                <div class="fw-bold small" id="planExpiry">—</div>
-            </div>
-        </div>
-        <div class="mb-2">
-            <div class="d-flex justify-content-between small mb-1">
-                <span class="text-muted"><i class="fa fa-code-branch me-1"></i>الفروع</span>
-                <span id="usageBranches" class="fw-bold">—</span>
-            </div>
-            <div class="progress" style="height:5px;border-radius:3px;background:rgba(255,255,255,.1);">
-                <div id="progressBranches" class="progress-bar bg-primary" style="width:0%;transition:.4s;"></div>
-            </div>
-        </div>
-        <div class="mb-2">
-            <div class="d-flex justify-content-between small mb-1">
-                <span class="text-muted"><i class="fa fa-users me-1"></i>الأعضاء</span>
-                <span id="usageMembers" class="fw-bold">—</span>
-            </div>
-            <div class="progress" style="height:5px;border-radius:3px;background:rgba(255,255,255,.1);">
-                <div id="progressMembers" class="progress-bar" style="width:0%;background:#06b6d4;transition:.4s;"></div>
-            </div>
-        </div>
-        <div>
-            <div class="d-flex justify-content-between small mb-1">
-                <span class="text-muted"><i class="fa fa-exchange-alt me-1"></i>عمليات الشهر</span>
-                <span id="usageTxs" class="fw-bold">—</span>
-            </div>
-            <div class="progress" style="height:5px;border-radius:3px;background:rgba(255,255,255,.1);">
-                <div id="progressTxs" class="progress-bar bg-success" style="width:0%;transition:.4s;"></div>
-            </div>
-        </div>
-    </div>
-
-    <h6 class="text-muted small fw-bold mb-2 mt-3"><i class="fa fa-table me-1"></i> مقارنة الخطط</h6>
-    <div class="card-box mb-3 p-0" style="overflow:hidden;border-radius:12px;">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead>
-                <tr style="background:rgba(255,255,255,.05);">
-                    <th style="padding:10px 12px;text-align:right;color:var(--text-muted,#94a3b8);">الميزة</th>
-                    <th style="padding:10px;text-align:center;"><span class="badge bg-secondary">FREE</span></th>
-                    <th style="padding:10px;text-align:center;"><span class="badge bg-primary">PRO</span></th>
-                    <th style="padding:10px;text-align:center;"><span class="badge" style="background:#8b5cf6;">ENTERPRISE</span></th>
-                </tr>
-            </thead>
-            <tbody id="plansCompareBody">
-                <tr><td colspan="4" class="text-center text-muted small p-3">
-                    <i class="fa fa-circle-notch fa-spin me-1"></i>جاري التحميل...
-                </td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <h6 class="text-muted small fw-bold mb-2 mt-3"><i class="fa fa-arrow-up me-1"></i> طلب تغيير الخطة</h6>
-    <div id="pendingUpgradeAlert" style="display:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);"
-        class="d-flex align-items-center gap-2 p-3 rounded-3 mb-3" data-req-id="">
-        <i class="fa fa-hourglass-half text-warning"></i>
-        <div style="flex:1;">
-            <div class="small fw-bold text-warning">طلب ترقية معلّق</div>
-            <div class="small text-muted" id="pendingUpgradeMsg">—</div>
-        </div>
-        <button class="btn btn-sm btn-outline-danger" onclick="cancelUpgradeRequest()">
-            <i class="fa fa-times"></i> إلغاء
-        </button>
-    </div>
-    <div id="upgradeRequestForm" class="card-box">
-        <div class="mb-3">
-            <label class="small fw-bold mb-1">الخطة المطلوبة</label>
-            <select id="requestedPlan" class="form-select form-select-sm">
-                <option value="">اختر الخطة...</option>
-                <option value="PRO">PRO</option>
-                <option value="ENTERPRISE">ENTERPRISE</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label class="small fw-bold mb-1">ملاحظات (اختياري)</label>
-            <textarea id="upgradeNotes" class="form-control form-control-sm" rows="2"
-                placeholder="أي تفاصيل إضافية..."></textarea>
-        </div>
-        <button class="btn-main w-100" onclick="sendUpgradeRequest()">
-            <i class="fa fa-paper-plane me-1"></i> إرسال طلب الترقية
-        </button>
-    </div>
-</div><!-- end subscriptionSection -->
-</div><!-- end view-subscription -->
-
-
-<!-- ══════════════════════════════════════════
-     STOCK VIEW  — مطابق للـ preview تماماً
-══════════════════════════════════════════ -->
-<link rel="stylesheet" href="css/stock.css">
-
-<div id="view-stock" class="view-section">
-
-  <!-- ══ Stock Tabs Nav ══ -->
-  <div class="stk-tabs-nav">
-    <button class="stk-tab active" onclick="switchStockTab('stockView')"><i class="fa fa-boxes-stacked"></i> الاستوك</button>
-    <button class="stk-tab" onclick="switchStockTab('invoiceView');window.openNewInvoice(null)"><i class="fa fa-file-invoice"></i> فاتورة جديدة</button>
-    <button class="stk-tab" onclick="switchStockTab('invoicesListView')"><i class="fa fa-list-check"></i> الفواتير</button>
-  </div>
-
-  <!-- ══ TAB 1: الاستوك ══ -->
-  <div id="stockView" class="stk-screen active">
-    <div class="sec-header">
-      <div>
-        <div class="sec-title"><i class="fa fa-boxes-stacked"></i>إدارة <span>الاستوك</span></div>
-        <div class="sec-sub" id="stockSubTitle">جاري التحميل...</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="openSupplyModal()"><i class="fa fa-truck-ramp-box"></i> توريد بضاعة</button>
-        <button class="btn btn-primary btn-sm" onclick="openAddProduct()"><i class="fa fa-plus"></i> منتج جديد</button>
-      </div>
-    </div>
-    <div class="stats-row" id="stockStats">
-      <div class="stat-card" onclick="setStockCategory('mobile',null)"><div class="stat-icon" style="background:rgba(59,130,246,0.12);color:var(--sk-blue);"><i class="fa fa-mobile-screen"></i></div><div class="stat-info"><div class="val" id="statMobile" style="color:var(--sk-blue);">—</div><div class="lbl">موبايلات</div></div></div>
-      <div class="stat-card" onclick="setStockCategory('accessory',null)"><div class="stat-icon" style="background:rgba(139,92,246,0.12);color:var(--sk-purple);"><i class="fa fa-headphones"></i></div><div class="stat-info"><div class="val" id="statAccessory" style="color:var(--sk-purple);">—</div><div class="lbl">اكسسوار</div></div></div>
-      <div class="stat-card" onclick="setStockCategory('tablet',null)"><div class="stat-icon" style="background:rgba(6,182,212,0.12);color:var(--sk-cyan);"><i class="fa fa-tablet-screen-button"></i></div><div class="stat-info"><div class="val" id="statTablet" style="color:var(--sk-cyan);">—</div><div class="lbl">تابلت / لابتوب</div></div></div>
-      <div class="stat-card" onclick="setStockCategory('spare',null)"><div class="stat-icon" style="background:rgba(245,158,11,0.12);color:var(--sk-orange);"><i class="fa fa-screwdriver-wrench"></i></div><div class="stat-info"><div class="val" id="statSpare" style="color:var(--sk-orange);">—</div><div class="lbl">قطع غيار</div></div></div>
-    </div>
-    <div class="cat-tabs">
-      <button class="cat-tab active" onclick="setStockCategory('all',this)"><i class="fa fa-th-large"></i> الكل <span class="cnt" id="cntAll">0</span></button>
-      <button class="cat-tab" onclick="setStockCategory('mobile',this)"><i class="fa fa-mobile-screen"></i> موبايلات <span class="cnt" id="cntMobile">0</span></button>
-      <button class="cat-tab" onclick="setStockCategory('accessory',this)"><i class="fa fa-headphones"></i> اكسسوار <span class="cnt" id="cntAccessory">0</span></button>
-      <button class="cat-tab" onclick="setStockCategory('tablet',this)"><i class="fa fa-tablet-screen-button"></i> تابلت <span class="cnt" id="cntTablet">0</span></button>
-      <button class="cat-tab" onclick="setStockCategory('spare',this)"><i class="fa fa-screwdriver-wrench"></i> قطع غيار <span class="cnt" id="cntSpare">0</span></button>
-    </div>
-    <div class="search-bar">
-      <div class="search-input-wrap"><i class="fa fa-search"></i><input type="text" placeholder="ابحث عن منتج، موديل، براند..." oninput="stockSearchChanged(this.value)"></div>
-    </div>
-    <div class="products-grid" id="stockGrid">
-      <div class="empty-state"><div class="spinner-border text-primary mb-2" style="width:2rem;height:2rem;"></div><p>جاري التحميل...</p></div>
-    </div>
-  </div><!-- end stockView -->
-
-
-  <!-- ══ TAB 2: فاتورة جديدة ══ -->
-  <div id="invoiceView" class="stk-screen" style="display:none;">
-    <div class="sec-header">
-      <div>
-        <div class="sec-title"><i class="fa fa-file-invoice"></i>فاتورة <span>جديدة</span></div>
-        <div class="sec-sub" id="invoiceNumDisplay">—</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="closeInvoiceView()"><i class="fa fa-rotate-left"></i> رجوع</button>
-        <button class="btn btn-primary btn-sm" id="btnConfirmInvoice" onclick="confirmInvoice()"><i class="fa fa-check"></i> إتمام وطباعة</button>
-      </div>
-    </div>
-    <div class="vault-banner positive"><i class="fa fa-vault fa-lg"></i><div><div>الخزنة ستزيد بقيمة المدفوع</div><div style="font-size:10px;opacity:.7;margin-top:2px;">سيتم تسجيل العملية تلقائياً في السجل</div></div><div class="amount" id="invoiceVaultImpact">+ 0 ج.م</div></div>
-    <div class="invoice-layout">
-
-      <!-- يسار: منتجات + عميل -->
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div class="inv-panel">
-          <div class="inv-panel-header"><i class="fa fa-boxes-stacked" style="color:var(--sk-blue);"></i> اختار المنتجات</div>
-          <div class="inv-panel-body">
-            <div class="search-bar" style="margin-bottom:12px;">
-              <div class="search-input-wrap"><i class="fa fa-search"></i><input type="text" id="invProductSearch" placeholder="ابحث عن منتج..." oninput="filterInvoiceProducts(this.value)"></div>
-            </div>
-            <div id="invoiceProductsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:240px;overflow-y:auto;"></div>
-            <div style="font-size:11px;font-weight:700;color:var(--sk-text2);margin-bottom:8px;"><i class="fa fa-cart-shopping me-1"></i> المنتجات المضافة</div>
-            <div id="invoiceItemsList"><div style="text-align:center;color:var(--sk-text3);font-size:12px;padding:12px;">لم تُضف منتجات بعد</div></div>
-          </div>
-        </div>
-        <div class="inv-panel">
-          <div class="inv-panel-header"><i class="fa fa-user" style="color:var(--sk-cyan);"></i> بيانات العميل</div>
-          <div class="inv-panel-body">
-            <div class="form-row">
-              <div class="form-group"><label>اسم العميل</label><input type="text" id="invClientName" placeholder="محمد أحمد"></div>
-              <div class="form-group"><label>رقم الهاتف</label><input type="text" id="invClientPhone" class="ltr" placeholder="01XXXXXXXXX"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>ضمان (بالشهور)</label>
-                <select id="invWarranty"><option value="0">بدون ضمان</option><option value="3">3 شهور</option><option value="6">6 شهور</option><option value="12">12 شهر</option><option value="24">24 شهر</option></select>
-              </div>
-              <div class="form-group"><label>ملاحظات</label><input type="text" id="invNotes" placeholder="أي ملاحظات..."></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- يمين: دفع + ملخص -->
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div class="inv-panel">
-          <div class="inv-panel-header"><i class="fa fa-wallet" style="color:var(--sk-green);"></i> طريقة الدفع</div>
-          <div class="inv-panel-body">
-            <!-- payment types -->
-            <div class="pay-types">
-              <button class="pay-type active" data-type="cash" onclick="setPayType('cash',this)"><i class="fa fa-money-bill-wave"></i> كاش كامل</button>
-              <button class="pay-type" data-type="partial" onclick="setPayType('partial',this)"><i class="fa fa-hand-holding-dollar"></i> دفع جزئي</button>
-              <button class="pay-type" data-type="ajel" onclick="setPayType('ajel',this)" style="grid-column:1/-1;"><i class="fa fa-clock"></i> أجل (دين على عميل)</button>
-            </div>
-            <!-- cash / partial amount -->
-            <div id="cashSection">
-              <div class="form-group" style="margin-bottom:12px;">
-                <label>المبلغ المدفوع</label>
-                <input type="number" id="invoicePaid" class="ltr" oninput="updateRemaining()" placeholder="0" style="text-align:right;">
-              </div>
-              <div class="remaining-box" id="remainingBox">
-                <span class="lbl">المتبقي</span>
-                <span class="val english-num" id="invoiceRemaining">0 ج.م</span>
-              </div>
-            </div>
-            <!-- ajel section -->
-            <div id="ajelSection" style="display:none;">
-              <div class="form-group" style="margin-bottom:10px;">
-                <label>اختار العميل من قاعدة البيانات</label>
-                <select id="ajelClientSelect" onchange="onAjelClientChange(this)">
-                  <option value="">جاري التحميل...</option>
-                </select>
-              </div>
-              <div id="ajelClientInfo" style="display:none;align-items:center;gap:12px;padding:12px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:8px;margin-top:6px;"></div>
-              <div style="margin-top:10px;padding:10px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;font-size:12px;color:var(--sk-orange);">
-                <i class="fa fa-info-circle me-1"></i> سيُضاف كامل مبلغ الفاتورة كدين على العميل تلقائياً
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="inv-panel">
-          <div class="inv-panel-header"><i class="fa fa-receipt" style="color:var(--sk-orange);"></i> ملخص الفاتورة</div>
-          <div class="inv-panel-body" style="padding-bottom:0;">
-            <div id="invSummaryItems"><div class="inv-summary-item"><span class="lbl">لا توجد منتجات</span><span class="val">—</span></div></div>
-            <div class="inv-total-row"><span class="lbl">الإجمالي</span><span class="val english-num" id="invoiceTotalDisplay">0 ج.م</span></div>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px;" onclick="confirmInvoice()" id="btnConfirmInvoice2">
-          <i class="fa fa-print"></i> إتمام وطباعة الفاتورة
-        </button>
-      </div>
-
-    </div>
-  </div><!-- end invoiceView -->
-
-
-  <!-- ══ TAB 3: الفواتير ══ -->
-  <div id="invoicesListView" class="stk-screen" style="display:none;">
-    <div class="sec-header">
-      <div>
-        <div class="sec-title"><i class="fa fa-list-check"></i>سجل <span>الفواتير</span></div>
-        <div class="sec-sub" id="invoicesListSubTitle">جاري التحميل...</div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="switchStockTab('invoiceView');window.openNewInvoice(null)"><i class="fa fa-plus"></i> فاتورة جديدة</button>
-    </div>
-    <div class="stats-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
-      <div class="stat-card"><div class="stat-icon" style="background:rgba(16,185,129,0.12);color:var(--sk-green);"><i class="fa fa-circle-check"></i></div><div class="stat-info"><div class="val" id="invCountPaid" style="color:var(--sk-green);">—</div><div class="lbl">مكتملة</div></div></div>
-      <div class="stat-card"><div class="stat-icon" style="background:rgba(245,158,11,0.12);color:var(--sk-orange);"><i class="fa fa-clock"></i></div><div class="stat-info"><div class="val" id="invCountPartial" style="color:var(--sk-orange);">—</div><div class="lbl">أجل / جزئية</div></div></div>
-      <div class="stat-card"><div class="stat-icon" style="background:rgba(59,130,246,0.12);color:var(--sk-blue);"><i class="fa fa-sack-dollar"></i></div><div class="stat-info"><div class="val" id="invTotalSales" style="color:var(--sk-blue);">—</div><div class="lbl">إجمالي المبيعات</div></div></div>
-    </div>
-    <div class="search-bar"><div class="search-input-wrap"><i class="fa fa-search"></i><input type="text" placeholder="ابحث بالاسم أو رقم الفاتورة..." oninput="filterInvoicesTable(this.value)"></div></div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>المنتجات</th><th>الضمان</th><th>الإجمالي</th><th>الحالة</th><th></th></tr></thead>
-        <tbody id="invoicesTableBody"><tr><td colspan="7" class="text-center p-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr></tbody>
-      </table>
-    </div>
-  </div><!-- end invoicesListView -->
-
-</div><!-- end view-stock -->
-
-
-<!-- ══════════════════════════════════
-     Modal: إضافة / تعديل منتج
-══════════════════════════════════ -->
-<div id="productModal" class="stock-modal-overlay">
-  <div class="stock-modal">
-    <div class="stock-modal-header">
-      <span id="productModalTitle">منتج جديد</span>
-      <button class="stock-modal-close" onclick="closeProductModal()"><i class="fa fa-times"></i></button>
-    </div>
-    <div class="stock-modal-body">
-      <input type="hidden" id="productId">
-      <div id="pmForm"><!-- form fields injected by js --></div>
-    </div>
-    <div class="stock-modal-footer">
-      <button class="btn btn-ghost btn-sm" onclick="closeProductModal()">إلغاء</button>
-      <button class="btn btn-primary btn-sm" id="btnSaveProduct" onclick="saveProduct()"><i class="fa fa-save"></i> حفظ</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══════════════════════════
-     Modal: توريد بضاعة
-══════════════════════════ -->
-<div id="supplyModal" class="stock-modal-overlay">
-  <div class="stock-modal" style="max-width:460px;">
-    <div class="stock-modal-header">
-      <span><i class="fa fa-truck-ramp-box" style="color:#f59e0b;margin-left:8px;"></i> توريد بضاعة</span>
-      <button class="stock-modal-close" onclick="closeSupplyModal()"><i class="fa fa-times"></i></button>
-    </div>
-    <div class="stock-modal-body">
-      <div class="vault-banner negative" style="margin-bottom:16px;">
-        <i class="fa fa-vault fa-lg"></i>
-        <div>الخزنة ستنقص بقيمة التوريد</div>
-      </div>
-      <input type="hidden" id="supplyProductId">
-      <div class="supply-prod-box" id="supplyProductInfo">
-        <div class="supply-prod-icon"><i class="fa fa-box"></i></div>
-        <div>
-          <div class="name" id="supplyProductName">—</div>
-          <div class="meta" id="supplyProductMeta"></div>
-        </div>
-      </div>
-      <div id="supplySelectProduct" style="display:none;margin-bottom:14px;">
-        <div class="form-group">
-          <label>اختار المنتج</label>
-          <select id="supplyProductSelect" onchange="onSupplySelectChange(this)">
-            <option value="">— اختار المنتج —</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>الكمية *</label>
-          <input type="number" id="supplyQty" class="ltr" placeholder="0" oninput="updateSupplyCost()" style="text-align:right;">
-        </div>
-        <div class="form-group">
-          <label>سعر الشراء للقطعة *</label>
-          <input type="number" id="supplyCostPrice" class="ltr" placeholder="0" oninput="updateSupplyCost()" style="text-align:right;">
-        </div>
-      </div>
-      <div class="supply-total-box">
-        <span>إجمالي التكلفة</span>
-        <span class="english-num" id="supplyTotalCost">0 ج.م</span>
-      </div>
-      <div class="form-group" style="margin-top:12px;">
-        <label>ملاحظات</label>
-        <input type="text" id="supplyNotes" placeholder="اسم المورد أو أي تفاصيل...">
-      </div>
-    </div>
-    <div class="stock-modal-footer">
-      <button class="btn btn-ghost btn-sm" onclick="closeSupplyModal()">إلغاء</button>
-      <button class="btn btn-primary btn-sm" id="btnConfirmSupply" onclick="confirmSupply()"><i class="fa fa-check"></i> تأكيد التوريد</button>
-    </div>
-  </div>
-</div>
-</main>
-		<div id="editModal" class="modal-overlay" style="display:none;">
-			  <div class="modal-box">
-				<h6 class="mb-3 text-center fw-bold">تعديل الحساب</h6>
-				<input type="hidden" id="editRow">
-				
-				<div class="mb-2">
-				  <label class="small">الاسم</label>
-				  <input type="text" id="editName" class="form-control text-center english-num">
-				</div>
-<div class="mb-2">
-    <label class="small fw-bold">لون الوسم</label>
-    <input type="color" id="editColorPicker" class="form-control form-control-color" value="#000000">
-</div>
-  				<div class="row g-2 mb-2">
-				  <div class="col-6"><label class="small">صادر يومي</label><input type="number" id="editLo" class="form-control text-center english-num"></div>
-				  <div class="col-6"><label class="small">وارد يومي</label><input type="number" id="editLi" class="form-control text-center english-num"></div>
-				</div>
-				
-				<div class="mb-2">
-				  <label class="small">حد شهري</label>
-				  <input type="number" id="editLm" class="form-control text-center english-num">
-				</div>
-
-				<div class="mb-3">
-				  <label class="small text-primary fw-bold">تسوية الأرباح (إضافة/خصم)</label>
-				  <input type="text" id="editProfitAdj" class="form-control text-center english-num" placeholder="0" onkeyup="formatNumberInput(this)">
-				  <small class="text-muted" style="font-size: 10px;">ادخل مبلغ لتعديل رصيد أرباح المحفظة</small>
-				</div>
-
-				<div class="d-flex gap-2">
-				  <button id="btnSaveEdit" class="btn btn-primary flex-grow-1" onclick="saveEdit()">حفظ التعديلات</button>
-				  <button class="btn btn-light border text-muted" onclick="closeEdit()">إلغاء</button>
-				</div>
-			  </div>
-			</div>
-				<div id="editClientModal" class="modal-overlay" style="display:none;">
-			  <div class="modal-box">
-				<h6 class="mb-3 text-center fw-bold">تعديل العميل</h6>
-				<input type="hidden" id="editClRow">
-				<div class="mb-2"><label class="small">الاسم</label><input type="text" id="editClName" class="form-control text-center"></div>
-				<div class="mb-2"><label class="small">موبايل</label><input type="text" id="editClPhone" class="form-control text-center english-num"></div>
-				<div class="mb-3"><label class="small">الرصيد (يدوي)</label><input type="number" id="editClBal" class="form-control text-center english-num"></div>
-				<div class="d-flex gap-2">
-				<button id="btnSaveCl" class="btn btn-primary flex-grow-1" onclick="saveEditClient()">حفظ</button>
-				  <button class="btn btn-light border text-muted" onclick="closeEditCl()">إلغاء</button>
-				</div>
-			  </div>
-			</div>
-
-			<!-- Modal: تعديل صلاحية المستخدم -->
-<div id="editRoleModal" class="modal-overlay" style="display:none;">
-    <div class="modal-box">
-        <h6 class="mb-3 text-center fw-bold">تعديل صلاحية المستخدم</h6>
-        <input type="hidden" id="editRoleEmail">
-        <input type="hidden" id="editRoleName">
-        <div class="mb-3 text-center">
-            <label class="small text-muted">تعديل صلاحية:</label>
-            <h5 class="fw-bold" id="currentUserName"></h5>
-        </div>
-        <div class="mb-3">
-            <label class="small fw-bold">الصلاحية الجديدة</label>
-            <select id="newRoleSelect" class="form-select mb-2">
-                <option value="USER">موظف</option>
-                <option value="ADMIN">Admin Assistant</option>
-            </select>
-        </div>
-        <div class="d-flex gap-2">
-            <button id="btnSaveRole" class="btn btn-primary flex-grow-1" onclick="saveUserRole()">حفظ التعديل</button>
-            <button class="btn btn-light border text-muted" onclick="closeEditRole()">إلغاء</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: التنبيهات -->
-<div id="notificationModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; justify-content:center; align-items:center; backdrop-filter:blur(3px);">
-    <div class="modal-box" style="background:var(--bg-card); width:90%; max-width:380px; padding:20px; border-radius:16px; border:1px solid var(--border-color);">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold m-0"><i class="fa fa-bell text-warning me-2"></i>التنبيهات</h6>
-            <button class="btn-close" onclick="closeNotificationModal()"></button>
-        </div>
-        <div id="notificationsList" style="max-height:300px; overflow-y:auto;"></div>
-        <button class="btn-main mt-3" onclick="closeNotificationModal()">إغلاق</button>
-    </div>
-</div>
-
-<!-- Modal: تأكيد العملية -->
-<div id="confirmOpModal" class="modal-overlay" style="display:none;">
-    <div class="modal-box" style="border-top: 5px solid #3b82f6;">
-        <h6 class="fw-bold mb-3 text-center"><i class="fa fa-shield-check text-primary me-2"></i>تأكيد مسار العملية</h6>
-        <div id="opLogicDescription" class="p-3 mb-3" style="background: var(--bg-body); border-radius: 12px; font-size: 13px; line-height: 1.6;"></div>
-        <div class="d-flex gap-2">
-            <button id="btnFinalConfirm" class="btn-main flex-grow-1" onclick="executeFinalTransaction()">تأكيد وتنفيد</button>
-            <button class="btn btn-light border text-muted" onclick="closeConfirmModal()">إلغاء</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: تخصيص المحفظة -->
-<div id="tagModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10000; justify-content:center; align-items:center;">
-    <div class="modal-box" style="padding:20px; border-radius:10px; width:300px;">
-        <h6 class="fw-bold mb-3">🎨 تخصيص المحفظة</h6>
-        <input type="hidden" id="tagRow">
-        <div class="mb-3">
-            <label class="small fw-bold">الوسم (الاسم المختصر)</label>
-            <input type="text" id="tagInput" class="form-control" placeholder="مثلاً: شخصي">
-        </div>
-        <div class="mb-3">
-            <label class="small fw-bold">اللون</label>
-            <input type="color" id="tagColorInput" class="form-control form-control-color w-100">
-        </div>
-        <div class="d-flex gap-1 flex-wrap">
-            <button onclick="saveTagSettings()" id="btnSaveTag" class="btn btn-warning flex-grow-1 fw-bold">حفظ</button>
-            <button onclick="resetTagSettings()" id="btnResetTag" class="btn btn-outline-danger" title="إعادة ضبط المظهر">
-                <i class="fa-solid fa-trash-can"></i>
-            </button>
-            <button onclick="document.getElementById('tagModal').style.display='none'" class="btn btn-light border">إلغاء</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal: تحليل الأرصدة (Bootstrap Modal) -->
-<div class="modal fade" id="auditModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="true" style="z-index: 99999 !important;">
-    <div class="modal-dialog modal-dialog-centered" style="z-index: 100000 !important;">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold"><i class="fa fa-chart-bar me-2"></i>تحليل الأرصدة</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body bg-light" id="auditBody" style="max-height: 400px; overflow-y: auto;"></div>
-        </div>
-    </div>
-</div>
-<div id="securePassModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; align-items:center; justify-content:center; direction:rtl; font-family:'Cairo', sans-serif;">
-    <div style="background:var(--card-bg); color:var(--card-text); padding:25px; border-radius:20px; width:85%; max-width:320px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <i class="fa fa-lock" style="font-size:40px; color:#0d6efd; margin-bottom:15px;"></i>
-        <h5 style="font-weight:bold; margin-bottom:20px;">كلمة المرور مطلوبة</h5>
-        <input type="password" id="secureInput" placeholder="أدخل الرقم السري" style="width:100%; padding:12px; border:2px solid var(--input-border); border-radius:10px; text-align:center; font-size:20px; margin-bottom:20px; outline:none; background:var(--input-bg); color:var(--input-text);">
-        <div style="display: flex; gap: 10px;">
-            <button onclick="verifySecurePass()" style="flex:2; padding:12px; background:#0d6efd; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">دخول</button>
-            <button onclick="document.getElementById('securePassModal').style.display='none'" style="flex:1; padding:12px; background:var(--card-hover-bg); color:var(--card-text); border:1px solid var(--card-border); border-radius:10px; cursor:pointer;">إلغاء</button>
-        </div>
-    </div>
-</div>	
 </body>
 </html>

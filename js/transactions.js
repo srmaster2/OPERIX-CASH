@@ -564,6 +564,8 @@ function runTransaction() {
 }
 
 function _getOpColor(type) {
+    // سداد دين (وارد) = أخضر — سحب دين (صادر) = أحمر حتى لو فيه كلمة "سحب"
+    if (/دين|مديونية/.test(type)) return /سحب|صادر/.test(type) ? "#ef4444" : "#10b981";
     if (/سداد|وارد|سحب من محفظة/.test(type)) return "#10b981";
     if (/مصروف|سحب|إيداع/.test(type))         return "#ef4444";
     return "#3b82f6";
@@ -600,8 +602,12 @@ function _buildFlowCard(type, provider, walletName) {
         return box("العميل","fa-user",walletName,"fa-wallet","#10b981","📥 رصيد المحفظة هيزيد.<br>📤 كاش الخزنة هيقل.");
     if (type.includes("سداد"))
         return `<div style="padding:15px;text-align:center;color:#10b981;font-weight:bold;">✅ العميل يسدد دين</div>`;
-    if (/دين|مديونية/.test(type))
-        return `<div style="padding:15px;text-align:center;color:#ef4444;font-weight:bold;">⚠️ تسجيل دين جديد</div>`;
+    if (/دين|مديونية/.test(type)) {
+        const isOut = /سحب|صادر/.test(type);
+        return isOut
+            ? `<div style="padding:15px;text-align:center;color:#ef4444;font-weight:bold;">⚠️ تسجيل دين جديد — صادر للعميل</div>`
+            : `<div style="padding:15px;text-align:center;color:#10b981;font-weight:bold;">✅ سداد دين — وارد من العميل</div>`;
+    }
     if (type.includes("مصروف"))
         return `<div style="padding:15px;text-align:center;color:#f59e0b;font-weight:bold;">💸 مصروف من الخزنة</div>`;
     return `<p style="text-align:center;padding:10px;">تأكيد: <b>${type}</b></p>`;
@@ -810,21 +816,21 @@ async function finalExecuteStep(btn) {
             } else {
                 // وارد (سداد دين من العميل)
                 if (walletAcc) {
-                    // وارد على محفظة
+                    // وارد على محفظة — الرصيد يزيد بـ val فقط، العمولة تتسجل في profit بس
                     push(walletAcc, {
-                        balance: +walletAcc.balance + val + fee,
+                        balance: +walletAcc.balance + val,
                         daily_in_usage:  +walletAcc.daily_in_usage  + val,
                         monthly_usage_in: (+walletAcc.monthly_usage_in || 0) + val,
                         ...(fee > 0 ? { profit: +walletAcc.profit + fee } : {})
                     });
                 } else {
-                    // وارد على الخزنة
+                    // وارد على الخزنة — الرصيد يزيد بـ val فقط، العمولة تتسجل في profit بس
                     push(cashAcc, {
-                        balance: +cashAcc.balance + val + fee,
+                        balance: +cashAcc.balance + val,
                         ...(fee > 0 ? { profit: +cashAcc.profit + fee } : {})
                     });
                 }
-                balanceAfter = +target.balance + val + fee;
+                balanceAfter = +target.balance + val; // بدون fee عشان balance_after يعكس الرصيد الحقيقي
                 // تقليل دين العميل (سدد)
                 await _updateClientBalance(clientId, val, "IN");
             }
@@ -888,9 +894,11 @@ async function _updateClientBalance(clientId, amount, mode) {
     const currentBal = Number(cl.balance) || 0;
     // OUT = اشتغلنا للعميل (دينه علينا زاد) → نزيد الرصيد (موجب = العميل مدين)
     // IN  = العميل سدد (دينه قل)           → نقلل الرصيد
+    // OUT = اشتغلنا للعميل → دينه زاد (موجب)
+    // IN  = العميل سدد    → دينه قل، ممكن يبقى سالب (يعني إنت مدين له)
     const newBal = mode === "OUT"
         ? currentBal + amount
-        : Math.max(0, currentBal - amount); // ما نخليش الرصيد يطلع سالب
+        : currentBal - amount; // بدون Math.max — السالب معناه رصيد لصالح العميل
     const { error: updErr } = await _supa().from('clients').update({ balance: newBal }).eq('id', cl.id);
 }
 

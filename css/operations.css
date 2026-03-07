@@ -670,3 +670,46 @@ body.dark-mode .txd-flow-node {
     border-color: rgba(255,255,255,.12);
     background: rgba(255,255,255,.05);
 }
+::-webkit-scrollbar {
+  width: 6px; /* عرض السكرول الرأسي */
+  height: 6px; /* ارتفاع السكرول الأفقي */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* خلفية المسار */
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color, #055bca); /* لون المقبض */
+  border-radius: 10px; /* جعل الحواف دائرية */
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6; /* يتغير للون الأزرق عند الوقوف عليه ليناسب ثيم تطبيقك */
+}
+
+/* تخصيص السكرول بار لمتصفح Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color, #053e88) transparent;
+}
+/* تحسين السكرول داخل المودال */
+.details-modal-content {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-gutter: stable; /* يمنع اهتزاز المحتوى عند ظهور السكرول */
+  padding-right: 4px; /* مسافة بسيطة عشان السكرول ميبقاش لزق في الكلام */
+}
+
+/* تحسين السكرول في اللوحة الجانبية (Sticky Panel) */
+@media (min-width: 992px) {
+  .new-op-panel {
+    position: sticky;
+    top: 85px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    /* تأكد أن السكرول هنا خفيف جداً */
+    scrollbar-width: thin; 
+  }
+}

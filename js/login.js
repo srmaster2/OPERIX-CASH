@@ -92,7 +92,7 @@ async function login() {
   } else {
     if (window.LoginSecurity) window.LoginSecurity.reset();
     toast('تم تسجيل الدخول بنجاح ✓');
-    setTimeout(() => window.location.href = 'index.html', 900);
+    setTimeout(() => window.location.href = 'dashboard.html', 900);
   }
 }
 
@@ -165,7 +165,7 @@ async function registerCompany() {
       </div>`;
 
     window.__registering = false;
-    setTimeout(() => window.location.href = 'index.html', 2200);
+    setTimeout(() => window.location.href = 'dashboard.html', 2200);
 
   } catch (err) {
     window.__registering = false;
@@ -375,7 +375,7 @@ async function acceptInvitation() {
       </div>`;
 
     window.__registering = false;
-    setTimeout(() => window.location.href = 'index.html', 2000);
+    setTimeout(() => window.location.href = 'dashboard.html', 2000);
 
   } catch (err) {
     window.__registering = false;
@@ -403,10 +403,10 @@ document.addEventListener('keydown', e => {
 /* ══ Auto redirect لو مسجّل دخول ══ */
 // window.__registering = true أثناء التسجيل — يمنع الـ redirect المبكر
 window.supa?.auth.getUser().then(({ data: { user } }) => {
-  if (user && !window.__r && !window.__registering) { window.__r = true; window.location.replace('index.html'); }
+  if (user && !window.__r && !window.__registering) { window.__r = true; window.location.replace('dashboard.html'); }
 });
 window.supa?.auth.onAuthStateChange((e, s) => {
-  if (s && !window.__r && !window.__registering) { window.__r = true; window.location.replace('index.html'); }
+  if (s && !window.__r && !window.__registering) { window.__r = true; window.location.replace('dashboard.html'); }
 });
 
 /* ══ تشغيل loadInvitation عند فتح الصفحة ══ */

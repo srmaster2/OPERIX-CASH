@@ -167,8 +167,11 @@ async function fetchClientBalance() {
 
     if (!error && data) {
         const bal = Number(data.balance || 0);
-        statusEl.className = `small fw-bold mt-1 text-center ${bal > 0 ? 'text-danger' : 'text-success'}`;
-        statusEl.textContent = `رصيد ${data.name}: ${Math.abs(bal).toLocaleString()} ج.م ${bal > 0 ? '(عليه)' : '(له)'}`;
+        // موجب = العميل مدين (عليه) — سالب = رصيد لصالح العميل (له)
+        statusEl.className = `small fw-bold mt-1 text-center ${bal > 0 ? 'text-danger' : bal < 0 ? 'text-success' : 'text-muted'}`;
+        statusEl.textContent = bal === 0
+            ? `${data.name}: لا يوجد دين`
+            : `رصيد ${data.name}: ${Math.abs(bal).toLocaleString()} ج.م ${bal > 0 ? '(عليه)' : '(له)'}`;
     }
 }
 
@@ -187,8 +190,9 @@ async function loadClientsToSelect() {
     select.innerHTML = '<option value="">اختر العميل...</option>';
     clients.forEach(c => {
         const bal  = Number(c.balance) || 0;
-        const info = bal < 0 ? ` | عليه: ${Math.abs(bal).toLocaleString()}`
-                   : bal > 0 ? ` | له: ${bal.toLocaleString()}` : '';
+        // موجب = العميل مدين (عليه) — سالب = رصيد لصالح العميل (له)
+        const info = bal > 0 ? ` | عليه: ${Math.abs(bal).toLocaleString()}`
+                   : bal < 0 ? ` | له: ${Math.abs(bal).toLocaleString()}` : '';
         select.innerHTML += `<option value="${c.id}">${c.name}${info}</option>`;
     });
 }
