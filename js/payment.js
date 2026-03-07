@@ -41,32 +41,32 @@ return data.hash
 async function buildKashierURL({ orderId, amount, planCode, customerEmail, customerName }) {
     const amountStr  = Number(amount).toFixed(2);
     const hash       = await generateKashierHash(orderId, amountStr);
-    const successUrl = `${KASHIER_BASE_URL}/payment-success.html?orderId=${orderId}&plan=${planCode}`;
-    const failUrl    = `${KASHIER_BASE_URL}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`;
+    const successUrl = KASHIER_BASE_URL + '/payment-success.html?orderId=' + orderId + '&plan=' + planCode;
+    const failUrl    = KASHIER_BASE_URL + '/payment-success.html?orderId=' + orderId + '&plan=' + planCode + '&status=failed';
+    const enc        = window.encodeURIComponent;
 
     const params = [
-        `mid=${KASHIER_MID}`,
-        `orderId=${orderId}`,
-        `amount=${amountStr}`,
-        `currency=${KASHIER_CURRENCY}`,
-        `hash=${hash}`,
-        `mode=${KASHIER_MODE}`,
-        `merchantOrderId=${orderId}`,
-        `merchantRedirect=${encodeURIComponent(successUrl)}`,
-        `failureRedirect=${encodeURIComponent(failUrl)}`,
-        `webhookUrl=${encodeURIComponent(KASHIER_SUP_URL + '/functions/v1/kashier-webhook')}`
-        `allowedMethods=card`,
-        `display=ar`,
-        `metaData=${encodeURIComponent(JSON.stringify({ planCode: planCode }))}`,
-        customerName  ? `shopper_name=${encodeURIComponent(customerName)}`   : '',
-        customerEmail ? `shopper_email=${encodeURIComponent(customerEmail)}` : '',
+        'mid='            + KASHIER_MID,
+        'orderId='        + orderId,
+        'amount='         + amountStr,
+        'currency='       + KASHIER_CURRENCY,
+        'hash='           + hash,
+        'mode='           + KASHIER_MODE,
+        'merchantOrderId='+ orderId,
+        'merchantRedirect='  + enc(successUrl),
+        'failureRedirect='   + enc(failUrl),
+        'webhookUrl='        + enc(KASHIER_SUP_URL + '/functions/v1/kashier-webhook'),
+        'allowedMethods=card',
+        'display=ar',
+        'metaData='          + enc(JSON.stringify({ planCode: planCode })),
+        customerName  ? 'shopper_name='  + enc(customerName)  : '',
+        customerEmail ? 'shopper_email=' + enc(customerEmail) : '',
     ].filter(Boolean).join('&');
 
-    const url = `${KASHIER_HPP_BASE}/payment?${params}`;
+    const url = KASHIER_HPP_BASE + '/payment?' + params;
     console.log('[Kashier] URL:', url);
     return url;
 }
-
 // ── initiateKashierPayment ───────────────────────────────────
 async function initiateKashierPayment(planCode) {
     const u = window.currentUserData;
