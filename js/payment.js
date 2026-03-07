@@ -54,7 +54,7 @@ async function buildKashierURL({ orderId, amount, planCode, customerEmail, custo
         `merchantOrderId=${orderId}`,
         `merchantRedirect=${encodeURIComponent(successUrl)}`,
         `failureRedirect=${encodeURIComponent(failUrl)}`,
-        `webhookUrl=${encodeURIComponent(KASHIER_SUP_URL + '/functions/v1/super-api')}`,
+        `webhookUrl=${encodeURIComponent(KASHIER_SUP_URL + '/functions/v1/kashier-webhook')}`
         `allowedMethods=card`,
         `display=ar`,
         `metaData=${encodeURIComponent(JSON.stringify({ planCode: planCode }))}`,
