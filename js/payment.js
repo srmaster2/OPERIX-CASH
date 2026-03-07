@@ -47,24 +47,23 @@ async function generateKashierHash(orderId, amount) {
 async function buildKashierURL({ orderId, amount, planCode, customerEmail, customerName }) {
     const hash = await generateKashierHash(orderId, amount);
 
-    const params = new URLSearchParams({
-        merchantId:       KASHIER_CONFIG.mid,
-        orderId:          orderId,
-        amount:           String(amount),   // نفس القيمة المستخدمة في الـ hash
-        currency:         KASHIER_CONFIG.currency,
-        hash:             hash,
-        merchantRedirect: `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`,
-        failureRedirect:  `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&status=failed`,
-        webhook:          `${KASHIER_CONFIG.supabaseUrl}/functions/v1/super-api`,
-        merchantOrderId:  orderId,
-        allowedMethods:   'card,wallet',
-        display:          'ar',
-        shopper_name:     customerName  || '',
-        shopper_email:    customerEmail || '',
-        metaData:         JSON.stringify({ planCode, company_id: window.currentUserData?.company_id }),
-    });
+    // Kashier HPP parameters — بناءً على الـ docs الرسمية
+    const url = new URL(KASHIER_CONFIG.iframeBase + '/');
+    url.searchParams.set('merchantId',      KASHIER_CONFIG.mid);
+    url.searchParams.set('orderId',         orderId);
+    url.searchParams.set('amount',          String(amount));
+    url.searchParams.set('currency',        KASHIER_CONFIG.currency);
+    url.searchParams.set('hash',            hash);
+    url.searchParams.set('merchantOrderId', orderId);
+    url.searchParams.set('merchantRedirect',`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`);
+    url.searchParams.set('failureRedirect', `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&status=failed`);
+    url.searchParams.set('allowedMethods',  'card,wallet');
+    url.searchParams.set('display',         'ar');
+    if (customerName)  url.searchParams.set('shopper_name',  customerName);
+    if (customerEmail) url.searchParams.set('shopper_email', customerEmail);
 
-    return `${KASHIER_CONFIG.iframeBase}/?${params.toString()}`;
+    console.log('Kashier URL:', url.toString());
+    return url.toString();
 }
 
 // ── إنشاء order في DB ثم فتح Kashier HPP ────────────────────
