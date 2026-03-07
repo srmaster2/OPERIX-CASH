@@ -11,25 +11,32 @@ var KASHIER_HPP_BASE   = 'https://test-iframe.kashier.io';
 
 // ── توليد hash عبر Edge Function (آمن — الـ key في الـ backend) ──
 async function generateKashierHash(orderId, amount) {
-    const res = await fetch(
-        'https://hgzyjfsbqxqwzbdtuekh.supabase.co/functions/v1/kashier-hash',
-        {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                merchantId: KASHIER_MID,
-                orderId:    orderId,
-                amount:     amount,
-                currency:   KASHIER_CURRENCY,
-            })
-        }
-    );
-    const data = await res.json();
-    if (!data.hash) throw new Error('Hash generation failed: ' + JSON.stringify(data));
-    console.log('[Kashier] Hash from Edge Function:', data.hash);
-    return data.hash;
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnenlqZnNicXhxd3piZHR1ZWtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0MzI4NDAsImV4cCI6MjA4NTAwODg0MH0.eR8p2SM66S8TSKjSMNzNG8Ip2B5kZYLXWoOBYKMTRCQ";
+const res = await fetch(
+"https://hgzyjfsbqxqwzbdtuekh.supabase.co/functions/v1/kashier-hash",
+{
+method: "POST",
+headers: {
+"Content-Type": "application/json",
+"apikey": SUPABASE_ANON_KEY,
+"Authorization": "Bearer " + SUPABASE_ANON_KEY
+},
+body: JSON.stringify({
+merchantId: KASHIER_MID,
+orderId: orderId,
+amount: amount,
+currency: KASHIER_CURRENCY
+})
+})
+
+const data = await res.json()
+
+if(!data.hash){
+throw new Error("Hash generation failed")
 }
 
+return data.hash
+}
 // ── بناء HPP URL ─────────────────────────────────────────────
 async function buildKashierURL({ orderId, amount, planCode, customerEmail, customerName }) {
     const amountStr  = Number(amount).toFixed(2);
