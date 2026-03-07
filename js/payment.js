@@ -61,7 +61,7 @@ async function buildKashierURL({ orderId, amount, planCode, customerEmail, custo
         `webhookUrl=${encodeURIComponent(KASHIER_SUP_URL + '/functions/v1/super-api')}`,
         `allowedMethods=card`,
         `display=ar`,
-        `metadata=${encodeURIComponent(JSON.stringify({ planCode }))}`,
+        `metaData=${encodeURIComponent(JSON.stringify({ planCode: planCode }))}`,
         customerName  ? `shopper_name=${encodeURIComponent(customerName)}`   : '',
         customerEmail ? `shopper_email=${encodeURIComponent(customerEmail)}` : '',
     ].filter(Boolean).join('&');
