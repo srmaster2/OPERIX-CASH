@@ -48,22 +48,27 @@ async function buildKashierURL({ orderId, amount, planCode, customerEmail, custo
     const hash = await generateKashierHash(orderId, amount);
 
     // Kashier HPP — الـ format الرسمي من الـ docs
-    // https://test-iframe.kashier.io/payment?mid=MID-xx&orderId=...
-    const url = new URL(KASHIER_CONFIG.iframeBase + '/payment');
-    url.searchParams.set('mid',             KASHIER_CONFIG.mid);
-    url.searchParams.set('orderId',         orderId);
-    url.searchParams.set('amount',          String(amount));
-    url.searchParams.set('currency',        KASHIER_CONFIG.currency);
-    url.searchParams.set('hash',            hash);
-    url.searchParams.set('merchantRedirect',`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`);
-    url.searchParams.set('merchantOrderId', orderId);
-    url.searchParams.set('allowedMethods',  'card,wallet');
-    url.searchParams.set('display',         'ar');
-    if (customerName)  url.searchParams.set('shopper_name',  customerName);
-    if (customerEmail) url.searchParams.set('shopper_email', customerEmail);
+    // https://test-iframe.kashier.io/payment?mid=MID-xx&orderId=...&mode=test
+    const successUrl = encodeURIComponent(`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`);
+    const failUrl    = encodeURIComponent(`${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}&status=failed`);
 
-    console.log('Kashier URL:', url.toString());
-    return url.toString();
+    const urlStr = `${KASHIER_CONFIG.iframeBase}/payment`
+        + `?mid=${KASHIER_CONFIG.mid}`
+        + `&orderId=${orderId}`
+        + `&amount=${amount}`
+        + `&currency=${KASHIER_CONFIG.currency}`
+        + `&hash=${hash}`
+        + `&mode=${KASHIER_CONFIG.mode}`
+        + `&merchantRedirect=${successUrl}`
+        + `&failureRedirect=${failUrl}`
+        + `&merchantOrderId=${orderId}`
+        + `&allowedMethods=card,wallet`
+        + `&display=ar`
+        + (customerName  ? `&shopper_name=${encodeURIComponent(customerName)}`  : '')
+        + (customerEmail ? `&shopper_email=${encodeURIComponent(customerEmail)}` : '');
+
+    console.log('Kashier URL:', urlStr);
+    return urlStr;
 }
 
 // ── إنشاء order في DB ثم فتح Kashier HPP ────────────────────
