@@ -1,3 +1,4 @@
+
 // ============================================================
 // subscription.js — Phase 5: Subscription Enforcement
 // يتحمّل بعد config.js وقبل أي ملف تاني
@@ -127,7 +128,7 @@ async function canAddTransaction() {
     if (count >= sub.max_transactions) {
         return {
             allowed: false,
-            reason: `وصلت للحد الشهري من العمليات (${sub.max_transactions.toLocaleString('ar-EG')} عملية)\nيرجى الترقية إلى خطة أعلى`
+            reason: `وصلت للحد الشهري من العمليات (${sub.max_transactions.toLocaleString('en-EG')} عملية)\nيرجى الترقية إلى خطة أعلى`
         };
     }
 
@@ -162,7 +163,7 @@ function _showSubBanner(type, expiresAt, daysLeft) {
         el.style.color = '#fff';
         el.innerHTML = `
             <i class="fa fa-ban"></i>
-            <span>انتهى اشتراككم${expiresAt ? ' في ' + new Date(expiresAt).toLocaleDateString('ar-EG') : ''} — النظام في وضع القراءة فقط</span>
+            <span>انتهى اشتراككم${expiresAt ? ' في ' + new Date(expiresAt).toLocaleDateString('en-EG') : ''} — النظام في وضع القراءة فقط</span>
             <a href="mailto:support@operix.app" style="color:#fde68a;text-decoration:underline;margin-right:8px;">تجديد الاشتراك</a>
         `;
     } else if (type === 'warning') {
@@ -234,7 +235,7 @@ async function loadSubscriptionPage() {
     if (statEl)   statEl.textContent   = statusNames[sub.status]   || sub.status;
     if (badgeEl)  { badgeEl.textContent = sub.plan_code; badgeEl.className = 'badge fs-6 ' + (planColors[sub.plan_code] || 'bg-secondary'); }
     if (expiryEl) expiryEl.textContent = sub.expires_at
-        ? new Date(sub.expires_at).toLocaleDateString('ar-EG', { year:'numeric', month:'long', day:'numeric' })
+        ? new Date(sub.expires_at).toLocaleDateString('en-EG', { year:'numeric', month:'long', day:'numeric' })
         : 'غير محدد';
 
     // ── الاستهلاك ──
@@ -274,10 +275,10 @@ async function loadSubscriptionPage() {
         const planOrder = ['FREE', 'PRO', 'ENTERPRISE'];
         const sortedPlans = planOrder.map(c => plans.find(p => p.code === c)).filter(Boolean);
         const rows = [
-            { label: 'السعر', key: null, fmt: p => p.price ? p.price.toLocaleString('ar-EG') + ' ج.م' : 'مجاناً' },
+            { label: 'السعر', key: null, fmt: p => p.price ? p.price.toLocaleString('en-EG') + ' ج.م' : 'مجاناً' },
             { label: 'الفروع',    key: 'max_branches',    fmt: p => p.max_branches >= 999 ? '∞' : p.max_branches },
             { label: 'الأعضاء',   key: 'max_employees',   fmt: p => p.max_employees >= 999 ? '∞' : p.max_employees },
-            { label: 'عمليات/شهر',key: 'max_transactions',fmt: p => p.max_transactions >= 999999 ? '∞' : p.max_transactions?.toLocaleString('ar-EG') },
+            { label: 'عمليات/شهر',key: 'max_transactions',fmt: p => p.max_transactions >= 999999 ? '∞' : p.max_transactions?.toLocaleString('en-EG') },
             { label: 'المدة',     key: null,               fmt: p => p.duration_days ? p.duration_days + ' يوم' : '—' },
         ];
         const planOrder2 = ['FREE','PRO','ENTERPRISE'];
@@ -311,7 +312,7 @@ async function loadSubscriptionPage() {
                         '<span style="font-size:11px;color:var(--text-muted,#64748b);">—</span>' +
                         '</td>';
                 }
-                const price = p.price ? p.price.toLocaleString('ar-EG') + ' ج.م' : 'مجاناً';
+                const price = p.price ? p.price.toLocaleString('en-EG') + ' ج.م' : 'مجاناً';
                 return '<td style="padding:8px;text-align:center;">' +
                     '<button onclick="initiateKashierPayment(\'' + p.code + '\')" ' +
                     'style="background:' + (planColors[p.code]||'#3b82f6') + ';color:#fff;border:none;border-radius:8px;padding:6px 14px;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;width:100%;">' +
