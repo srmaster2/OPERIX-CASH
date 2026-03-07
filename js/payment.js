@@ -8,29 +8,26 @@ var KASHIER_CURRENCY   = 'EGP';
 var KASHIER_BASE_URL   = 'https://operix-cash.vercel.app';
 var KASHIER_SUP_URL    = 'https://hgzyjfsbqxqwzbdtuekh.supabase.co';
 var KASHIER_HPP_BASE   = 'https://test-iframe.kashier.io';
-// Secret Key — يُستخدم للـ hash (مش الـ API Key)
-var KASHIER_SECRET_KEY = '4120190dc13c819b109bdb29268df1e0$05f63d185a5b73a3dda0e23ee9f11d2216eeb3fb0ff1593732b751b6192f64bfb8c743a2cebdd26d4f5dd31076fc72fa';
 
-// ── توليد hash ───────────────────────────────────────────────
+// ── توليد hash عبر Edge Function (آمن — الـ key في الـ backend) ──
 async function generateKashierHash(orderId, amount) {
-    const message = `${KASHIER_MID}.${orderId}.${amount}.${KASHIER_CURRENCY}`;
-
-    function asciiEncode(str) {
-        const buf = new Uint8Array(str.length);
-        for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i) & 0xff;
-        return buf;
-    }
-
-    const keyData   = asciiEncode(KASHIER_SECRET_KEY);
-    const msgData   = asciiEncode(message);
-
-    const cryptoKey = await crypto.subtle.importKey(
-        'raw', keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false, ['sign']
+    const res = await fetch(
+        'https://hgzyjfsbqxqwzbdtuekh.supabase.co/functions/v1/kashier-hash',
+        {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                merchantId: KASHIER_MID,
+                orderId:    orderId,
+                amount:     amount,
+                currency:   KASHIER_CURRENCY,
+            })
+        }
     );
-    const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-    return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const data = await res.json();
+    if (!data.hash) throw new Error('Hash generation failed: ' + JSON.stringify(data));
+    console.log('[Kashier] Hash from Edge Function:', data.hash);
+    return data.hash;
 }
 
 // ── بناء HPP URL ─────────────────────────────────────────────
