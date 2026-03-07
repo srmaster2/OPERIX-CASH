@@ -3,12 +3,13 @@
 // ════════════════════════════════════════════════════════════
 
 const KASHIER_CONFIG = {
-    mid:      'MID-43854-991',
-    apiKey:   'f44d05f6-a29d-49e5-9b51-2c11416322d9',
-    mode:     'test',   // ← test الآن، غيّرها لـ 'live' لما تنقل
-    currency: 'EGP',
-    baseUrl:  'https://operix-cash.vercel.app',
-    supabaseUrl: 'https://hgzyjfsbqxqwzbdtuekh.supabase.co',
+    mid:        'MID-43854-991',
+    // Payment API Key — لتوليد الـ hash
+    apiKey:     'f44d05f6-a29d-49e5-9b51-2c11416322d9',
+    mode:       'test',   // ← test الآن، غيّرها لـ 'live' لما تنقل
+    currency:   'EGP',
+    baseUrl:    'https://operix-cash.vercel.app',
+    supabaseUrl:'https://hgzyjfsbqxqwzbdtuekh.supabase.co',
     get iframeBase() {
         return this.mode === 'live'
             ? 'https://iframe.kashier.io'
@@ -18,10 +19,20 @@ const KASHIER_CONFIG = {
 
 // ── توليد HMAC-SHA256 hash ──────────────────────────────────
 async function generateKashierHash(orderId, amount) {
-    const path = `/?payment=${KASHIER_CONFIG.mid}.${orderId}.${amount}.${KASHIER_CONFIG.currency}`;
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(KASHIER_CONFIG.apiKey);
-    const msgData = encoder.encode(path);
+    // Kashier: path = /?payment=MID.orderId.amount.currency
+    // amount كـ string بدون تعديل — بيتطابق مع اللي بيتبعت في الـ request
+    const amountStr = String(amount);
+    const path = '/?payment=' + KASHIER_CONFIG.mid + '.' + orderId + '.' + amountStr + '.' + KASHIER_CONFIG.currency;
+
+    // Kashier بيستخدم ASCII encoding (مش UTF-8)
+    function asciiEncode(str) {
+        const buf = new Uint8Array(str.length);
+        for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i) & 0xff;
+        return buf;
+    }
+
+    const keyData = asciiEncode(KASHIER_CONFIG.apiKey);
+    const msgData = asciiEncode(path);
 
     const cryptoKey = await crypto.subtle.importKey(
         'raw', keyData,
@@ -39,7 +50,7 @@ async function buildKashierURL({ orderId, amount, planCode, customerEmail, custo
     const params = new URLSearchParams({
         merchantId:       KASHIER_CONFIG.mid,
         orderId:          orderId,
-        amount:           String(amount),
+        amount:           String(amount),   // نفس القيمة المستخدمة في الـ hash
         currency:         KASHIER_CONFIG.currency,
         hash:             hash,
         merchantRedirect: `${KASHIER_CONFIG.baseUrl}/payment-success.html?orderId=${orderId}&plan=${planCode}`,
